@@ -825,5 +825,11 @@ static int bkf_lit(uint32_t f, const brk_status_t *st)
         return (int)((st->pads >> f) & 1u) || roll_lit(f);
     if (f == BKF_ARP)
         return ovl_pad_on();
+    if (f == BKF_VRB)                    /* (AFFINE's keys: lit while held) */
+        return verb_held;
+    if (f == BKF_SKP)
+        return skip_held;
+    if (f == BKF_CRS)
+        return crush_held;
     return kick_hold != 0u;
 }

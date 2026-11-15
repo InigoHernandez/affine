@@ -159,13 +159,16 @@ static settings_t set;
  * back), then ARP (an OVERLAY effect), KIL (the sequencer's kicks quiet). A layout: the function of each key, left to
  * right. Presets: CHOPPAH (CHOPPAH's keys), CUSTOM (each key its own: ARP › BLACK KEYS). (AFFINE: DST, SUB, DRV and
  * the FLEXOR LAYOUT gone with the hardcore kick) */
-enum { BKF_ARP = BRK_NPADS, BKF_KIL, BKF_N };
-enum { BKP_CHOPPAH, BKP_CUSTOM, BKP_N };
+enum { BKF_ARP = BRK_NPADS, BKF_KIL, BKF_VRB, BKF_SKP, BKF_CRS, BKF_N };   /* (AFFINE: VRB the mix thrown into SPU
+                                          * VERB, SKP the disc slipping, CRS the bits dropped, each while held) */
+enum { BKP_AFFINE, BKP_CHOPPAH, BKP_CUSTOM, BKP_N };   /* (AFFINE's first: a new FM-1's) */
 #define BK_TAG 0xB4u
 #define BK_VIEW 14u                      /* (bk[14]: HOME's VIEW, 0 the waveform, 1 the slices, 0.9.2) */
 #define BK_BHALF 13u                     /* (bk[13]: BREAK TIME, 0 NORMAL, 1 HALF: the break at half the tempo, 0.256) */
 static const uint8_t BK_LAY[11] = {PAD_ROLL8, PAD_ROLL16, PAD_ROLL32, PAD_REVERSE, PAD_FREEZE, PAD_HALF,
                                    PAD_TAPESTOP, PAD_GATE, PAD_RANDOM, PAD_FILTER, PAD_DUB};   /* (CHOPPAH's) */
+static const uint8_t BK_LAY_AFF[11] = {PAD_ROLL8, PAD_ROLL16, PAD_ROLL32, PAD_REVERSE, PAD_HALF, PAD_TAPESTOP,
+                                       PAD_FREEZE, BKF_SKP, BKF_VRB, BKF_CRS, PAD_FILTER};   /* (AFFINE's: the plan's) */
 #define BK_PLAT 15u                      /* (bk[15]: 0xA0 | the LATCH bits of REVERSE, FREEZE, GATE, RANDOM (their K4),
                                           * 0.9.26, FLEXOR; tagged: an older save's byte there the STAB's leftover) */
 #define BK_FTHRU 16u                     /* (bk[16]: 0xC0 | the FILTER key's THRU, its K4: 0 BREAK, 1 DRUMS, 2 BOTH) */
@@ -186,7 +189,7 @@ static uint32_t bk_preset(void)          /* the preset in use (0.9.23, FLEXOR: B
                                           * FM-1 and RESET ALL: CHOPPAH) */
 {
     if (set.bkeys.bk[0] != BK_TAG || set.bkeys.bk[1] >= BKP_N)
-        return BKP_CHOPPAH;
+        return BKP_AFFINE;
     return set.bkeys.bk[1];
 }
 static uint32_t bk_fn(uint32_t j)        /* black key j's (0..10) function */
@@ -194,9 +197,9 @@ static uint32_t bk_fn(uint32_t j)        /* black key j's (0..10) function */
     uint32_t f;
     j %= 11u;
     if (bk_preset() != BKP_CUSTOM)
-        return BK_LAY[j];
+        return bk_preset() == BKP_AFFINE ? BK_LAY_AFF[j] : BK_LAY[j];
     f = set.bkeys.bk[2u + j];
-    return f < BKF_N ? f : BK_LAY[j];
+    return f < BKF_N ? f : BK_LAY_AFF[j];
 }
 static void bk_defaults(void)
 {
@@ -212,9 +215,9 @@ static void bk_defaults(void)
     for (j = 0; j < 11u; j++)
         set.bkeys.bk[2u + j] = HOST_LAY[j];
 #else
-    set.bkeys.bk[1] = BKP_CHOPPAH;       /* (a new FM-1, RESET ALL: CHOPPAH) */
+    set.bkeys.bk[1] = BKP_AFFINE;        /* (a new FM-1, RESET ALL: AFFINE's) */
     for (j = 0; j < 11u; j++)
-        set.bkeys.bk[2u + j] = BK_LAY[j];   /* (CUSTOM begins as CHOPPAH) */
+        set.bkeys.bk[2u + j] = BK_LAY_AFF[j];   /* (CUSTOM begins as AFFINE's) */
 #endif
     set.bkeys.bk[BK_BHALF] = 0u;
     set.bkeys.bk[BK_PLAT] = 0xA0u;
@@ -340,11 +343,18 @@ static void skin_apply(uint32_t s);    /* (ui/common.c) */
 static uint32_t skin_old(uint32_t s); /* (ui/common.c: an older save's skin, 0..17, to the 1.0's) */
 /* LOAF BREAKER: the FX chain's part of settings_apply (its four slots, their extras), and BOOM's (its sound, the ARP's
  * REESE in its key): a knob of theirs applies them alone (changed_fx, changed_kick) */
-static uint8_t verb_held;                /* AFFINE: a VERB THROW key down (pads.c): the mix into SPU VERB at full */
+static uint8_t verb_held, skip_held, crush_held;   /* AFFINE: the VRB, SKP, CRS keys down (main.c): the mix into SPU
+                                          * VERB at full; the disc slipping at 90 %; 4 bits */
 static void psx_apply(void)
 {
     psx_bus_t b = set.psx;
     b.vthrow = verb_held ? 1.0f : 0.0f;
+    if (skip_held) {
+        b.skchance = b.skchance > 0.9f ? b.skchance : 0.9f;
+        b.skmix = 1.0f;
+    }
+    if (crush_held && b.crush < 0.86f)
+        b.crush = 0.86f;
     psx_bus_set(&b);
 }
 static void fx_apply(void)

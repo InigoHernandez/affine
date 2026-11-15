@@ -7,7 +7,7 @@ wait 300
 turn SELECT 1 10
 wait 300
 expect opage 1
-expect bk_pre 1
+expect bk_pre 2
 expect bk_key 0
 turn ALGO 3 10
 wait 200

@@ -9,7 +9,7 @@ turn SELECT 1 10
 wait 300
 turn K1 -1 10
 wait 200
-expect bk_pre 0
+expect bk_pre 1
 tap HOME
 wait 300
 expect playing 0

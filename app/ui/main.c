@@ -144,6 +144,8 @@ static void home_draw(const brk_status_t *st, uint32_t now)
     h.t_ms = now;
     h.kick_ms = kick_ms;
     h.pad = ui.shown >= 0 && ui.shown < (int32_t)BKF_N ? BKF_LONG[ui.shown] : ui.shown >= 100 ? "KEY HELD" : 0;
+    if (!h.pad)                          /* (AFFINE's keys and KIL: their names while held) */
+        h.pad = crush_held ? "CRUSH" : skip_held ? "SKIP" : verb_held ? "VERB THROW" : kick_hold ? "BOOM OFF" : 0;
     if (now < ui.msg_until) {            /* (app_say's message, for its moment) */
         h.msg0 = ui.msg[0];
         h.msg1 = ui.msg[1];
@@ -604,6 +606,23 @@ static void input(void)
         if (kick_hold && !(set.half_mt_off & 4u)) {   /* (let go, no LATCH: back) */
             kick_hold = 0u;
             app_say("BOOM", "BACK");
+            ui.redraw |= RG_FOOT;
+        }
+    }
+    {                                    /* AFFINE: VRB, SKP, CRS: the PSX bus pushed while held (psx_apply) */
+        uint8_t v = (uint8_t)((keys & PAD_BIT(BKF_VRB)) != 0u), sk = (uint8_t)((keys & PAD_BIT(BKF_SKP)) != 0u),
+                cr = (uint8_t)((keys & PAD_BIT(BKF_CRS)) != 0u);
+        if (v != verb_held || sk != skip_held || cr != crush_held) {
+            if (v && !verb_held)
+                app_say("VERB THROW", VERB_SHORT[set.psx.vtype % PSXV_N]);
+            else if (sk && !skip_held)
+                app_say("SKIP", SKIP_DIV_NAME[set.psx.skdiv & 3u]);
+            else if (cr && !crush_held)
+                app_say("CRUSH", "4 BIT");
+            verb_held = v;
+            skip_held = sk;
+            crush_held = cr;
+            psx_apply();
             ui.redraw |= RG_FOOT;
         }
     }
@@ -2072,7 +2091,9 @@ void app_frame(void)
     }
     if (ui.redraw & RG_HEAD)
         draw_head(&st, b, now);
-    if (ui.meter_x > 0 && now - ui.meter_drawn >= 33u) {   /* the level meter, about 30 times a second */
+    if (ui.meter_x > 0 && now - ui.meter_drawn >= 33u &&   /* the level meter, about 30 times a second (AFFINE: not
+                                          * on the POLYGON pages, HOME and PSX: they draw their own header) */
+        !((ui.page == PG_HOME || FX_PSX()) && !RST_ON && !(set.tut && set.tut <= TUT_N))) {
         draw_meter();
         ui.meter_drawn = now;
     }

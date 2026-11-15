@@ -3,7 +3,7 @@
 # AFFINE's simulator starts on a CUSTOM layout, LOAF BREAKER's FLEXOR LAYOUT's keys).
 #   app/build/host/affine_host tests/scenarios/arpkeys.txt app/build/scenarios
 wait 4200
-expect bk_pre 1
+expect bk_pre 2
 tap ARP
 wait 300
 turn SELECT 1 10
@@ -16,7 +16,7 @@ wait 200
 expect bk_key 0
 turn K3 11 10
 wait 300
-expect bk_pre 1
+expect bk_pre 2
 expect bk_fn 11
 turn K4 3 10
 wait 300
@@ -77,6 +77,6 @@ turn SELECT 1 10
 wait 200
 turn K1 -1 10
 wait 200
-expect bk_pre 0
+expect bk_pre 1
 tap HOME
 wait 200

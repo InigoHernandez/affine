@@ -261,11 +261,11 @@ enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_T
  * where TAP TEMPO was. AFFINE: PG_KICK is BOOM's page; LOAF's KICK EQ page gone) */
 /* LOAF BREAKER (11 Nov 2026): the black keys' functions' names (app.c BKF_*), as the strip shows them */
 static const char *const BKF_NAME[BKF_N] = {"R8", "R16", "R32", "REV", "FRZ", "HLF", "VNL", "GAT", "RND", "FLT", "DUB",
-                                            "ARP", "KIL"};
+                                            "ARP", "KIL", "VRB", "SKP", "CRS"};
 static const char *const BKF_LONG[BKF_N] = {"ROLL 1/8", "ROLL 1/16", "ROLL 1/32", "REVERSE", "FREEZE", "HALF SPEED",
                                             "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "ARP (OVERLAY)",
-                                            "BOOM OFF"};
-static const char *const BKP_NAME[BKP_N] = {"CHOPPAH", "CUSTOM"};
+                                            "BOOM OFF", "VERB THROW", "SKIP", "CRUSH"};
+static const char *const BKP_NAME[BKP_N] = {"AFFINE", "CHOPPAH", "CUSTOM"};
 static const uint8_t WK[16] = PLAT_WHITE_KEYS, BK[11] = PLAT_BLACK_KEYS;
 /* LOAF BREAKER: what the TUTORIAL (tutor.c) watches, counted where it happens: white keys pressed, black keys pressed
  * (a bit each), drum steps set on SEQ, SAVEs, HOME, the OVERLAY page's effects */

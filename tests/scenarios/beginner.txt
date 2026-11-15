@@ -60,7 +60,7 @@ turn K1 1 60
 wait 200
 expect drop_bars 4
 # (0.9.23, FLEXOR: BEGINNER keeps the black keys' layout EXPERT left: here FLEXOR LAYOUT, the simulator's)
-expect bk_pre 1
+expect bk_pre 2
 press SEL
 tap ARP
 release SEL
