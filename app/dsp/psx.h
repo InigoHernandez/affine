@@ -54,6 +54,7 @@ void psx_skip_init(uint8_t *ring, uint32_t frames);
  * diving while it searches */
 void psx_skip_set(uint32_t div, float chance, float seek);
 extern const char *const SKIP_DIV_NAME[4];
+uint32_t psx_skip_active(void);          /* 1: a skip is sounding now (for the screen) */
 /* beat: where the block starts, in beats; spb: samples a beat (the engine's) */
 void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, float mix);
 

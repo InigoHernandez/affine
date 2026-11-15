@@ -571,6 +571,7 @@ void psx_skip_init(uint8_t *ring, uint32_t frames)
     sk.w = 0;
     sk.on = 0;
 }
+uint32_t psx_skip_active(void) { return sk.on || sk.fade > 0.01f; }
 void psx_skip_set(uint32_t div, float chance, float seek)
 {
     p_sdiv = div < 4u ? div : 2u;
@@ -734,8 +735,9 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
         psx_redux_set(psx_redux_hz(redux_s), bus.rmode, bus.rjit);
         psx_redux_process(l, r, n, 1.0f);
     }
-    /* SKIP: a disc that can't read */
-    if (bus.skchance > 0.0f && bus.skmix > 0.0f) {
+    /* SKIP: a disc that can't read (a skip under way finishes, its fade too, after the chance is let go: else its
+     * state would stay on) */
+    if ((bus.skchance > 0.0f && bus.skmix > 0.0f) || psx_skip_active()) {
         psx_skip_set(bus.skdiv, bus.skchance, bus.skseek);
         psx_skip_process(l, r, n, beat, spb, bus.skmix);
     }

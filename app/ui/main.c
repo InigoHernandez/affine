@@ -185,6 +185,20 @@ static void home_draw(const brk_status_t *st, uint32_t now)
         h.g[i] = g;
     }
     h.bip = ui.shown == -1 ? 1u : 0u;    /* (FILTER from the middle) */
+    {                                    /* what the performance does, for the picture (aff.c aff_tick) */
+        float lv = meter_l > meter_r ? meter_l : meter_r, c = set.psx.crush, v = set.psx.send;
+        h.level = lv > 1.0f ? 1.0f : lv;
+        h.crush = crush_held && c < 0.86f ? 0.86f : c;
+        h.redux = set.psx.redux;
+        h.send = verb_held ? 1.0f : v;
+        h.dj = brk_fx_dj_now();
+        h.pads = st->pads;
+        h.roll_div = st->roll_div;
+        h.tape = st->tape;
+        h.gate = st->gate;
+        h.skip = (uint8_t)psx_skip_active();
+    }
+    aff_tick(&h);
     for (top = 0; top < 240; top += 60) {
         cv_begin(240, 60, A_BG0);
         aff_home_band(&h, top);
