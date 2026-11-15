@@ -1,5 +1,6 @@
 # LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): BEGINNER's FX page: two slots (the third and fourth muted and hidden),
-# PRESETS the short list (EMPTY, FILTER, CRUNCH, DRIVE, FLANGER, REVERB, DELAY, TAPE, CLIP), then MAGIC EQ, MAGIC MBC.
+# PRESETS the short list (EMPTY, FILTER, CRUNCH, DRIVE, FLANGER, DELAY, TAPE, CLIP; AFFINE: REVERB retired), then
+# MAGIC EQ, MAGIC MBC.
 # In EXPERT the third slot gets a FILTER, focused; BEGINNER on: the focus back on the first, ALGORITHM goes round the
 # two. (AFFINE: the DST and SUB keys' part gone with the hardcore kick.)
 #   app/build/host/affine_host tests/scenarios/fxeasy.txt app/build/scenarios
@@ -29,7 +30,7 @@ expect fx_focus 1
 turn SELECT 1 80
 wait 200
 expect fx_focus 0
-turn PRESET 4 80
+turn PRESET 3 80
 wait 300
 expect fx_type 9
 turn PRESET 20 80
