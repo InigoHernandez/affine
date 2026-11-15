@@ -70,9 +70,21 @@ The owner's ask: super performative. What it means on the FM-1:
 5. **Scenes A/B and MORPH.** Two snapshots of the gestures and the FX chain. HOME's second page: K4 MORPH glides
    between them, PRESETS + a white key stores one.
 
+### The PSX bus (built, 6a2a425)
+
+LOAF's chain runs per sample from RAM, where nothing may call out; the PSX effects work on blocks. So they sit on a
+fixed bus after the chain, before the limiter, run by `brk_fx_process`:
+CODEC (GRIT or XA) -> SPU VERB -> CRUSH -> REDUX -> SKIP. SPU VERB is one reverb, as the console had one: the mix by
+SEND (HOME's K4), the slices' reverb throws and the VERB pad all go into it. CRUSH, REDUX and SKIP come after it, so
+they take its tail with them. LOAF's plate is retired (a REVERB slot passes the sound on).
+
 ## 4. The look
 
-Three directions to choose from, drawn as stills before any UI is built (handbook: settle the look cheaply). All
+**The owner picked A, POLYGON (2026-11-15).** HOME is built (1cc85ac, `app/ui/aff.c`, off the device in
+`tests/look/home.c`); the rest of the UI follows it after the kick strip. LOAF's pages are laid out for Barlow;
+moving them to the 2x pixel font is a page-by-page job, HOME first.
+
+Three directions were drawn as stills before any UI was built (handbook: settle the look cheaply). All
 follow the MONO2K/Demake rules: one pixel grid, crisp, big type, dithered light, micro-motion, a palette whose
 colours each have a job, no rainbows, no brand marks.
 
@@ -84,7 +96,10 @@ colours each have a job, no rainbows, no brand marks.
 
 ## 5. Budget
 
-FM-1 build at the import (568,332 B image, 13.2 KB free; RAM 97,372 of 98,304; pool 340,876 of 344,064):
+FM-1 build at the import (568,332 B image, 13.2 KB free; RAM 97,372 of 98,304; pool 340,876 of 344,064).
+With the PSX bus (6a2a425): image 578,132; RAM 89,400; pool 339,100. Done so far: the plate's 36 KB of RAM back,
+SKIP's capture 24 KB of RAM (mu-law), the delay line mu-law (61 -> 31 KB of pool), the break buffer 4.8 -> 4.0 s
+(37 KB of pool), SPU VERB's 64 KB in the pool. The plan as made:
 
 | | Frees | Costs |
 |---|---|---|
@@ -101,16 +116,18 @@ first AFFINE build, read while playing.
 
 1. **Import** (done): the fork, the royalty-free bank, the identity, this plan.
 2. **Engine** (done, 06dc900): the PSX effects as one platform-free module (`app/dsp/psx.c`), 38 checks and demo
-   WAVs in `./build.sh test`, a host bench against LOAF's plate (`build/engine/psx_bench`). Waiting: the owner's ear.
-3. **The look** (stills done, c0fa286: `tools/look_stills.py`). Waiting: the owner's pick.
-4. **Strip the kick**, free its memory, put in BOOM.
-5. **Wire the effects:** FX chain types, pads, HOME's gestures, overlays.
-6. **The picked look:** screen, splash, update screen, skins as palettes.
+   WAVs in `./build.sh test`, a host bench (`build/engine/psx_bench`). Waiting: the owner's ear.
+3. **The look** (done: the owner picked POLYGON).
+4. **Strip the kick**, free its memory, put in BOOM (a worktree agent, in progress).
+5. **Wire the effects:** the PSX bus (done, 6a2a425); then HOME's gestures, the PSX page, pads, overlays.
+6. **The picked look:** HOME (done off the device, 1cc85ac); then the chrome, the palette, every page, splash,
+   update screen.
 7. **Motion record and scenes.**
 8. **Device:** the owner's FM-1 test, the CPU meter read; then the site, the manual, the hub kit.
 
 ## 7. Open, for the owner
 
 - Which ten breaks go into the bank? (A first pick at 160-175 BPM is in; a listening page can come with the demos.)
-- The look: A, B or C (after the stills).
-- BOOM: keep a light kick for jungle subs, or the breaks' own kicks only?
+- BOOM: keep a light kick for jungle subs, or the breaks' own kicks only? (Not answered: BOOM is being built, the
+  plan's default.)
+- The sounds: the effects tour and the nine reverbs.
