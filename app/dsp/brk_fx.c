@@ -394,7 +394,6 @@ BRK_COLD void brk_fx_drums_dj(float *x, float *y, uint32_t n, float pos)
         }
     }
 }
-BRK_COLD void brk_fx_kick_dj(float *x, uint32_t n, float pos) { brk_fx_drums_dj(x, 0, n, pos); }
 
 BRK_COLD void brk_fx_init(void)
 {
@@ -456,40 +455,6 @@ BRK_INL float eq_run(svf_t *s, const svf_c *c, const float *m, float x)
     return m[0] * x + m[1] * v1 + m[2] * v2;
 }
 
-/* LOAF BREAKER: HOME's KICK EQ, the FX chain's EQ on the kick alone: the same three bands and level, mapped the same
- * (p: LOW, MID, HIGH, the mid's FREQ; then the low's freq, the mid's Q, the high's freq, LEVEL; 0..1, 0.5 flat) */
-static volatile float p_keq[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-static svf_t keq_s[3];
-BRK_COLD void brk_fx_set_kick_eq(const float *p)
-{
-    uint32_t i;
-    for (i = 0; i < 8u; i++)
-        p_keq[i] = brk_clampf(p[i], 0.0f, 1.0f);
-}
-BRK_COLD void brk_fx_kick_eq(float *x, uint32_t n)
-{
-    float p[8], m[3][3], lvl, y;
-    svf_c c[3];
-    uint32_t i, b, flat = 1u;
-    for (i = 0; i < 8u; i++) {
-        p[i] = p_keq[i];
-        if ((i < 3u || i == 7u) && (p[i] < 0.49f || p[i] > 0.51f))
-            flat = 0u;                   /* (the gains and the level all at 0 dB: nothing to do) */
-    }
-    if (flat)
-        return;
-    eq_band(&c[0], m[0], BAND_LOWSHELF, 40.0f * c_exp2(p[4] * 3.3219f), 0.707f, (p[0] - 0.5f) * 24.0f);
-    eq_band(&c[1], m[1], BAND_BELL, 200.0f * c_exp2(p[3] * 4.64f), 0.3f * c_exp2(p[5] * 3.737f), (p[1] - 0.5f) * 24.0f);
-    eq_band(&c[2], m[2], BAND_HIGHSHELF, 2000.0f * c_exp2(p[6] * 3.0f), 0.707f, (p[2] - 0.5f) * 24.0f);
-    lvl = c_exp2((p[7] - 0.5f) * 24.0f * 0.16610f);
-    for (i = 0; i < n; i++) {
-        y = x[i];
-        for (b = 0; b < 3u; b++)
-            y = eq_run(&keq_s[b], &c[b], m[b], y);
-        x[i] = y * lvl;
-    }
-}
-
 /* a slot's settings for this block, mapped from 0..1 */
 typedef struct {
     uint8_t on, type;
@@ -537,16 +502,7 @@ void brk_fx_set_mbc(uint32_t slot, const brk_mbc_t *m)
     if (slot < BRK_FX_ALL)
         *(brk_mbc_t *)&p_mbc[slot] = *m;   /* (whole, as brk_fx_set: the render copies it per block) */
 }
-/* LOAF BREAKER: KICK FX, its two slots as set and the render's copy; slot k's settings (k: the chain's 0..3, the
- * kick's 4, 5) */
-static volatile brk_fxslot_t p_kfx[BRK_KFX_SLOTS];
-static brk_fxslot_t kfx[BRK_KFX_SLOTS];
-void brk_fx_set_kick_slot(uint32_t i, const brk_fxslot_t *s)
-{
-    if (i < BRK_KFX_SLOTS)
-        *(brk_fxslot_t *)&p_kfx[i] = *s;
-}
-static brk_fxslot_t *fslot(uint32_t k) { return k < BRK_FX_SLOTS ? &fx.slot[k] : &kfx[(k - BRK_FX_SLOTS) & 1u]; }
+static brk_fxslot_t *fslot(uint32_t k) { return &fx.slot[k < BRK_FX_SLOTS ? k : 0u]; }
 static int dl_taken;                     /* and the delay (the first DELAY, when the line is there) */
 static dl_c_t dl_slot_c;                 /* the DELAY slot's settings this block */
 static float cur_throw;                  /* this sample's throw into the delay */
@@ -595,8 +551,6 @@ BRK_COLD static void slot_block(uint32_t k, const float *x)
     float x0 = brk_clampf(x[0], 0.0f, 1.0f), x1 = brk_clampf(x[1], 0.0f, 1.0f), x2 = brk_clampf(x[2], 0.0f, 1.0f);
     float x3 = brk_clampf(x[3], 0.0f, 1.0f);
     uint32_t t = f->type < BRK_NFXT ? f->type : FXT_EMPTY;
-    if (k >= BRK_FX_SLOTS && (t == FXT_REVERB || t == FXT_DELAY))
-        t = FXT_EMPTY;                   /* (LOAF BREAKER: KICK FX has no reverb or delay of its own) */
     if (s->type != t) {                  /* a new effect here: its state from nothing */
         uint8_t *z = (uint8_t *)s;
         uint32_t i;
@@ -1007,7 +961,7 @@ BRK_COLD void brk_fx_mb_meter(uint32_t slot, float *gr, float *lvl)
 }
 
 /* the block's samples, all four slots: from RAM on the FM-1 (BRK_RAM, one call a block: nothing in it calls out) */
-typedef struct { svf_c djc; dl_c_t dub_c; float wet; int dj_hp, dub_on; uint32_t k0, k1, kick, fmode, late; } fx_q_t;
+typedef struct { svf_c djc; dl_c_t dub_c; float wet; int dj_hp, dub_on; uint32_t fmode, late; } fx_q_t;
 BRK_RAM static void fx_samples(const fx_q_t *q, const float *in, const float *thru, const float *echo, const float *verb,
                                const float *post, float *l, float *r, uint32_t n)
 {
@@ -1015,7 +969,7 @@ BRK_RAM static void fx_samples(const fx_q_t *q, const float *in, const float *th
     for (i = 0; i < n; i++) {
         float x = in[i], xl, xr, lp, ec = echo ? echo[i] : 0.0f, vb = verb ? verb[i] : 0.0f;
         float dv = thru ? thru[i] : post ? post[i] : 0.0f;   /* (the drums, into the chain or around it) */
-        int djon = !q->kick && (dj_s < -0.01f || dj_s > 0.01f);
+        int djon = dj_s < -0.01f || dj_s > 0.01f;
         if (djon && q->fmode) {          /* (0.9.26: the FILTER pad thrown, its THRU DRUMS or BOTH: the drums too) */
             float h = svf_run(&dj_d, &q->djc, dv, &lp);
             dv = q->dj_hp ? h : lp;
@@ -1032,14 +986,12 @@ BRK_RAM static void fx_samples(const fx_q_t *q, const float *in, const float *th
             x += dv;
         xl = xr = x;
         mono = 1u;
-        if (!q->kick) {
-            dub_send += ((q->dub_on ? 1.0f : 0.0f) - dub_send) * 0.002f;
-            if (!q->dub_on && dub_send < 1e-4f)
-                dub_send = 0.0f;         /* (LOAF BREAKER: let go: nothing sent, the delay may rest) */
-            cur_throw = x * dub_send + ec;
-            (void)vb;                    /* (AFFINE: the slices' reverb throws go to SPU VERB, after the chain) */
-        }
-        for (k = q->k0; k < q->k1; k++)  /* the chain, slot by slot (LOAF BREAKER: or the kick's) */
+        dub_send += ((q->dub_on ? 1.0f : 0.0f) - dub_send) * 0.002f;
+        if (!q->dub_on && dub_send < 1e-4f)
+            dub_send = 0.0f;             /* (LOAF BREAKER: let go: nothing sent, the delay may rest) */
+        cur_throw = x * dub_send + ec;
+        (void)vb;                        /* (AFFINE: the slices' reverb throws go to SPU VERB, after the chain) */
+        for (k = 0; k < BRK_FX_SLOTS; k++)   /* the chain, slot by slot */
             if (sc[k].on) {
                 uint32_t tr = md[k].track && !(i & 3u);   /* (its peaks: the screen's slot, every 4th sample) */
                 float a;
@@ -1056,10 +1008,6 @@ BRK_RAM static void fx_samples(const fx_q_t *q, const float *in, const float *th
                         md[k].pk_out = a;
                 }
             }
-        if (q->kick) {                   /* (the kick's: back to one side) */
-            l[i] = 0.5f * (xl + xr);
-            continue;
-        }
         if (q->wet < 0.999f) {              /* the MIXER's FX: the chain against the dry sound */
             xl = x + (xl - x) * q->wet;
             xr = x + (xr - x) * q->wet;
@@ -1150,9 +1098,6 @@ void brk_fx_process(const float *in, const float *thru, const float *echo, const
         q.wet = wet;
         q.dj_hp = dj_hp;
         q.dub_on = dub_on;
-        q.k0 = 0u;
-        q.k1 = BRK_FX_SLOTS;
-        q.kick = 0u;
         q.late = 1u;                     /* (AFFINE: the limiter below, after the PSX bus) */
         {                                /* (the THRU while the pad throws, or the filter on its way back from it) */
             float home = brk_clampf(fx.dj, -1.0f, 1.0f);
@@ -1185,32 +1130,4 @@ void brk_fx_process(const float *in, const float *thru, const float *echo, const
             l[i] = knee(l[i] * lim_gain);
             r[i] = knee(r[i] * lim_gain);
         }
-}
-
-/* LOAF BREAKER: KICK FX on the kick (in place), its slots' settings once a block; while the chain sheds slots (the
- * render over), the kick's go first */
-void brk_fx_kick(float *x, uint32_t n)
-{
-    uint32_t k, any = 0u;
-    for (k = 0; k < BRK_KFX_SLOTS; k++)
-        kfx[k] = *(const brk_fxslot_t *)&p_kfx[k];
-    for (k = BRK_FX_SLOTS; k < BRK_FX_ALL; k++) {
-        brk_fxx_t xx;
-        fxx_get(k, fslot(k)->type < BRK_NFXT ? fslot(k)->type : FXT_EMPTY, &xx);
-        mod_block(k, n, xx.x);
-        slot_block(k, xx.x);
-        if (shed_lv)
-            sc[k].on = 0u;
-        any |= sc[k].on;
-    }
-    if (any) {
-        fx_q_t q;
-        q.k0 = BRK_FX_SLOTS;
-        q.k1 = BRK_FX_ALL;
-        q.kick = 1u;
-        q.fmode = 0u;
-        q.wet = 1.0f;
-        q.dj_hp = q.dub_on = 0;
-        fx_samples_p(&q, x, 0, 0, 0, 0, x, x, n);
-    }
 }

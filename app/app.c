@@ -139,12 +139,6 @@ typedef struct {
                                           * finished, 0xFD the mode asked */
     uint8_t pxv;                         /* LOAF BREAKER: PX_OK: smem holds the drums' extras, perc_x() */
     /* (AFF1's last field: append new ones here, and move SET_SIZE_MIN on only with a new magic) */
-    /* The KICK FX tail, not saved (SET_SAVED stops before it): LOAF BREAKER's kick's own two FX slots, which AFFINE no
-     * longer applies (brk_fx_set_kick_slot gone); ui/fx.c still reads them (FX_KICK, never true now). Delete them with
-     * that code */
-    brk_fxslot_t kfx[BRK_KFX_SLOTS];
-    brk_fxx_t kfxx[BRK_KFX_SLOTS];
-    brk_mbc_t kmbc[BRK_KFX_SLOTS];
 } settings_t;
 #define PX_OK 0xA5u
 #define BRKV_TAG 0xB0u
@@ -155,7 +149,7 @@ static const uint8_t DROP_GAP[5] = {0u, 1u, 2u, 4u, 8u};   /* its steps: none, a
 static const float COMP_RATIO[8] = {1.5f, 2.0f, 3.0f, 4.0f, 6.0f, 8.0f, 12.0f, 20.0f};
 static float att_ms(uint32_t v) { return 0.1f * brk_exp2f_c((float)(v > 100u ? 100u : v) * 0.0825f); }
 static float rel_ms(uint32_t v) { return 20.0f * brk_exp2f_c((float)(v > 100u ? 100u : v) * 0.0532f); }
-#define SET_SAVED offsetof(settings_t, kfx)   /* what SAVE writes and a load reads at most: all but the KICK FX tail */
+#define SET_SAVED sizeof(settings_t)    /* what SAVE writes and a load reads at most */
 #define SET_SIZE_MIN (offsetof(settings_t, pxv) + 1u)   /* the shortest save that loads: AFF1's first size */
 _Static_assert(sizeof(settings_t) <= 3840u, "a store object holds 3840 bytes");
 static settings_t set;
@@ -489,13 +483,9 @@ typedef struct {
     uint8_t kn[NPAT][13];                /* LOAF BREAKER: the kick's notes past its 38th step (kick_note) */
     uint8_t hits[NPAT][NDRUMS_SAVED];    /* LOAF BREAKER: each drum's HITS in the pattern (SEQ's K2): 0, 1 once a step
                                           * (as ever), 2..4 that many times in its step */
-    /* (AFFINE: the KICK FX tail, not saved (PATS_SAVED stops before it): LOAF BREAKER's kick's own FX memory, which
-     * ui/fx.c still reads (FX_KICK, never true now). Delete it with that code) */
-    uint16_t kfm[BRK_NFXT][FXM_N];
-    uint16_t kfm_ok, kfm_rsv;
 } pats_t;
 static pats_t pats PLAT_POOL;            /* (LOAF BREAKER: in the pool, 3.7 KB of RAM freed) */
-#define PATS_SAVED offsetof(pats_t, kfm) /* (AFFINE's, what SAVE writes) */
+#define PATS_SAVED sizeof(pats_t)        /* (AFFINE's, what SAVE writes) */
 #define PATS_SIZE_OLD offsetof(pats_t, trk)   /* (an older save, its patterns alone) */
 #define PATS_SIZE_TRK offsetof(pats_t, mem)   /* (one with the tracks, before the effects' memory; LOAF BREAKER's later
                                           * ones are laid out otherwise: not read) */
@@ -746,7 +736,7 @@ static void pat_defaults(void)
                                           * the mode: PAT_ALL32, below; BEGINNER's kick 16 in 0.246-0.9.31, 32 before) */
     }
     trk_defaults();
-    pats.mem.fx_ok = pats.kfm_ok = 0u;
+    pats.mem.fx_ok = 0u;
     for (i = 0; i < NPAT; i++) {
         for (k = 0; k < 13u; k++)
             pats.kn[i][k] = 0u;
@@ -1246,7 +1236,7 @@ void app_init(void)
     if (set.brk >= n_breaks)
         set.brk = 0u;
     trk_defaults();
-    pats.mem.fx_ok = pats.kfm_ok = 0u;   /* (an older save: no effect remembered) */
+    pats.mem.fx_ok = 0u;   /* (an older save: no effect remembered) */
     {
         int sz = plat_store_size(OBJ_PAT);   /* (LOAF BREAKER: a save from before the tracks: its patterns) */
         if ((sz != (int)PATS_SAVED && sz != (int)PATS_SIZE_OLD && sz != (int)PATS_SIZE_TRK) ||

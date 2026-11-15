@@ -8,8 +8,8 @@
 #include "brk_math.h"
 
 #define BRK_FX_SLOTS 4u
-#define BRK_KFX_SLOTS 2u                 /* LOAF BREAKER: KICK FX, the kick's own two slots (no REVERB, no DELAY) */
-#define BRK_FX_ALL (BRK_FX_SLOTS + BRK_KFX_SLOTS)   /* (slot numbers: the chain's, then the kick's: 4, 5) */
+#define BRK_FX_ALL BRK_FX_SLOTS          /* (AFFINE: the chain's slots alone, LOAF's KICK FX gone; also "none" to
+                                          * brk_fx_watch) */
 /* the library. Each effect's three settings are 0..1 (p[0..2]; brk_fx.c maps them), then its mix:
  *   FILTER   cutoff (30 Hz..16 kHz), resonance, mode (low-pass / band-pass / high-pass)
  *   CRUNCH   bits (16..2), rate (44.1 kHz..1 kHz), drive
@@ -218,16 +218,6 @@ float brk_fx_dj_now(void);               /* where the DJ filter is right now, -1
 void brk_fx_add_dry(float *l, float *r, const float *xl, const float *xr, uint32_t n);   /* LOAF BREAKER: xl, xr
                                           * into l and r after it all, then the limiter (brk_fx_late_limit's) */
 void brk_fx_late_limit(uint32_t on);     /* LOAF BREAKER (0.9.31): 1: brk_fx_process leaves its limiter to brk_fx_add_dry */
-void brk_fx_kick_dj(float *x, uint32_t n, float pos);   /* GLOUPI BREAKS: the kick's filter, in place (render).
-                                          * LOAF BREAKER: high-pass alone, 0 off .. 1 (below 0: off) */
-/* LOAF BREAKER: HOME's KICK EQ, the chain's EQ on the kick alone (p: LOW, MID, HIGH, FREQ, LO FREQ, MID Q, HI FREQ,
- * LEVEL, 0..1, 0.5 flat), in place (render) */
-void brk_fx_set_kick_eq(const float *p);
-void brk_fx_kick_eq(float *x, uint32_t n);
-/* LOAF BREAKER: KICK FX, the kick's own slots (their extras and MB COMP detail: brk_fx_set_fxx / _mbc, slots 4, 5),
- * from the main loop; the render runs them on the kick (mono), after its EQ. A REVERB or DELAY there passes it on */
-void brk_fx_set_kick_slot(uint32_t i, const brk_fxslot_t *s);
-void brk_fx_kick(float *x, uint32_t n);
 void brk_fx_drums_dj(float *kick, float *perc, uint32_t n, float pos);   /* LOAF BREAKER: that filter on the kick
                                           * and on the snare, hat and clap (either 0: not that one) */
 #define BRK_KICK_HP_HZ(pos) (50.0f * brk_exp2f((pos) * 7.0f))
