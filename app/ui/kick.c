@@ -268,10 +268,11 @@ static void draw_kick(const brk_status_t *st)
         kv_t = plat_ms();
         kv_pend = 0u;
         kv_ms = (uint32_t)brk_clampf(kick_decay_ms(KL_SUB, set.kick.l[KL_SUB].decay) * 1.3f, 150.0f, 1600.0f);
-        kick_shape(&set.kick, kv_px, KV_W, kv_ms, 34u);
-        kick_wave(&set.kick, kv_wave, KV_W, kv_ms, 34u);
-        for (top = 0; top < KV_W; top++)
+        kick_wave(&set.kick, kv_wave, KV_W, kv_ms, 34u);   /* (one pass: a column's level is its wave's size) */
+        for (top = 0; top < KV_W; top++) {
+            kv_px[top] = (uint8_t)(kv_wave[top] < 0 ? -kv_wave[top] : kv_wave[top]);
             pk = kv_px[top] > pk ? kv_px[top] : pk;
+        }
         for (top = 0; pk && top < KV_W; top++) {   /* (as tall as it goes) */
             kv_px[top] = (uint8_t)((uint32_t)kv_px[top] * 34u / pk);
             kv_wave[top] = (int8_t)((int32_t)kv_wave[top] * 34 / (int32_t)pk);
