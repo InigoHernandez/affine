@@ -291,7 +291,7 @@ static float cd_try(cd_ch_t *h, uint32_t f, int32_t sh, int32_t ex, int32_t qmin
     for (j = 0; j < 28u; j++) {
         int32_t p = (o * f0 + oo * f1 + 32) >> 6, q = (h->blk[j] - p + half) >> k, s, d;
         q = q < qmin ? qmin : q > qmax ? qmax : q;
-        s = sat16(((q << ex) >> sh) + p);
+        s = sat16(((q * (1 << ex)) >> sh) + p);   /* (a multiply: a negative shifted left is undefined) */
         d = s - h->blk[j];
         err += (float)(d * d);
         oo = o;
@@ -675,6 +675,8 @@ BRK_COLD void psx_bus_defaults(psx_bus_t *b)
     b->skmix = 1.0f;
 }
 void psx_bus_set(const psx_bus_t *b) { *(psx_bus_t *)&p_bus = *b; }
+static uint32_t bus_shed;
+void psx_bus_shed(uint32_t level) { bus_shed = level; }
 float psx_crush_bits(float crush) { return 16.0f - 14.0f * brk_clampf(crush, 0.0f, 1.0f); }
 float psx_redux_hz(float redux) { return 44100.0f * brk_exp2f(-7.785f * brk_clampf(redux, 0.0f, 1.0f)); }
 uint32_t psx_verb_busy(void) { return verb_idle < 8u; }
@@ -705,8 +707,10 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
     send_s += (brk_clampf(bus.send, 0.0f, 1.0f) - send_s) * 0.3f;
     crush_s += (brk_clampf(bus.crush, 0.0f, 1.0f) - crush_s) * 0.3f;
     redux_s += (brk_clampf(bus.redux, 0.0f, 1.0f) - redux_s) * 0.3f;
-    /* CODEC: the sound as the console's samples */
-    if (bus.codec == CODEC_GRIT) {
+    /* CODEC: the sound as the console's samples (rests first when the render runs over) */
+    if (bus_shed >= 1u) {
+        /* (shed) */
+    } else if (bus.codec == CODEC_GRIT) {
         psx_grit_set(bus.crate, bus.cbits, bus.cfilt);
         psx_grit_process(l, r, n, bus.cmix);
     } else if (bus.codec == CODEC_XA) {
@@ -714,7 +718,7 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
         psx_xa_process(l, r, n, bus.cmix);
     }
     /* SPU VERB: what's sent in, the reverb added in place; it rests once nothing has gone in or come out for ~8 s */
-    if (vb.wk) {
+    if (vb.wk && bus_shed < 3u) {
         float s = send_s + brk_clampf(bus.vthrow, 0.0f, 1.0f), ei = 0.0f, eo = 0.0f;
         int sending = s > 0.0005f || vsend || bus.vfreeze > 0.0f;
         if (sending)
@@ -737,7 +741,7 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
     }
     /* SKIP: a disc that can't read (a skip under way finishes, its fade too, after the chance is let go: else its
      * state would stay on) */
-    if ((bus.skchance > 0.0f && bus.skmix > 0.0f) || psx_skip_active()) {
+    if (bus_shed < 2u && ((bus.skchance > 0.0f && bus.skmix > 0.0f) || psx_skip_active())) {
         psx_skip_set(bus.skdiv, bus.skchance, bus.skseek);
         psx_skip_process(l, r, n, beat, spb, bus.skmix);
     }

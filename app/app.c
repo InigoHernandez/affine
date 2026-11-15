@@ -140,6 +140,9 @@ typedef struct {
     uint8_t pxv;                         /* LOAF BREAKER: PX_OK: smem holds the drums' extras, perc_x() */
     psx_bus_t psx;                       /* AFFINE: the PSX bus (psx.h): HOME's gestures (crush, redux, send), SPU
                                           * VERB, CODEC, CRUSH and REDUX's ways, SKIP; vthrow live, never saved set */
+    uint8_t grp_ours;                    /* AFFINE: bit g: pattern group g's objects were saved by AFFINE (LOAF BREAKER
+                                          * and CHOPPAH write the same addresses, the same sizes: a size can't tell) */
+    uint8_t rsv_aff[3];
     /* (AFF1's last field: append new ones here, and move SET_SIZE_MIN on only with a new magic) */
 } settings_t;
 #define PX_OK 0xA5u
@@ -570,6 +573,10 @@ static int grp_save(void)                /* the group in RAM to its objects: 1 d
     int ok;
     if (wiped)
         return 0;
+    if (!(set.grp_ours >> g & 1u)) {     /* (AFFINE: the group AFFINE's from now on; the settings say so once) */
+        set.grp_ours |= (uint8_t)(1u << g);
+        (void)plat_store_save(OBJ_SETTINGS, &set, SET_SAVED);
+    }
     ok = plat_store_save(OBJ_PG0 + g, pats.p, sizeof pats.p) == 0 &&
              plat_store_save(OBJ_KG0 + g, pats.kn, KH_SIZE) == 0 &&
              plat_store_save(OBJ_SG0 + g, steps.b, sizeof steps.b) == 0 &&   /* (LOAF BREAKER, 0.209: OBJ_NG0 + g, the
@@ -582,9 +589,9 @@ static int grp_save(void)                /* the group in RAM to its objects: 1 d
     }
     return ok;
 }
-static int grp_has(uint32_t g)           /* the group's own objects there, whole */
+static int grp_has(uint32_t g)           /* the group's own objects there, whole (AFFINE: and AFFINE's) */
 {
-    return plat_store_size(OBJ_PG0 + g) == (int)sizeof pats.p && plat_store_size(OBJ_KG0 + g) == (int)KH_SIZE &&
+    return (set.grp_ours >> (g % NGRP) & 1u) && plat_store_size(OBJ_PG0 + g) == (int)sizeof pats.p && plat_store_size(OBJ_KG0 + g) == (int)KH_SIZE &&
            plat_store_size(OBJ_SG0 + g) == (int)sizeof steps.b;
 }
 static void grp_blank(void)              /* the group in RAM: 16 empty patterns (pat_defaults' own) */
@@ -621,6 +628,7 @@ static int store_all(void)               /* SAVE: the settings, the patterns (th
 {
     if (wiped)                           /* (LOAF BREAKER, 0.263: WIPE MEMORY done: nothing saved until a restart) */
         return 0;
+    set.grp_ours |= (uint8_t)(1u << (set.pgrp % NGRP));   /* (AFFINE: the group in RAM is written below) */
     return plat_store_save(OBJ_SETTINGS, &set, SET_SAVED) == 0 && plat_store_save(OBJ_PAT, &pats, PATS_SAVED) == 0 &&
            plat_store_save(OBJ_STEP, &steps, sizeof steps) == 0 && grp_save();
 }
@@ -1222,6 +1230,7 @@ static const brk_break_t *break_load(uint32_t i)
 
 void app_init(void)
 {
+    int ours;                            /* (AFFINE: the store is AFFINE's: its settings' magic) */
     brk_init();
     brk_fx_init();
     brk_fx_delay_buffer(dub_line, CH_DUB_LEN);
@@ -1248,6 +1257,9 @@ void app_init(void)
         if (set.bkeys.bk[0] != BK_TAG || set.bkeys.bk[1] >= BKP_N)
             bk_defaults();               /* (LOAF BREAKER: a save from before the BLACK KEYS: the STAB's leftovers) */
     }
+    /* AFFINE: AFFINE's own settings in the store, or this store is another firmware's (LOAF BREAKER, CHOPPAH write the
+     * same addresses): then its patterns, steps, drums' bars and groups are not read either, the FM-1 starts fresh */
+    ours = set.magic == SET_MAGIC;
     if (set.magic != SET_MAGIC || set.tempo_x10 < 400u || set.tempo_x10 > 3000u || set.swing < 50u ||
         set.swing > 75u) {
         settings_defaults();
@@ -1260,21 +1272,21 @@ void app_init(void)
     pats.mem.fx_ok = 0u;   /* (an older save: no effect remembered) */
     {
         int sz = plat_store_size(OBJ_PAT);   /* (LOAF BREAKER: a save from before the tracks: its patterns) */
-        if ((sz != (int)PATS_SAVED && sz != (int)PATS_SIZE_OLD && sz != (int)PATS_SIZE_TRK) ||
+        if (!ours || (sz != (int)PATS_SAVED && sz != (int)PATS_SIZE_OLD && sz != (int)PATS_SIZE_TRK) ||
             plat_store_load(OBJ_PAT, &pats, (uint32_t)sz) != sz)
             pats.magic = 0u;
     }
     if (pats.magic != PAT_MAGIC && pats.magic != PAT2_MAGIC && pats.magic != PAT1_MAGIC)
         pat_defaults();
     dx_old = 0u;
-    if (plat_store_load(OBJ_DX, &dx, sizeof dx) != (int)sizeof dx || dx.magic != DX_MAGIC) {
+    if (!ours || plat_store_load(OBJ_DX, &dx, sizeof dx) != (int)sizeof dx || dx.magic != DX_MAGIC) {
         memset(&dx, 0, sizeof dx);       /* (0.9.30: the drums' bars 3 and 4; a save before them: none) */
         dx.magic = DX_MAGIC;
         dx_old = 1u;
         dx_lens();
     }
     int ssz = plat_store_load(OBJ_STEP, &steps, sizeof steps), sok;
-    sok = (ssz == (int)sizeof steps || ssz == (int)STEPS_SIZE_OLD) && steps.magic == STEPS_MAGIC;
+    sok = ours && (ssz == (int)sizeof steps || ssz == (int)STEPS_SIZE_OLD) && steps.magic == STEPS_MAGIC;
     if (!sok)
         steps_defaults();                /* (LOAF BREAKER: the drum steps' own settings) */
     else if (ssz == (int)STEPS_SIZE_OLD)
@@ -1292,11 +1304,11 @@ void app_init(void)
     }
     set.pgrp %= NGRP;                    /* LOAF BREAKER: the group saved with its own objects: those; none (a save from
                                           * before the 64): OBJ_PAT's, written to its own now (the sound not started) */
-    if (grp_has(set.pgrp))
+    if (ours && grp_has(set.pgrp))
         grp_load(set.pgrp);
     else {
         grp_sum = grp_hash();
-        grp_new = (uint8_t)(plat_store_size(OBJ_PAT) > 0);
+        grp_new = (uint8_t)(ours && plat_store_size(OBJ_PAT) > 0);
         if (grp_new)
             (void)grp_save();
     }

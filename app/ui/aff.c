@@ -59,7 +59,7 @@ static inline uint16_t a_dith(const a_ramp_t *r, int32_t t, int32_t x, int32_t y
     i = v >> 8;
     return r->c[i + ((v & 255) >> 4 > A_BAYER[y & 3][x & 3] ? 1 : 0)];
 }
-static a_ramp_t ar_sky, ar_floor0, ar_floor1, ar_lane, ar_lane2, ar_gem_hi, ar_gem_lo, ar_bar;
+static a_ramp_t ar_sky, ar_floor0, ar_floor1, ar_lane, ar_lane2, ar_gem_hi, ar_gem_lo, ar_bar, ar_chrome, ar_stripe;
 static uint8_t a_ready;
 static uint32_t a_skin = 0xFFu;          /* (the skin the ramps were made for) */
 /* the dither ramps from the palette: the sky from the ground to the cards, the floor's two tiles, the lane and the
@@ -88,6 +88,8 @@ static void aff_init(void)
     a_mix3(t2, c[4], c[7], 20);
     a_ramp3(&ar_gem_lo, t1, t2);
     a_ramp3(&ar_bar, c[5], c[3]);
+    a_ramp3(&ar_chrome, c[1], c[6]);     /* (the logo's letters: chrome, dim to white) */
+    a_ramp3(&ar_stripe, c[5], c[4]);     /* (its speed stripes: the cards to the hot colour) */
     a_ready = 1u;
 }
 static void aff_check(void)              /* (the ramps made again after the skin changes) */
@@ -152,7 +154,9 @@ static struct {
     float tear;                          /* SKIP's tear, 0..1 */
     uint32_t rnd;
     float roll_ph;                       /* the roll's own clock (its pulses) */
-} an = {0, 0, 0, 0, 0, 0.05f, 0, 0, 0, {0}, {0}, {0}, 0, -2, 0, 0x9E3779B9u, 0};
+    float warp;                          /* the splash's rush: the floor's speed times this */
+    float gem_dy, gem_sc;                /* the gem moved down, scaled (the title: under the logo; its fly-in) */
+} an = {0, 0, 0, 0, 0, 0.05f, 0, 0, 0, {0}, {0}, {0}, 0, -2, 0, 0x9E3779B9u, 0, 1.0f, 0.0f, 1.0f};
 
 /* the dither with blocks (CRUSH's coarser grain) and fewer steps (its posterising) */
 static inline uint16_t a_dithq(const a_ramp_t *r, int32_t t, int32_t x, int32_t y, int32_t k, int32_t levels)
@@ -220,7 +224,7 @@ static void aff_tick(const aff_home_t *h)
     an.sink += (((h->pads >> PAD_TAPESTOP & 1u) ? (1.0f - h->tape) * 22.0f : 0.0f) - an.sink) *
                (1.0f - brk_exp2f(-dt * 8.0f));
     /* the floor: a tile a step toward us playing, a slow drift stopped */
-    an.scroll += dt * sp * (h->playing ? bps * 4.0f : 0.35f);
+    an.scroll += dt * sp * (h->playing ? bps * 4.0f : 0.35f) * an.warp;
     if (an.scroll > 4096.0f || an.scroll < -4096.0f)
         an.scroll -= (float)(int32_t)an.scroll;
     /* the lanes' afterglow: the slice played lights its lane, which fades over ~0.4 s */
@@ -259,9 +263,14 @@ static void home_floor(const aff_home_t *h, int32_t band)
         return;
     y0 = y0 / blk * blk;                 /* (REDUX's blocks on a grid of their own) */
     for (y = y0; y < y1; y += blk) {
-        float d = (float)(y - AH_HORIZ) + 0.5f * (float)blk, z = 80.0f / d, depth, fog;
-        float tile = z / AH_ROWLEN + an.scroll, wx;
-        int32_t row = (int32_t)tile, x, lit_row;
+        float d = (float)(y - AH_HORIZ) + 0.5f * (float)blk, z, depth, fog;
+        float tile, wx;
+        int32_t row, x, lit_row;
+        if (d < 0.75f)                   /* (REDUX's grid can round a row onto the horizon: no depth there) */
+            continue;
+        z = 80.0f / d;
+        tile = z / AH_ROWLEN + an.scroll;
+        row = (int32_t)tile;
         if (tile < 0.0f && (float)row != tile)
             row--;
         depth = a_clamp01((z - 1.0f) / 12.0f);   /* 0 near .. 1 at the horizon */
@@ -344,8 +353,11 @@ static void gem_draw(int32_t band, float cx, float cy, float r, float ang, float
         uint32_t best = 12u;
         float bz = -9.0f;
         for (k = 0; k < 12u; k++) {
-            float z = vz[face[k][0]] + vz[face[k][1]] + vz[face[k][2]];
-            if (face[k][0] != 255u && z > bz) {
+            float z;
+            if (face[k][0] == 255u)      /* (drawn already: its marker is no vertex, read nothing through it) */
+                continue;
+            z = vz[face[k][0]] + vz[face[k][1]] + vz[face[k][2]];
+            if (z > bz) {
                 bz = z;
                 best = k;
             }
@@ -398,11 +410,11 @@ static void home_gem(const aff_home_t *h, int32_t band)
     int32_t levels = h->crush > 0.8f ? 2 : h->crush > 0.5f ? 3 : (int32_t)A_RAMP, n, g;
     float bob = h->playing ? 0.0f : 2.5f * brk_sin_turns(an.bob), breath = h->playing ? 0.0f : 0.03f *
                 brk_sin_turns(an.bob * 0.5f);
-    float cy = 72.0f + bob - an.lift + an.sink, r = 26.0f * (1.0f + 0.12f * an.pulse + breath);
+    float cy = 72.0f + an.gem_dy + bob - an.lift + an.sink, r = 26.0f * an.gem_sc * (1.0f + 0.12f * an.pulse + breath);
     float bright = 1.0f + 0.35f * an.pulse, shimmer = (h->pads >> PAD_FREEZE & 1u) ? (float)(h->t_ms % 4000u) / 4000.0f
                    : 0.0f;
     float echo = h->send > (h->pads >> PAD_DUB & 1u ? 0.6f : 0.0f) ? h->send : (h->pads >> PAD_DUB & 1u ? 0.6f : 0.0f);
-    if (band >= 112 || band + 60 <= 20)
+    if (band >= 112 || band + 60 <= 20 || an.gem_sc < 0.02f)
         return;
     n = echo > 0.05f ? 1 + (int32_t)(echo * 2.5f) : 0;   /* (the echoes: up to three ghosts, older, higher, fainter) */
     for (g = n; g >= 1; g--) {
@@ -573,16 +585,107 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
     }
 }
 
-/* AFFINE's title screen (the boot, the start screen, RESET ALL's): the night, the floor drifting toward us, the gem
- * turning, AFFINE large above it; under the floor up to three lines: l1 at 2x (the break), l2 hot (PRESS PLAY), l3
- * small and dim (the credit); top: the version, small */
-static void aff_title_band(int32_t band, uint32_t now, const char *top, const char *l1, const char *l2, const char *l3)
+/* ------------------------------------------------------------------------------------------------- LOGO --- */
+/* AFFINE's wordmark, after the speed-striped car-audio marks of the era (its own letters): four slanted stripes run
+ * into an A whose left leg is the fifth, then heavy geometric letters, the whole a little italic. In units: the
+ * capitals 20 high (y up from the baseline), 125 across; each piece a convex quad (four corners, counter-clockwise).
+ * The stripes dithered from the cards to the hot colour (faster into the A), the letters dithered chrome */
+#define LG_H 20.0f
+#define LG_W 125.0f
+#define LG_SHEAR 0.18f                   /* (x += y x this: the italic) */
+#define LG_STRIPES 4
+static const float LG_Q[][8] = {
+    {0, 0, 4, 0, 16, 20, 12, 20}, {7, 0, 11, 0, 23, 20, 19, 20}, {14, 0, 18, 0, 30, 20, 26, 20},
+    {21, 0, 25, 0, 37, 20, 33, 20},                                        /* the stripes */
+    {28, 0, 32, 0, 44, 20, 40, 20}, {40, 16, 52, 16, 52, 20, 42.4f, 20},   /* A: the leg (the fifth), its top */
+    {48, 0, 52, 0, 52, 16, 48, 16}, {34.4f, 6, 48, 6, 48, 10, 36.8f, 10},  /* A: the right leg, the bar */
+    {55, 0, 59, 0, 59, 20, 55, 20}, {59, 16, 67, 16, 67, 20, 59, 20}, {59, 8, 64, 8, 64, 12, 59, 12},   /* F */
+    {69, 0, 73, 0, 73, 20, 69, 20}, {73, 16, 81, 16, 81, 20, 73, 20}, {73, 8, 78, 8, 78, 12, 73, 12},   /* F */
+    {83, 0, 87, 0, 87, 20, 83, 20},                                        /* I */
+    {90, 0, 94, 0, 94, 20, 90, 20}, {102, 0, 106, 0, 106, 20, 102, 20}, {101, 0, 106, 0, 95, 20, 90, 20},   /* N */
+    {109, 0, 113, 0, 113, 20, 109, 20}, {113, 16, 121, 16, 121, 20, 113, 20}, {113, 8, 119, 8, 119, 12, 113, 12},
+    {113, 0, 121, 0, 121, 4, 113, 4},                                      /* E */
+};
+#define LG_N (sizeof LG_Q / sizeof LG_Q[0])
+
+/* the logo at (ox, oy) (its top-left on the screen), sc pixels a unit. reveal: the letters shown up to this x (units,
+ * a hot edge at it); slide[i]: stripe i's offset (units, from the left) and lit (0..1, it flashes as it lands);
+ * glint: where a slanted light crosses the letters (units, < 0: none) */
+static void aff_logo(int32_t band, float ox, float oy, float sc, float reveal, const float *slide, const float *lit,
+                     float glint)
+{
+    uint32_t q;
+    for (q = 0; q < LG_N; q++) {
+        float X[4], Y[4], dx = q < LG_STRIPES ? slide[q] : 0.0f;
+        int32_t x0, x1, y0, y1, x, y, k;
+        int stripe = q < LG_STRIPES;
+        if (!stripe && LG_Q[q][0] > reveal)
+            continue;
+        for (k = 0; k < 4; k++) {        /* (units -> the screen: the italic, the scale, y down) */
+            float ux = LG_Q[q][2 * k] + dx, uy = LG_Q[q][2 * k + 1];
+            X[k] = ox + (ux + uy * LG_SHEAR) * sc;
+            Y[k] = oy + (LG_H - uy) * sc;
+        }
+        x0 = (int32_t)X[0]; x1 = x0; y0 = (int32_t)Y[0]; y1 = y0;
+        for (k = 1; k < 4; k++) {
+            if ((int32_t)X[k] < x0) x0 = (int32_t)X[k];
+            if ((int32_t)X[k] > x1) x1 = (int32_t)X[k];
+            if ((int32_t)Y[k] < y0) y0 = (int32_t)Y[k];
+            if ((int32_t)Y[k] > y1) y1 = (int32_t)Y[k];
+        }
+        if (y1 < band || y0 >= band + 60)
+            continue;
+        if (y0 < band)
+            y0 = band;
+        if (y1 > band + 59)
+            y1 = band + 59;
+        for (y = y0; y <= y1; y++)
+            for (x = x0 < 0 ? 0 : x0; x <= x1 && x < 240; x++) {
+                float px = (float)x + 0.5f, py = (float)y + 0.5f, ux;
+                int inside = 1, t;
+                for (k = 0; k < 4 && inside; k++) {   /* (convex: every edge on the same side; y is down: clockwise) */
+                    int32_t m = (k + 1) & 3;
+                    if ((X[m] - X[k]) * (py - Y[k]) - (Y[m] - Y[k]) * (px - X[k]) > 0.0f)
+                        inside = 0;
+                }
+                if (!inside)
+                    continue;
+                ux = (px - ox) / sc - (LG_H - (py - oy) / sc) * LG_SHEAR;   /* (the pixel back in units) */
+                if (stripe) {            /* dimmer the further back, brighter up; lit as it lands */
+                    t = 96 + (int32_t)q * 40 + (int32_t)((py - oy) < 6.0f * sc ? 24 : 0) + (int32_t)(lit[q] * 120.0f);
+                    cv_pset(x, y - band, a_dith(&ar_stripe, t, x, y));
+                    continue;
+                }
+                {                        /* the chrome: a bright band a third down, darker at the foot */
+                    float v = (py - oy) / (LG_H * sc);
+                    t = v < 0.12f ? 200 : v < 0.38f ? 256 : v < 0.45f ? 150 : 210 - (int32_t)(v * 120.0f);
+                }
+                if (reveal - ux < 2.0f)  /* the reveal's hot edge */
+                    cv_pset(x, y - band, A_HOT);
+                else if (glint >= 0.0f && ux - glint > -2.5f && ux - glint < 2.5f)
+                    cv_pset(x, y - band, A_INK);
+                else
+                    cv_pset(x, y - band, a_dith(&ar_chrome, t, x, y));
+            }
+    }
+}
+
+static float a_ease(float t) { t = a_clamp01(t); return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); }
+
+/* AFFINE's title screen (the boot, the start screen, RESET ALL's): a splash in time el (ms since it began):
+ *   0-0.9 s   the floor rushes at us, the gem flies up from the vanishing point and lands with a flash
+ *   0.5-1 s   the speed stripes slide in, one by one, each flashing as it lands
+ *   1-1.35 s  the letters revealed left to right, a hot edge at the front
+ *   then      it holds: the gem turning, a glint across the chrome every 2.6 s, the lines under the floor (l1 the
+ *             break, l2 PRESS PLAY blinking slowly, l3 the credit), the version at the top */
+static void aff_title_band(int32_t band, uint32_t now, uint32_t el, const char *top, const char *l1, const char *l2,
+                           const char *l3)
 {
     aff_home_t h;
-    int32_t x, y;
+    int32_t x, y, i;
     uint8_t *z = (uint8_t *)&h;
-    uint32_t i;
-    for (i = 0; i < sizeof h; i++)
+    float slide[LG_STRIPES], lit[LG_STRIPES], reveal, glint = -1.0f, e = (float)el;
+    for (i = 0; i < (int32_t)sizeof h; i++)
         z[i] = 0u;
     aff_check();
     h.slice = -1;
@@ -590,8 +693,39 @@ static void aff_title_band(int32_t band, uint32_t now, const char *top, const ch
     h.tape = 1.0f;
     h.gate = 1.0f;
     h.bpm_x10 = 1700u;
-    if (band == 0)                       /* (once a frame: the first band) */
+    if (band == 0) {                     /* (once a frame: the first band) */
+        float f = a_clamp01(e / 900.0f), g = a_ease(e / 850.0f);
+        if (e < 60.0f)                   /* (the splash from nothing: no lane left lit) */
+            for (i = 0; i < 16; i++)
+                an.glow[i] = 0.0f;
+        an.warp = 1.0f + 40.0f * (1.0f - f) * (1.0f - f);
+        an.gem_sc = 0.12f + 0.78f * g;
+        an.gem_dy = 34.0f * (1.0f - g) + 10.0f;   /* (from the horizon up to under the logo) */
+        if (e < 900.0f)                  /* (it spins in fast, then settles to its turn) */
+            an.ang += 0.09f * (1.0f - f);
+        if (e >= 850.0f && e < 900.0f)
+            an.pulse = 1.0f;
+        if (e >= 1000.0f && e < 1450.0f) {   /* the logo lands: a wave across the lanes, the middle out */
+            float reach = (e - 1000.0f) / 450.0f * 8.5f;
+            for (i = 0; i < 16; i++) {
+                float dl = (float)i - 7.5f;
+                if ((dl < 0.0f ? -dl : dl) <= reach && (dl < 0.0f ? -dl : dl) > reach - 1.2f)
+                    an.glow[i] = 1.0f;
+            }
+        }
         aff_tick(&h);
+    }
+    for (i = 0; i < LG_STRIPES; i++) {
+        float t0 = 500.0f + 110.0f * (float)i, u = (e - t0) / 220.0f;
+        slide[i] = e < t0 ? -400.0f : -36.0f * (1.0f - a_ease(u));
+        lit[i] = u >= 0.0f && u < 1.6f ? 1.0f - u / 1.6f : 0.0f;
+    }
+    reveal = e < 1000.0f ? -1.0f : 26.0f + (LG_W - 20.0f) * a_ease((e - 1000.0f) / 350.0f) + (e > 1350.0f ? 40.0f : 0.0f);
+    if (e > 1600.0f) {
+        float g = (float)((el - 1600u) % 2600u);
+        if (g < 450.0f)
+            glint = 26.0f + (LG_W - 20.0f) * g / 450.0f;
+    }
     for (y = band; y < band + 60 && y < AH_PANEL; y++) {
         int32_t k = y < AH_HORIZ ? y * 256 / AH_HORIZ : 0;
         for (x = 0; x < 240; x++)
@@ -601,24 +735,48 @@ static void aff_title_band(int32_t band, uint32_t now, const char *top, const ch
         cv_rect(0, AH_PANEL - band, 240, 240 - AH_PANEL, A_BG0);
     if (band <= AH_HORIZ && band + 60 > AH_HORIZ)
         cv_rect(0, AH_HORIZ - band, 240, 1, A_DIM);
+    if (e < 1100.0f && band < AH_HORIZ) {   /* the rush: streaks out of the vanishing point, longer the faster */
+        float w = (1.0f - a_clamp01(e / 1100.0f)), len = 30.0f + 160.0f * w;
+        uint32_t sd = 0x2545F491u ^ (el / 33u * 2654435761u);
+        for (i = 0; i < 26; i++) {
+            float ang, r0, ca, sa;
+            int32_t k;
+            sd = sd * 1664525u + 1013904223u;
+            ang = (float)(sd >> 8) * (1.0f / 16777216.0f) * 0.5f;   /* (the upper half: the sky's) */
+            sd = sd * 1664525u + 1013904223u;
+            r0 = 6.0f + (float)(sd >> 24) * 0.5f;
+            ca = brk_sin_turns(ang + 0.25f);
+            sa = brk_sin_turns(ang);
+            for (k = 0; k < (int32_t)(len * w) + 4; k += 2) {
+                int32_t px = AH_VX + (int32_t)(ca * (r0 + (float)k)), py = AH_HORIZ - (int32_t)(sa * (r0 + (float)k) * 0.7f);
+                if (px >= 0 && px < 240 && py >= band && py < band + 60 && py < AH_HORIZ)
+                    cv_pset(px, py - band, k > len * w * 0.6f ? A_INK : A_DIM);
+            }
+        }
+    }
     home_floor(&h, band);
     home_gem(&h, band);
+    aff_logo(band, 8.0f, 14.0f, 1.76f, reveal, slide, lit, glint);
     if (top && top[0])
         aff_text(120, 4, top, 1, A_DIM, band, 2);
-    aff_text(120, 16, "AFFINE", 4, A_INK, band, 2);
-    if (l1 && l1[0])
-        aff_text(120, 198, l1, 2, A_INK, band, 2);
-    if (l2 && l2[0])
-        aff_text(120, 215, l2, 1, A_HOT, band, 2);
-    if (l3 && l3[0])
-        aff_text(120, 228, l3, 1, A_DIM, band, 2);
+    if (e > 1400.0f) {
+        if (l1 && l1[0])
+            aff_text(120, 198, l1, 2, A_INK, band, 2);
+        if (l2 && l2[0] && (el / 100u) % 10u < 7u)
+            aff_text(120, 215, l2, 1, A_HOT, band, 2);
+        if (l3 && l3[0])
+            aff_text(120, 228, l3, 1, A_DIM, band, 2);
+    }
 }
-static void aff_title(uint32_t now, const char *top, const char *l1, const char *l2, const char *l3)
+static void aff_title(uint32_t now, uint32_t el, const char *top, const char *l1, const char *l2, const char *l3)
 {
     int32_t t;
     for (t = 0; t < 240; t += 60) {
         cv_begin(240, 60, A_BG0);
-        aff_title_band(t, now, top, l1, l2, l3);
+        aff_title_band(t, now, el, top, l1, l2, l3);
         cv_blit(0, (uint32_t)t);
     }
+    an.warp = 1.0f;                      /* (HOME's scene as ever after) */
+    an.gem_dy = 0.0f;
+    an.gem_sc = 1.0f;
 }

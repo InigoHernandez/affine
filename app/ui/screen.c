@@ -2,8 +2,8 @@
 /* CHOPPAH: the start screen, the header, the break's waveform and the slice blocks. (Part of app.c's unity:
  * included there in order.) */
 
-#define INTRO_STEP 55u                   /* ms between two blocks dropping in */
-#define INTRO_HOLD 900u                  /* ms the finished screen stays before the slicer opens */
+#define INTRO_STEP 140u                  /* (AFFINE: the splash's 2.24 s; LOAF's blocks dropped in at 55 ms) */
+#define INTRO_HOLD 1000u                 /* ms the finished screen stays before the slicer opens */
 
 /* the mark: sixteen bars like a break's hits, two of them chopped out of line */
 static const uint8_t MARK_H[16] = {30, 12, 26, 10, 34, 14, 11, 20, 12, 22, 28, 24, 34, 10, 13, 22};
@@ -118,7 +118,7 @@ static void grey_draw(const uint8_t *rle, uint32_t len, const uint16_t *pal, int
 
 /* fm1-base's first screen at power-on, while the breaks are decoded (APP_SPLASH): the mark and the name (LOAF
  * BREAKER: its picture, nearly the whole screen, the version at the top right; held 1.5 s, app_frame) */
-static void aff_title(uint32_t now, const char *top, const char *l1, const char *l2, const char *l3);
+static void aff_title(uint32_t now, uint32_t el, const char *top, const char *l1, const char *l2, const char *l3);
 static uint32_t splash_t;                /* when it was drawn (0: gone) */
 static void splash_glitch(uint32_t age)  /* LOAF BREAKER TEST: the start-up picture, its rows jumping, settling by 700 ms */
 {
@@ -154,7 +154,7 @@ void app_splash(void)
     {                                    /* AFFINE: its title, the version above it */
         char t[24];
         version_text(t);
-        aff_title(plat_ms(), t, "", "", "");
+        aff_title(plat_ms(), 0u, t, "", "", "");   /* (the splash's first frame: the start screen goes on from it) */
     }
 #endif
 }
@@ -164,12 +164,12 @@ static void intro_draw(uint32_t now)      /* AFFINE: the start screen, its title
     static uint32_t drawn_t;
     char t[32];
     const brk_break_t *b = brk_get_break();
-    if (ui.intro_drawn && now - drawn_t < 40u && !(ui.redraw & RG_HEAD))
+    if (ui.intro_drawn && now - drawn_t < 33u && !(ui.redraw & RG_HEAD))
         return;
     drawn_t = now;
     ui.intro_drawn = 1u;
     version_text(t);
-    aff_title(now, t, b ? b->name : "", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+    aff_title(now, now - ui.intro_t0, t, b ? b->name : "", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
     ui.redraw = 0u;
 }
 
@@ -191,7 +191,7 @@ static int lobo_in(int32_t x, int32_t y)  /* inside the brain: the cerebrum (fla
 }
 static void draw_lobotomy(void)          /* AFFINE: RESET ALL done: the title, everything cleared */
 {
-    aff_title(plat_ms(), "", "ALL CLEARED", "AS A NEW FM-1", "");
+    aff_title(plat_ms(), 5000u, "", "ALL CLEARED", "AS A NEW FM-1", "");
 }
 
 /* the start screen's lights: a comet runs through the buttons as the break drops in (OCT- and OCT+, the top row left

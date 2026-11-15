@@ -84,6 +84,9 @@ void psx_bus_set(const psx_bus_t *b);    /* main loop: copied at the next block 
 /* the render: l, r in place; vsend: more into SPU VERB (mono; 0 none); beat: where the block starts, in beats; spb:
  * samples a beat */
 void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb);
+/* the overload guard's level (brk_fx's: slots shed, the render over 90 %): 1 the CODEC rests, 2 SKIP too, 3 SPU VERB
+ * too (CRUSH and REDUX cost next to nothing) */
+void psx_bus_shed(uint32_t level);
 float psx_crush_bits(float crush);       /* a gesture's value as the screen says it: bits; Hz */
 float psx_redux_hz(float redux);
 uint32_t psx_verb_busy(void);            /* 1: SPU VERB is sounding (its tail, a freeze) */

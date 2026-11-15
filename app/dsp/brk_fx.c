@@ -1112,6 +1112,7 @@ void brk_fx_process(const float *in, const float *thru, const float *echo, const
         brk_status_t bs;
         float spb = (float)BRK_SR * 60.0f / p_bpm;
         brk_status(&bs);
+        psx_bus_shed(shed_lv);           /* (the overload guard's level: the bus rests its heaviest first) */
         if (bs.playing && bs.bar16 >= 0)
             beat = (float)(bs.bar % 64u) * 4.0f + ((float)bs.bar16 + bs.phase) * 0.25f;
         psx_bus_process(l, r, verb, n, beat, spb);

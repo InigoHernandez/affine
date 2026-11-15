@@ -1,7 +1,8 @@
 # LOAF BREAKER: 64 patterns, four groups of 16 (one in RAM). PRESETS left of P1: P64 (the fourth group, empty). A
 # change there, then P1 while stopped: the group saved first (its three objects), P1-16 in. Back to P64: the change
 # kept. Playing, a change, then PRESETS to P1: refused (SAVE OR STOP: a write would stop the sound); SAVE, then it
-# comes in at the loop's end. After a reboot: the group saved with SAVE in again.
+# comes in at the loop's end. After a reboot: the group saved with SAVE in again. (AFFINE: a group's first save also
+# writes the settings once, marking the group AFFINE's: 5 writes, not 4.)
 #   app/build/host/affine_host tests/scenarios/pat64.txt app/build/scenarios
 wait 4200
 expect pattern 0
@@ -24,7 +25,7 @@ wait 200
 expect pattern 0
 expect pgrp 0
 expect grp_dirty 0
-expect store_writes 4
+expect store_writes 5
 turn PRESET -1 10
 wait 200
 expect pattern 63

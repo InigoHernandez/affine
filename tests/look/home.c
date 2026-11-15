@@ -45,6 +45,23 @@ static void frame(const aff_home_t *h, const char *path)
     }
     fclose(f);
 }
+static void splash_frame(uint32_t el, const char *path)
+{
+    FILE *f;
+    int32_t i;
+    memset(fb, 0xAA, sizeof fb);
+    for (g_band = 0; g_band < 240; g_band += 60)
+        aff_title_band(g_band, 50000u + el, el, "DEV", "JUNGLE 175", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+    f = fopen(path, "wb");
+    fprintf(f, "P6 240 240 255\n");
+    for (i = 0; i < 240 * 240; i++) {
+        uint16_t c = fb[i];
+        uint8_t rgb[3] = {(uint8_t)((c >> 11) << 3), (uint8_t)(((c >> 5) & 63) << 2), (uint8_t)((c & 31) << 3)};
+        fwrite(rgb, 1, 3, f);
+    }
+    fclose(f);
+}
+
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : ".";
@@ -121,6 +138,15 @@ int main(int argc, char **argv)
             h.g[0] = h.dj; h.gvp[0] = h.dj < 0.0f ? "400" : "OFF";
             snprintf(path, sizeof path, "%s/tour%04d.ppm", out, fr);
             frame(&h, path);
+        }
+    }
+    {                                    /* the splash, 3.5 s at 25 frames a second */
+        uint32_t el;
+        int k = 0;
+        an.ms = 0u;
+        for (el = 0; el <= 3500u; el += 40u, k++) {
+            snprintf(path, sizeof path, "%s/splash%03d.ppm", out, k);
+            splash_frame(el, path);
         }
     }
     return 0;
