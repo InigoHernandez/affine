@@ -180,7 +180,7 @@ computer.</p>
 <script>
 "use strict";
 /* ---------------------------------------------------------------- the break, as tools/prep_breaks.py makes it */
-const RATE = 22050, MAX_LEN = 106496, NSLICES = 16, MAX_ZONE = 4;
+const RATE = 22050, MAX_LEN = 88200, NSLICES = 16, MAX_ZONE = 4;   // (AFFINE: app.h CH_PCM_MAX)
 /* LOAF BREAKER: two places on the FM-1 for yours (app.c CU_ZB): 140 KB at 0x93000, 92 KB at 0xE5000; four in each */
 const ZONE_AT = [0x93000, 0xE5000], ZONE_CAP = [35 * 4096, 23 * 4096], MAX_MINE = 2 * MAX_ZONE;
 const STEP = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97,

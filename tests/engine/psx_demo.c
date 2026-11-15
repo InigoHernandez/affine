@@ -19,7 +19,7 @@ static int fails, checks;
 static float *brk;                       /* the break, mono, 44.1 kHz, looped */
 static uint32_t brk_n;
 static int16_t work[PSXV_WORDS];
-static int16_t skipring[2 * 9216];
+static uint8_t skipring[2 * 9216];
 
 static uint32_t rd32(FILE *f) { uint8_t b[4]; if (fread(b, 1, 4, f) != 4) return 0; return b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24; }
 static uint16_t rd16(FILE *f) { uint8_t b[2]; if (fread(b, 1, 2, f) != 2) return 0; return (uint16_t)(b[0] | b[1] << 8); }

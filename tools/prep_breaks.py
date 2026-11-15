@@ -40,7 +40,7 @@ BANK_CAPACITY = (0xDA000 - 0x97000) + (0xFC000 - 0xE5000) - 0x1000
 # Bluetooth MIDI): 400 KB keeps ~20 KB for the code to grow. The build checks the image against the slot as well.
 IMAGE_CAPACITY = 0x64000
 # a break decodes into the firmware's PCM buffer (app.h CH_PCM_MAX): no break longer than that
-BANK_MAX_LEN = 106496
+BANK_MAX_LEN = 88200          # (AFFINE: 4.0 s, app.h CH_PCM_MAX; LOAF had 106496)
 
 STEP = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97,
         107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796,

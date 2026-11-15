@@ -18,9 +18,7 @@
  *   FLANGER  rate (0.02..10 Hz), depth, feedback (-0.9..+0.9)
  *   RING     frequency (20..2000 Hz), spread (the right side higher), -
  *   TREMOLO  rate (1/2 1/4 1/8 1/16 1/32 1/8T, on the tempo), depth, pan (0 tremolo .. 1 auto-pan)
- *   REVERB   size (decay 0.25..0.97), tone (bright .. dark), pre-delay (0..60 ms); its mix is the reverb's level over
- *            the dry sound. A Dattorro plate (stereo, modulated) at 22.05 kHz inside, 16-bit lines: there is one, so
- *            a second REVERB slot passes the sound on
+ *   REVERB   AFFINE: retired (the slot passes the sound on); the reverb is SPU VERB on the PSX bus (psx.h)
  *   DELAY    time on the tempo (1/16 1/8 3/16 1/4 3/8 1/2 1/8T 1/4T), feedback, tone (dark .. bright repeats); its mix
  *            is the SEND into it (the echoes come back at full): a stereo ping-pong at 22.05 kHz on the DUB pad's
  *            line (0.74 s at most). One: it is also where the DUB pad and the slices' ECHO throw; without a DELAY slot the delay sits after the chain with the DUB pad's settings
@@ -212,8 +210,9 @@ void brk_fx_init(void);
 void brk_fx_defaults(brk_fx_t *p);
 void brk_fx_slot_defaults(brk_fxslot_t *s, int type);   /* an effect put into a slot: its own starting settings */
 void brk_fx_set(const brk_fx_t *p);
-/* the dub delay's line: 16-bit mono in the caller's RAM (the app's pool), and the tempo it follows */
-void brk_fx_delay_buffer(int16_t *buf, uint32_t n);
+/* the dub delay's line: 8-bit mu-law, left and right interleaved, in the caller's RAM (the app's pool), and the tempo
+ * it follows (AFFINE: LOAF's was 16-bit) */
+void brk_fx_delay_buffer(uint8_t *buf, uint32_t n);
 void brk_fx_tempo(float bpm);
 float brk_fx_dj_now(void);               /* where the DJ filter is right now, -1..1 (for the screen) */
 void brk_fx_add_dry(float *l, float *r, const float *xl, const float *xr, uint32_t n);   /* LOAF BREAKER: xl, xr

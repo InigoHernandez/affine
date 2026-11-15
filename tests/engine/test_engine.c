@@ -12,6 +12,7 @@
 #include "kick.h"
 #include "ovl.h"
 #include "perc.h"
+#include "psx.h"
 
 #define RATE 22050u
 #define BPM 136.9f
@@ -561,7 +562,7 @@ static void test_pad_settings(void)
 /* the dub delay: echoes ring on after the pad and the break stop */
 static void test_dub(void)
 {
-    static int16_t line[32768];
+    static uint8_t line[32768];
     brk_fx_t p;
     uint32_t s = brk_step_len_samples(), n = s * 4u, i;
     float tail = 0.0f;
@@ -1009,25 +1010,32 @@ static void test_snap(void)
     brk_snap(1.0f);
 }
 
-/* the reverb: an impulse rings on, decays, comes out different left and right; a bigger size rings longer; a second
- * REVERB slot passes the sound on */
-static float rv_energy(float size, uint32_t from, uint32_t to, int two, float *corr)
+/* AFFINE: the reverb is SPU VERB on the PSX bus (LOAF's plate is gone): an impulse sent in rings on and decays, left
+ * and right differ, HALL rings longer than ROOM; a REVERB slot passes the sound on */
+static int16_t spu_work[PSXV_WORDS];
+static float rv_energy(uint32_t type, uint32_t from, uint32_t to, int slot, float send, float *corr)
 {
     brk_fx_t p;
+    psx_bus_t b;
     uint32_t i, n = BRK_SR * 4u;
     float e = 0.0f, lr = 0.0f, ll = 0.0f, rr = 0.0f;
     for (i = 0; i < n; i++)
         buf[i] = i == 100u ? 1.0f : 0.0f;
     brk_fx_defaults(&p);
-    brk_fx_slot_defaults(&p.slot[0], FXT_REVERB);
-    p.slot[0].on = 1u;
-    p.slot[0].mix = 1.0f;
-    p.slot[0].p[0] = size;
-    p.slot[0].p[2] = 0.0f;
-    if (two) {
-        p.slot[2] = p.slot[0];
+    if (slot) {
+        brk_fx_slot_defaults(&p.slot[0], FXT_REVERB);
+        p.slot[0].on = 1u;
+        p.slot[0].mix = 1.0f;
     }
-    fx_run(&p, n);
+    brk_fx_init();
+    psx_verb_init(spu_work, PSXV_WORDS);
+    brk_fx_set(&p);
+    psx_bus_defaults(&b);
+    b.vtype = (uint8_t)type;
+    b.send = send;
+    psx_bus_set(&b);
+    for (i = 0; i < n; i += BLOCK)
+        brk_fx_process(buf + i, 0, 0, 0, 0, bl + i, br + i, n - i < BLOCK ? n - i : BLOCK, 0u);
     for (i = from; i < to; i++) {
         e += bl[i] * bl[i] + br[i] * br[i];
         lr += bl[i] * br[i];
@@ -1041,27 +1049,32 @@ static float rv_energy(float size, uint32_t from, uint32_t to, int two, float *c
 
 static void test_reverb(void)
 {
-    float early, late, big_late, corr, one, two;
-    early = rv_energy(0.6f, BRK_SR / 10u, BRK_SR / 2u, 0, &corr);
-    late = rv_energy(0.6f, BRK_SR * 2u, BRK_SR * 3u, 0, 0);
-    big_late = rv_energy(1.0f, BRK_SR * 2u, BRK_SR * 3u, 0, 0);
-    CHECK(early > 1e-3f && late < early * 0.05f, "reverb: an impulse rings (%.4f) and dies away (%.6f 2 s on)", early, late);
-    CHECK(corr < 0.5f && corr > -0.5f, "reverb: left and right differ (correlation %.2f)", corr);
-    CHECK(big_late > late * 4.0f, "reverb: a bigger size rings longer (%.6f against %.6f 2 s on)", big_late, late);
-    one = rv_energy(0.6f, 0u, BRK_SR, 0, 0);
-    two = rv_energy(0.6f, 0u, BRK_SR, 1, 0);
-    CHECK(fabsf(two - one) < one * 0.01f, "reverb: a second REVERB slot passes the sound on (%.4f, %.4f)", one, two);
-    {   /* a listen: the break through the plate */
+    float early, late, hall_late, corr, dry, slot;
+    early = rv_energy(PSXV_ROOM, BRK_SR / 10u, BRK_SR / 2u, 0, 1.0f, &corr);
+    late = rv_energy(PSXV_ROOM, BRK_SR * 2u, BRK_SR * 3u, 0, 1.0f, 0);
+    hall_late = rv_energy(PSXV_HALL, BRK_SR * 2u, BRK_SR * 3u, 0, 1.0f, 0);
+    CHECK(early > 1e-3f && late < early * 0.05f, "SPU VERB: an impulse rings (%.4f) and dies away (%.6f 2 s on)", early, late);
+    CHECK(corr < 0.5f && corr > -0.5f, "SPU VERB: left and right differ (correlation %.2f)", corr);
+    CHECK(hall_late > late * 4.0f, "SPU VERB: HALL rings longer than ROOM (%.6f against %.6f 2 s on)", hall_late, late);
+    dry = rv_energy(PSXV_ROOM, 0u, BRK_SR, 0, 0.0f, 0);
+    slot = rv_energy(PSXV_ROOM, 0u, BRK_SR, 1, 0.0f, 0);
+    CHECK(fabsf(slot - dry) < dry * 0.01f, "a REVERB slot passes the sound on (%.4f, %.4f)", slot, dry);
+    {   /* a listen: the break into SPU VERB's SPACE ECHO */
         brk_fx_t p;
-        uint32_t n = BRK_SR * 4u;
+        psx_bus_t b;
+        uint32_t n = BRK_SR * 4u, i;
         fresh(1);
         brk_play(1);
         render(buf, n, 0, 0, 0);
         brk_fx_defaults(&p);
-        brk_fx_slot_defaults(&p.slot[0], FXT_REVERB);
-        p.slot[0].on = 1u;
-        p.slot[0].mix = 0.5f;
-        fx_run(&p, n);
+        brk_fx_init();
+        psx_verb_init(spu_work, PSXV_WORDS);
+        brk_fx_set(&p);
+        psx_bus_defaults(&b);
+        b.send = 0.5f;
+        psx_bus_set(&b);
+        for (i = 0; i < n; i += BLOCK)
+            brk_fx_process(buf + i, 0, 0, 0, 0, bl + i, br + i, n - i < BLOCK ? n - i : BLOCK, 0u);
         wav("reverb.wav", bl, br, n);
     }
 }
@@ -1088,7 +1101,7 @@ static void test_stop(void)
 
 /* the DELAY slot: a click comes back on the left at the time, then on the right, ping-pong; and the slices' own
  * effects: a level of 0 silences that slice alone, a LO-PASS darkens it, an ECHO throws it alone into the delay */
-static int16_t dly_line[32768];
+static uint8_t dly_line[32768];
 static void test_delay_slices(void)
 {
     brk_fx_t p;
@@ -1530,7 +1543,7 @@ static void test_fx_extras(void)
         buf[i] = 0.5f * sinf(6.2831853f * 70.0f * (float)i / (float)BRK_SR) +
                  0.4f * sinf(6.2831853f * 3100.0f * (float)i / (float)BRK_SR) + (i % 11025u < 40u ? 0.6f : 0.0f);
     {
-        static int16_t line[32768];      /* (the DELAY needs its line) */
+        static uint8_t line[32768];      /* (the DELAY needs its line) */
         brk_fx_delay_buffer(line, 32768u);
     }
     for (t = 1; t < BRK_NFXT && ok; t++)
@@ -1593,20 +1606,13 @@ static void test_fx_extras(void)
     fx1(FXT_CLIP, 1.0f, 1.0f, 0.0f, 1.0f, &x, n);
     a = peak_of(bl, 4000u, n);
     CHECK(a > 0.24f && a < 0.26f, "CLIP OUTPUT -12 dB: held at a quarter (%.3f)", a);
-    /* REVERB and DELAY WIDTH 0: the same both sides */
+    /* DELAY WIDTH 0: the same both sides (AFFINE: the plate's WIDTH gone with it) */
     for (i = 0; i < n; i++)
         buf[i] = i < 2000u ? 0.5f * sinf(6.2831853f * 440.0f * (float)i / (float)BRK_SR) : 0.0f;
-    brk_fxx_defaults(&x, FXT_REVERB);
-    x.x[0] = 0.0f;
-    fx1(FXT_REVERB, 0.6f, 0.4f, 0.0f, 1.0f, &x, n);
-    for (a = 0.0f, i = 3000u; i < n; i++)
-        a += fabsf(bl[i] - br[i]);
-    b = peak_of(bl, 3000u, n);
-    CHECK(a < 1e-3f && b > 0.001f, "REVERB WIDTH 0: the tail rings (%.3f) the same left and right (%.5f apart)", b, a);
     brk_fxx_defaults(&x, FXT_DELAY);
     x.x[0] = 0.0f;
     {
-        static int16_t line[32768];
+        static uint8_t line[32768];
         brk_fx_delay_buffer(line, 32768u);
         fx1(FXT_DELAY, 2.0f / 7.0f, 0.6f, 0.5f, 1.0f, &x, n);
         brk_fx_delay_buffer(0, 0u);

@@ -47,8 +47,9 @@ void psx_redux_set(float hz, uint32_t mode, float jitter);
 void psx_redux_process(float *l, float *r, uint32_t n, float mix);
 
 /* ---- SKIP: a disc that can't read: on the tempo, a fraction of the beat repeats or the laser seeks. Its capture is
- * the caller's (16-bit stereo frames, RAM) */
-void psx_skip_init(int16_t *ring, uint32_t frames);
+ * the caller's (RAM): 2 x frames bytes, mu-law stereo (12288 frames: 0.28 s, a 1/8 note at 107 BPM and up) */
+#define PSX_SKIP_FRAMES 12288u
+void psx_skip_init(uint8_t *ring, uint32_t frames);
 /* div: the length, 0..3 = 1/64 1/32 1/16 1/8 note; chance 0..1 a skip at each length's boundary; seek 0..1 the pitch
  * diving while it searches */
 void psx_skip_set(uint32_t div, float chance, float seek);
@@ -57,5 +58,37 @@ extern const char *const SKIP_DIV_NAME[4];
 void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, float mix);
 
 void psx_init(void);                     /* every effect cleared and off (after psx_verb_init / psx_skip_init) */
+
+/* ---- the PSX bus: the effects in one fixed order after the FX chain, before the limiter (brk_fx_process runs it):
+ *   CODEC (GRIT or XA: the sources as the console's samples) -> SPU VERB (one reverb, as the console has: the mix sent
+ *   by SEND, the slices' throws, the VERB pad) -> CRUSH -> REDUX -> SKIP (they take the reverb's tail with them).
+ * The four gestures (HOME's knobs) are FILTER (brk_fx_t.dj), crush, redux and send; the rest are the PSX page's */
+enum { CODEC_OFF, CODEC_GRIT, CODEC_XA, CODECS };
+extern const char *const CODEC_NAME[CODECS];
+typedef struct {
+    float crush;                         /* 0 off .. 1: 16 bits down to 2 */
+    float redux;                         /* 0 off .. 1: 44.1 kHz down to 200 Hz */
+    float send;                          /* 0..1: the mix into SPU VERB */
+    float vthrow;                        /* 0..1: the VERB pad's throw (the mix sent at full while it's held) */
+    uint8_t vtype, cmode, rmode, codec;  /* PSXV_*, CRUSH_*, REDUX_*, CODEC_* */
+    float vdepth, vsize, vtone, vfreeze; /* SPU VERB: psx_verb_set's */
+    float cmask, rjit;                   /* CRUSH's MASK, REDUX's JITTER */
+    float crate, cmix;                   /* CODEC: GRIT's rate (11025..44100), its mix */
+    uint8_t cbits, cfilt, xhalf, xstereo;/* GRIT's bits (2..4) and forced predictor (0 auto); XA 18.9 kHz, stereo */
+    uint8_t skdiv, rsv[3];               /* SKIP: 0..3 = 1/64 .. 1/8 */
+    float skchance, skseek, skmix;
+} psx_bus_t;
+void psx_bus_defaults(psx_bus_t *b);
+void psx_bus_set(const psx_bus_t *b);    /* main loop: copied at the next block */
+/* the render: l, r in place; vsend: more into SPU VERB (mono; 0 none); beat: where the block starts, in beats; spb:
+ * samples a beat */
+void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb);
+float psx_crush_bits(float crush);       /* a gesture's value as the screen says it: bits; Hz */
+float psx_redux_hz(float redux);
+uint32_t psx_verb_busy(void);            /* 1: SPU VERB is sounding (its tail, a freeze) */
+
+/* 8-bit mu-law (G.711), for the delay line: 14-bit range in, a byte out and back */
+uint8_t psx_ulaw_enc(int32_t s);         /* s: -32768..32767 */
+extern const int16_t PSX_ULAW_DEC[256];
 
 #endif

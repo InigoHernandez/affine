@@ -17,6 +17,7 @@
 #include "brk_synth.h"
 #include "kick.h"
 #include "ovl.h"
+#include "psx.h"                     /* AFFINE: the PSX bus */
 #include "perc.h"
 #if defined(__has_include)
 #if __has_include("bank_data.h")
@@ -1407,7 +1408,9 @@ static void pat_read_back(void)          /* the engine's steps into the pattern 
 /* ------------------------------------------------------------------- engine --- */
 static int16_t pcm_a[CH_PCM_MAX] PLAT_POOL;
 #define CH_DUB_LEN 30720u                /* the dub delay's line: 0.70 s a side, 3/8 down to 97 BPM, 1/2 to 172 */
-static int16_t dub_line[CH_DUB_LEN] PLAT_POOL;
+static uint8_t dub_line[CH_DUB_LEN] PLAT_POOL;   /* (AFFINE: 8-bit mu-law, half LOAF's 16-bit memory) */
+static int16_t spu_work[PSXV_WORDS] PLAT_POOL;   /* AFFINE: SPU VERB's work area, 64 KB (every PS1 preset) */
+static uint8_t skip_ring[2u * PSX_SKIP_FRAMES];  /* AFFINE: SKIP's capture, 24 KB of RAM (LOAF's plate had 36 KB) */
 static int16_t ovl_line[2u * OVL_LINE] PLAT_POOL;   /* the overlays' WOBBLE and JET (4 KB) */
 static brk_break_t brk0;
 static brk_break_t brk_cur[2];           /* the bank's break playing (pcm_a holds it), and the next one's: the render
@@ -1676,6 +1679,8 @@ void app_init(void)
     brk_init();
     brk_fx_init();
     brk_fx_delay_buffer(dub_line, CH_DUB_LEN);
+    psx_verb_init(spu_work, PSXV_WORDS); /* (AFFINE: the PSX bus's memory) */
+    psx_skip_init(skip_ring, PSX_SKIP_FRAMES);
     kick_init();
     perc_init();
     ovl_init(ovl_line);

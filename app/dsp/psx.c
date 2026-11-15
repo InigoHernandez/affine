@@ -158,24 +158,24 @@ static inline void verb_tick(int32_t lin, int32_t rin, int32_t *lo, int32_t *ro)
     *ro = b;
 }
 
-void psx_verb_process(const float *inl, const float *inr, float *outl, float *outr, uint32_t n)
+/* the reverb over n samples: in = src x gain + vsend (each side; vsend mono, 0 none), out written (add 0) or added
+ * (add 1: in place over src is fine, each sample read before it is written); the input's and the output's sums of
+ * magnitudes back (so the bus knows when it may rest) */
+static void verb_core(const float *srcl, const float *srcr, float gain, const float *vsend, float *outl, float *outr,
+                      uint32_t n, int add, float *ein, float *eout)
 {
     uint32_t i, k, ch;
     float tc = brk_tan_pi(1500.0f * brk_exp2f(3.5f * (1.0f - p_vtone)) / 44100.0f), g = tc / (1.0f + tc);
-    float d0 = vb.depth_s, d1 = p_vdepth, dd;
-    if (!vb.wk) {
-        for (i = 0; i < n; i++)
-            outl[i] = outr[i] = 0.0f;
-        return;
-    }
+    float d0 = vb.depth_s, d1 = p_vdepth, dd, ei = 0.0f, eo = 0.0f;
     verb_block();
     vb.depth_s = d1;
     dd = (d1 - d0) / (float)(n ? n : 1u);
     for (i = 0; i < n; i++) {
-        float x[2];
+        float x[2], v = vsend ? vsend[i] : 0.0f, ol, or_;
         int32_t y[2];
-        x[0] = inl[i];
-        x[1] = inr[i];
+        x[0] = srcl[i] * gain + v;
+        x[1] = srcr[i] * gain + v;
+        ei += brk_absf(x[0]) + brk_absf(x[1]);
         for (ch = 0; ch < 2u; ch++) {    /* TONE: a one-pole low-pass (AFFINE's; open at 0) */
             if (p_vtone > 0.0f) {
                 vb.tone_z[ch] += g * (x[ch] - vb.tone_z[ch]);
@@ -211,9 +211,31 @@ void psx_verb_process(const float *inl, const float *inr, float *outl, float *ou
         }
         vb.odd ^= 1u;
         d0 += dd;
-        outl[i] = (float)y[0] * S2F * d0;
-        outr[i] = (float)y[1] * S2F * d0;
+        ol = (float)y[0] * S2F * d0;
+        or_ = (float)y[1] * S2F * d0;
+        eo += brk_absf(ol) + brk_absf(or_);
+        if (add) {
+            outl[i] += ol;
+            outr[i] += or_;
+        } else {
+            outl[i] = ol;
+            outr[i] = or_;
+        }
     }
+    *ein = ei;
+    *eout = eo;
+}
+
+void psx_verb_process(const float *inl, const float *inr, float *outl, float *outr, uint32_t n)
+{
+    float ei, eo;
+    uint32_t i;
+    if (!vb.wk) {
+        for (i = 0; i < n; i++)
+            outl[i] = outr[i] = 0.0f;
+        return;
+    }
+    verb_core(inl, inr, 1.0f, 0, outl, outr, n, 0, &ei, &eo);
 }
 
 /* ======================================================================================= SPU GRIT and XA --- */
@@ -530,7 +552,7 @@ const char *const SKIP_DIV_NAME[4] = {"1/64", "1/32", "1/16", "1/8"};
 static volatile uint32_t p_sdiv = 2u;
 static volatile float p_schance, p_sseek;
 static struct {
-    int16_t *ring;
+    uint8_t *ring;                       /* (mu-law: a byte a sample, the disc's grit) */
     uint32_t frames, w;                  /* the capture, its length, where the next frame goes */
     uint32_t on, left, len, reps;        /* skipping: samples left in this repeat, its length, repeats to go */
     float rd, rate;                      /* where it reads (frames back from w at its start), its speed */
@@ -539,13 +561,13 @@ static struct {
     int32_t last_div;                    /* the last boundary seen */
     uint32_t rnd;
 } sk = {0, 0, 0, 0, 0, 0, 0, 0.0f, 1.0f, 0, 0.0f, -1, 0x2545F491u};
-void psx_skip_init(int16_t *ring, uint32_t frames)
+void psx_skip_init(uint8_t *ring, uint32_t frames)
 {
     uint32_t i;
     sk.ring = ring;
     sk.frames = frames;
-    for (i = 0; i < 2u * frames; i++)
-        ring[i] = 0;
+    for (i = 0; ring && i < 2u * frames; i++)
+        ring[i] = 0xFFu;                 /* (mu-law's silence) */
     sk.w = 0;
     sk.on = 0;
 }
@@ -568,8 +590,8 @@ void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, flo
         float b = beat + (float)i / spb, yl, yr;
         int32_t d = (int32_t)(b * divs_per_beat);
         uint32_t wi = sk.w;
-        sk.ring[2u * wi] = (int16_t)f2s(l[i]);
-        sk.ring[2u * wi + 1u] = (int16_t)f2s(r[i]);
+        sk.ring[2u * wi] = psx_ulaw_enc(f2s(l[i]));
+        sk.ring[2u * wi + 1u] = psx_ulaw_enc(f2s(r[i]));
         sk.w = wi + 1u >= sk.frames ? 0u : wi + 1u;
         if (d != sk.last_div) {          /* a boundary: maybe the laser slips */
             sk.last_div = d;
@@ -603,8 +625,8 @@ void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, flo
                 edge = pos / 32.0f;      /* (each repeat's own edges, a short ramp) */
             if (rem < 32.0f)
                 edge = rem > 0.0f ? rem / 32.0f : 0.0f;
-            yl = (float)sk.ring[2u * p] * S2F * edge;
-            yr = (float)sk.ring[2u * p + 1u] * S2F * edge;
+            yl = (float)PSX_ULAW_DEC[sk.ring[2u * p]] * S2F * edge;
+            yr = (float)PSX_ULAW_DEC[sk.ring[2u * p + 1u]] * S2F * edge;
             if (sk.on) {
                 sk.rd += sk.rate;        /* SEEK: the repeat slows as the laser searches */
                 sk.rate -= p_sseek * 1.5f / (float)(sk.len ? sk.len : 1u);
@@ -623,10 +645,129 @@ void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, flo
     }
 }
 
+/* =============================================================================================== the bus --- */
+const char *const CODEC_NAME[CODECS] = {"OFF", "GRIT", "XA"};
+static volatile psx_bus_t p_bus;
+static psx_bus_t bus;                    /* the render's copy */
+static float send_s, crush_s, redux_s;   /* the gestures, eased per block (no steps heard) */
+static uint32_t verb_idle = 1000u;       /* blocks with nothing in or out of SPU VERB (it rests: no CPU spent) */
+
+BRK_COLD void psx_bus_defaults(psx_bus_t *b)
+{
+    uint8_t *z = (uint8_t *)b;
+    uint32_t i;
+    for (i = 0; i < sizeof *b; i++)
+        z[i] = 0u;
+    b->vtype = PSXV_SPACE_ECHO;
+    b->vdepth = 0.8f;
+    b->vsize = 1.0f / 1.0f;
+    b->vtone = 0.2f;
+    b->cmode = CRUSH_ROUND;
+    b->rmode = REDUX_HARD;
+    b->rjit = 0.5f;
+    b->codec = CODEC_OFF;
+    b->crate = 22050.0f;
+    b->cbits = 4u;
+    b->xstereo = 1u;
+    b->cmix = 1.0f;
+    b->skdiv = 2u;
+    b->skmix = 1.0f;
+}
+void psx_bus_set(const psx_bus_t *b) { *(psx_bus_t *)&p_bus = *b; }
+float psx_crush_bits(float crush) { return 16.0f - 14.0f * brk_clampf(crush, 0.0f, 1.0f); }
+float psx_redux_hz(float redux) { return 44100.0f * brk_exp2f(-7.785f * brk_clampf(redux, 0.0f, 1.0f)); }
+uint32_t psx_verb_busy(void) { return verb_idle < 8u; }
+
+void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb)
+{
+    bus = *(const psx_bus_t *)&p_bus;
+    send_s += (brk_clampf(bus.send, 0.0f, 1.0f) - send_s) * 0.3f;
+    crush_s += (brk_clampf(bus.crush, 0.0f, 1.0f) - crush_s) * 0.3f;
+    redux_s += (brk_clampf(bus.redux, 0.0f, 1.0f) - redux_s) * 0.3f;
+    /* CODEC: the sound as the console's samples */
+    if (bus.codec == CODEC_GRIT) {
+        psx_grit_set(bus.crate, bus.cbits, bus.cfilt);
+        psx_grit_process(l, r, n, bus.cmix);
+    } else if (bus.codec == CODEC_XA) {
+        psx_xa_set(bus.xhalf, 0u, bus.xstereo);
+        psx_xa_process(l, r, n, bus.cmix);
+    }
+    /* SPU VERB: what's sent in, the reverb added in place; it rests once nothing has gone in or come out for ~8 s */
+    if (vb.wk) {
+        float s = send_s + brk_clampf(bus.vthrow, 0.0f, 1.0f), ei = 0.0f, eo = 0.0f;
+        int sending = s > 0.0005f || vsend || bus.vfreeze > 0.0f;
+        if (sending)
+            verb_idle = 0u;
+        if (verb_idle < 1400u) {
+            psx_verb_set(bus.vtype, bus.vdepth, bus.vsize, bus.vtone, bus.vfreeze);
+            verb_core(l, r, s, vsend, l, r, n, 1, &ei, &eo);
+            if (ei < 1e-4f && eo < 1e-4f && bus.vfreeze <= 0.0f)
+                verb_idle++;
+        }
+    }
+    /* CRUSH, REDUX: the gestures, off at 0 */
+    if (crush_s > 0.002f) {
+        psx_crush_set(psx_crush_bits(crush_s), bus.cmode, bus.cmask);
+        psx_crush_process(l, r, n, 1.0f);
+    }
+    if (redux_s > 0.002f) {
+        psx_redux_set(psx_redux_hz(redux_s), bus.rmode, bus.rjit);
+        psx_redux_process(l, r, n, 1.0f);
+    }
+    /* SKIP: a disc that can't read */
+    if (bus.skchance > 0.0f && bus.skmix > 0.0f) {
+        psx_skip_set(bus.skdiv, bus.skchance, bus.skseek);
+        psx_skip_process(l, r, n, beat, spb, bus.skmix);
+    }
+}
+
+/* ================================================================================================== mu-law --- */
+uint8_t psx_ulaw_enc(int32_t s)
+{
+    uint32_t sign = 0u, mag, seg = 0u;
+    if (s < 0) {
+        sign = 0x80u;
+        s = -s;
+    }
+    mag = (uint32_t)(s > 32635 ? 32635 : s) + 132u;   /* (the bias: segments from 0) */
+    while (seg < 7u && mag >= (256u << seg))
+        seg++;
+    return (uint8_t)~(sign | seg << 4 | ((mag >> (seg + 3u)) & 15u));
+}
+const int16_t PSX_ULAW_DEC[256] = {
+#define U(b) (int16_t)((((~(b)) & 0x80) ? -1 : 1) * ((((((~(b)) & 15) << 3) + 132) << (((~(b)) >> 4) & 7)) - 132))
+#define U8(b) U(b), U(b + 1), U(b + 2), U(b + 3), U(b + 4), U(b + 5), U(b + 6), U(b + 7)
+#define U32(b) U8(b), U8(b + 8), U8(b + 16), U8(b + 24)
+    U32(0), U32(32), U32(64), U32(96), U32(128), U32(160), U32(192), U32(224)
+#undef U32
+#undef U8
+#undef U
+};
+
 /* =================================================================================================== init --- */
+static void verb_clear(void)            /* the work area, the resamplers, the eased settings: silence */
+{
+    uint32_t i;
+    for (i = 0; vb.wk && i <= vb.msk; i++)
+        vb.wk[i] = 0;
+    for (i = 0; i < 78u; i++)
+        vb.in_h[0][i] = vb.in_h[1][i] = 0;
+    vb.in_i = 0u;
+    for (i = 0; i < 40u; i++)
+        vb.out_h[0][i] = vb.out_h[1][i] = 0;
+    vb.out_i = vb.odd = 0u;
+    vb.held[0] = vb.held[1] = 0;
+    vb.tone_z[0] = vb.tone_z[1] = 0.0f;
+}
+
 BRK_COLD void psx_init(void)
 {
     nut_init();
+    verb_clear();
+    verb_idle = 1000u;
+    send_s = crush_s = redux_s = 0.0f;
+    if (sk.ring)
+        psx_skip_init(sk.ring, sk.frames);
     cd_clear(&grit);
     cd_clear(&xa);
     psx_grit_set(22050.0f, 4u, 0u);
@@ -635,4 +776,9 @@ BRK_COLD void psx_init(void)
     psx_redux_set(44100.0f, REDUX_HARD, 0.0f);
     psx_skip_set(2u, 0.0f, 0.0f);
     psx_verb_set(PSXV_ROOM, 0.75f, 1.0f, 0.0f, 0.0f);
+    {
+        psx_bus_t b;
+        psx_bus_defaults(&b);
+        psx_bus_set(&b);
+    }
 }

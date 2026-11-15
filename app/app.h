@@ -72,7 +72,8 @@ enum { OBJ_SETTINGS, OBJ_PANEL, OBJ_BLE, OBJ_PAT, OBJ_STEP, OBJ_PG0, OBJ_KG0 = O
                        0xD0000u, 0xD2000u, 0xD4000u, 0xD6000u, 0xB8000u, 0xBA000u, 0xBC000u, 0xBE000u, 0xB6000u}
 
 /* the pool: the break playing, decoded to 16-bit PCM (PRD 8.2). M1 has one buffer; M5 adds the second */
-#define CH_PCM_MAX 106496u               /* samples: 4.8 s at 22.05 kHz (2 bars at 99.4 BPM and up: Funky Drummer) */
+#define CH_PCM_MAX 88200u                /* samples: 4.0 s at 22.05 kHz, 2 bars at 120 BPM and up (AFFINE: LOAF's 4.8 s
+                                          * cut for SPU VERB's 64 KB; every Cyberworm loop fits, the slowest is 127 BPM) */
 #define CH_RATE 22050u                   /* the built-in break's rate */
 
 /* the contract: the platform calls these */
