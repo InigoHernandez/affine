@@ -1,10 +1,11 @@
 # LOAF BREAKER: the TUTORIAL. SYSTEM › SETUP (GLO, SELECT), K3 left twice: BEGINNER, then TUTORIAL. Its 26 steps (0.235,
-# FLEXOR; 0.244 the OVERLAY page on ARP: two; 0.246 the ARP key's step gone), each done as it says, then the next: at once (nothing to hear: HOME, EDIT, SHAPE, SELECT, SEQ, FX, SAVE), or
-# 5 s later. HOME (PERFORM); PLAY, four slices, ALGORITHM (another break); HOME's tabs (0.9.2: GENERATOR, SETTINGS, KNOB 1 the slices, PERFORM, HOME held); a black key, ARP (the OVERLAY page), two of its effects; EDIT, K1 twice
-# (the built-in kicks), K2 (DISTO), EDIT (SHAPE), K3 (a longer tail), PRESETS (KICK 2); SELECT (the SNARE), K1 (its
-# preset), K2 (its FX); SEQ, two kicks, ALGORITHM to the snare and one; FX, PRESETS (an effect); SEL + ENV (the drop);
-# SAVE; the last read, then finished (254).
-#   app/build/host/loaf-breaker_host tests/scenarios/tutorial.txt app/build/scenarios
+# FLEXOR; 0.244 the OVERLAY page on ARP: two; 0.246 the ARP key's step gone; AFFINE: the kick's lessons gone, 26 again),
+# each done as it says, then the next: at once (nothing to hear: HOME, EDIT, SELECT, SEQ, FX, SAVE), or 5 s later. HOME
+# (PERFORM); PLAY, four slices, ALGORITHM (another break); HOME's tabs (0.9.2: GENERATOR, SETTINGS, KNOB 1 the slices,
+# PERFORM, HOME held); a black key, ARP (the OVERLAY page), two of its effects; SEQ, two BOOMs, ALGORITHM to the snare
+# and one; EDIT (BOOM), PLAY (stopped), keys 1-4; SELECT (the SNARE), K1 (its preset), K2 (its FX); FX, PRESETS (an
+# effect); SEL + ENV (the drop); SAVE; the last read, then finished (254).
+#   app/build/host/affine_host tests/scenarios/tutorial.txt app/build/scenarios
 wait 4200
 tap GLO
 wait 150
@@ -51,7 +52,7 @@ expect page 1
 expect tut 6
 tap HOME
 wait 300
-expect page 11
+expect page 10
 expect tut 7
 shot tu_hset.png
 turn K1 1 10
@@ -102,7 +103,7 @@ expect tut 16
 tap EDIT
 wait 300
 expect tut 17
-expect kpage 4
+expect kpage 0
 wait 1500
 shot tu_8.png
 tap PLAY
@@ -118,65 +119,38 @@ wait 150
 tapkey w3
 wait 5400
 expect tut 19
-turn K1 1 80
-wait 200
-expect tut 19
-tapkey w0
-wait 5400
-expect tut 20
-wait 1500
-shot tu_kpre.png
-turn K2 5 60
-wait 200
-tapkey w0
-wait 5400
-expect tut 21
-tap EDIT
-wait 300
-expect keasy 1
-expect tut 22
-turn K3 3 60
-wait 200
-tapkey w0
-wait 5400
-expect tut 23
-turn PRESET 1 80
-wait 200
-tapkey w0
-wait 5400
-expect tut 24
 turn SELECT 1 80
 wait 400
 expect page 7
-expect tut 25
+expect tut 20
 turn K1 1 80
 wait 200
 tapkey w1
 wait 5400
-expect tut 26
+expect tut 21
 turn K2 1 80
 wait 200
 tapkey w1
 wait 5400
-expect tut 27
+expect tut 22
 wait 1500
 shot tu_14.png
 tap PLAY
 wait 300
 tap FX
 wait 300
-expect tut 28
+expect tut 23
 turn PRESET 1 80
 wait 5400
-expect tut 29
+expect tut 24
 press SEL
 tap ENV
 release SEL
 wait 12000
-expect tut 30
+expect tut 25
 tap SAVE
 wait 300
-expect tut 31
+expect tut 26
 wait 1500
 shot tu_16.png
 wait 6000

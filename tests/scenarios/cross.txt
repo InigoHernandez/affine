@@ -1,8 +1,8 @@
 # LOAF BREAKER (crossbreed): on SEQ the kick 4X4 (K3 right; 2-STEP no more), step 11's kick a note +5 (held, K1),
-# the snare 4X4; P1 copied onto P2 (SEL + SEQ, SEL + PRESETS, SEL + SEQ); DUCK 60 % (SEL + K1); ENV DROP's BREAK the
-# bank's second break; playing, then the BUILD (SEL three times) and its DROP into P2 and that break.
-# The sound: x_crossbreed.wav
-#   app/build/host/loaf-breaker_host tests/scenarios/cross.txt app/build/scenarios
+# the snare 4X4; P1 copied onto P2 (SEL + SEQ, SEL + PRESETS, SEL + SEQ); DUCK 60 % (MIX › MASTER K3; SEL + K1
+# until AFFINE); ENV DROP's BREAK the bank's second break; playing, then the BUILD (SEL + ENV) and its DROP into P2 and
+# that break. The sound: x_crossbreed.wav. (AFFINE: LOAF BREAKER's KICK EQ at the end gone)
+#   app/build/host/affine_host tests/scenarios/cross.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 300
@@ -35,10 +35,13 @@ press SEL
 turn PRESET -1 10
 release SEL
 wait 200
-press SEL
-turn K1 30 10
-release SEL
+tap LFO
+wait 100
+turn SELECT 2 10
+wait 100
+turn K3 30 10
 wait 200
+expect mpage 2
 shot x_duck.png
 tap ENV
 wait 100
@@ -66,23 +69,6 @@ wait 3000
 wavstop
 shot x_after.png
 tap PLAY
-tap EDIT
-wait 300
-# (0.253: the KICK menu opens on ATTACK's PRESET; 0.9.29: SELECT six times MORE, its EQ B two parts back)
-turn SELECT 6 10
-wait 200
-turn ALGO -2 10
-wait 300
-expect page 10
-turn K1 8 10
-turn K2 -6 10
-turn K4 -10 10
-wait 200
-shot x_keq.png
-turn ALGO 1 10
-turn K1 -10 10
-wait 200
-shot x_keq_shape.png
 tap SEQ
 wait 300
 turn ALGO 7 10
