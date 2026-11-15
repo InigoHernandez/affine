@@ -102,7 +102,7 @@ static void bk_value(int i, char *t)
 {
     t[0] = 0;
     if (i == 0)
-        text_cat(t, bk_preset() == BKP_FLEXOR ? "FLEXOR" : BKP_NAME[bk_preset()]);   /* (the foot's room) */
+        text_cat(t, BKP_NAME[bk_preset()]);
     else if (i == 1)
         int_text((int32_t)ui.bk_sel % 11 + 1, t);
     else if (i == 2)
@@ -164,7 +164,7 @@ static void draw_bk(void)
         for (j = 0; j < 11u; j++) {
             uint32_t f = bk_fn(j);
             int32_t x = 4 + (int32_t)j * 19 + (int32_t)GRP[j] * 6;
-            int sel = j == ui.bk_sel % 11u, chop = f == BK_LAY[0][j];
+            int sel = j == ui.bk_sel % 11u, chop = f == BK_LAY[j];
             cv_rect(x, 6, 17, 30, sel ? C_WHITE : chop ? C_LINE : C_AMB);
             cv_rect(x + 1, 7, 15, 28, sel ? C_HI : C_BLOCK);
             t[0] = 0;

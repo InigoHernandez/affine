@@ -139,7 +139,7 @@ static void global_turn(int i, int32_t d)
         return;
     }
     if (ui.gpage == 4u) {                /* LOAF BREAKER: FX SET: K1 AMOUNT, K2 KICK, K3 DROP, K4 LENGTH, 5 % a detent */
-        static const char *const SN[4] = {"EFFECT AMOUNT", "ON A KICK", "AT THE DROP", "MOMENTS' LENGTH"};
+        static const char *const SN[4] = {"EFFECT AMOUNT", "ON A BOOM", "AT THE DROP", "MOMENTS' LENGTH"};
         uint8_t *p = sfx_knob(i);
         *p = (uint8_t)clamp((int32_t)*p + d * 5, 0, 100);
         changed();
@@ -169,10 +169,8 @@ static void global_turn(int i, int32_t d)
                 if (set.novice) {
                     ui.meter_on = 0u;    /* (the METER: EXPERT's) */
                     ui.fx_page = 0u;     /* (the FX page: MAIN only) */
-                    if (ui.fx_focus >= FX_EASY_SLOTS && ui.fx_focus < BRK_FX_SLOTS)
+                    if (ui.fx_focus >= FX_EASY_SLOTS)
                         ui.fx_focus = 0u;   /* (0.229: the chain's two slots) */
-                    if (ui.fx_main >= FX_EASY_SLOTS)
-                        ui.fx_main = 0u;
                     novice_lengths();    /* (0.227, FLEXOR: the kick 32 steps, the drums 16; 0.246: all 16) */
                 }
                 changed();
@@ -339,11 +337,11 @@ static void draw_global(const brk_status_t *st)
         return;
     }
     if (ui.gpage == 4u) {                /* LOAF BREAKER: FX SET: the effects' four settings as bars */
-        static const char *const L[4] = {"AMOUNT", "ON A KICK", "AT THE DROP", "LENGTH"};
+        static const char *const L[4] = {"AMOUNT", "ON A BOOM", "AT THE DROP", "LENGTH"};
         uint32_t k;
         cv_text(6, 1, &FONT_T, "EFFECTS SET", C_GRAY);
         cv_text(96, 16, &FONT_XS, "FOR ALL THE EFFECTS ON", C_DIM);
-        cv_text(96, 28, &FONT_XS, "KICK, DROP: 0 = NONE", C_DIM);
+        cv_text(96, 28, &FONT_XS, "BOOM, DROP: 0 = NONE", C_DIM);
         cv_blit(0, 44);
         for (k = 0; k < 2u; k++) {
             uint32_t j;

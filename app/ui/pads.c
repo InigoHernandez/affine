@@ -4,10 +4,10 @@
 
 /* -------------------------------------------------- the pads' own settings --- */
 static void ovl_push(void);              /* (ovl.c) */
-static const char *const THRU_NAME[4] = {"BOTH", "BREAK", "KICK", "BOTH"};   /* VINYL's THRU */
-static const char *const ARP_THRU[4] = {"THRU", "BREAK", "KICK", "THRU"};   /* (0.9.29, FLEXOR: what the ARP's effects take,
-                                          * ovl_pad 6-7: 0 the whole mix, 1 the break, 2 the kick; also LFO's LEVELS K4, SENDS K3) */
-static void arp_thru_turn(int32_t d)     /* BREAK, KICK, THRU in that order (FLEXOR) */
+static const char *const THRU_NAME[4] = {"BOTH", "BREAK", "BOOM", "BOTH"};   /* VINYL's THRU */
+static const char *const ARP_THRU[4] = {"THRU", "BREAK", "BOOM", "THRU"};   /* (0.9.29, FLEXOR: what the ARP's effects take,
+                                          * ovl_pad 6-7: 0 the whole mix, 1 the break, 2 BOOM; also MIX › SENDS K3) */
+static void arp_thru_turn(int32_t d)     /* BREAK, BOOM, THRU in that order (FLEXOR) */
 {
     static const uint8_t AT[3] = {1u, 2u, 0u}, POS[4] = {2u, 0u, 1u, 2u};
     uint32_t c = AT[clamp((int32_t)POS[(set.ovl_pad >> 6) & 3u] + (d > 0 ? 1 : -1), 0, 2)];
@@ -89,9 +89,9 @@ static uint32_t arpk_focus(void)         /* (the ARP key touched last; none yet,
 }
 static int ovl_pad_on(void);
 /* LOAF BREAKER: the three roll pads' THRU (MIX › SENDS K4 since 0.9.40, FLEXOR: their K2 the break's filter, to roll
- * and filter at once; K2 0.245-0.9.39; set.pads.rsv[0]): 0 BREAK (the roll as ever), 1 KICK (the kick rolled
+ * and filter at once; K2 0.245-0.9.39; set.pads.rsv[0]): 0 BREAK (the roll as ever), 1 BOOM (the kick rolled
  * at the pad's rate, the break left alone), 2 BOTH. kroll: the pad rolling the kick (app.c's render) */
-static const char *const ROLL_THRU_NAME[3] = {"BREAK", "KICK", "BOTH"};
+static const char *const ROLL_THRU_NAME[3] = {"BREAK", "BOOM", "BOTH"};
 static uint8_t roll_held = 0xFFu;        /* the roll pad held (0xFF none) */
 static uint8_t roll_sel;                 /* (pressed with SEL held: the kick alone, whatever THRU says) */
 static void roll_thru_now(void)          /* (THRU turned while a roll pad is held: at once) */
@@ -102,7 +102,7 @@ static void roll_thru_now(void)          /* (THRU turned while a roll pad is hel
     brk_pad((int)roll_held, th != 1u);
     kroll = (uint8_t)(th ? roll_held + 1u : 0u);
 }
-static void roll_thru_turn(int32_t d)    /* (SENDS' K4: BREAK, KICK, BOTH) */
+static void roll_thru_turn(int32_t d)    /* (SENDS' K4: BREAK, BOOM, BOTH) */
 {
     set.pads.rsv[0] = (uint8_t)clamp((int32_t)(set.pads.rsv[0] % 3u) + (d > 0 ? 1 : -1), 0, 2);
     roll_thru_now();
@@ -141,11 +141,9 @@ static const char *const PAD_KNOB[BKF_N][4] = {   /* (LOAF BREAKER: by function,
     {"TIME", "FEEDBACK", "TONE", "MIX"},   /* (DUB: CHOPPAH's; a DELAY in the chain: its own, fx_param_name) */
     {"EFFECT", "AMOUNT", "TIME", "LATCH"},   /* (the ARP key's; FX while held: MORE, pad_knob_name; K2 what goes
                                           * through the ARP effects: the kick, the break, or both) */
-    {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};   /* (KIL: its LATCH, main.c; DST, SUB, DRV: a press
-                                          * each) */
+    {0, 0, 0, 0}};                       /* (KIL: its LATCH, main.c) */
 static const char *const PAD_TITLE[BKF_N] = {"ROLL", "ROLL", "ROLL", "REVERSE", "FREEZE", "HALF SPEED",
-                                              "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "OVERLAY", "KICKS OFF",
-                                              "DISTO", "SUB FX", "DRIVE"};
+                                              "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "OVERLAY", "BOOM OFF"};
 static const char *const FRZ_LEN_NAME[4] = {"SLICE", "1/2", "1/4", "1/8"};
 
 /* LOAF BREAKER: the ARP key's knobs (the OVERLAY page gone, its settings here). MAIN: K1 EFFECT, K2 its AMOUNT, K3
@@ -157,7 +155,7 @@ static int ovl_time_kind(uint32_t e)     /* 1 RATE, 2 SWEEP, 0 none */
     return e == OV_CHOP || e == OV_GATE || e == OV_WAH || e == OV_PAN ? 1 : e == OV_DIVE || e == OV_RISE ? 2 : 0;
 }
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's pads have their knobs as EXPERT's (0.232; 0.224-0.231 none but the
- * ARP key's K1, K2); the DST and SUB keys do nothing there (main.c) */
+ * ARP key's K1, K2) */
 static const char *pad_knob_name(int pad, int k)
 {
     if (pad < 0 || pad >= (int)BKF_N)
@@ -352,7 +350,7 @@ lat:                                     /* (K4 LATCH: ON, OFF) */
     text_cat(t, bk_lat() >> lat_bit((uint32_t)pad) & 1u ? "ON" : "OFF");
 }
 
-/* THRU's knob (the ARP key's, the VINYL BREAK's): left to right KICK, BREAK, BOTH; code 0 BOTH, 1 BREAK, 2 KICK */
+/* THRU's knob (the ARP key's, the VINYL BREAK's): left to right BOOM, BREAK, BOTH; code 0 BOTH, 1 BREAK, 2 BOOM */
 static uint32_t thru_turn(uint32_t code, int32_t d)
 {
     static const uint8_t AT[3] = {2u, 1u, 0u}, POS[4] = {2u, 1u, 0u, 0u};   /* place <-> code */
@@ -560,8 +558,8 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
     cv_begin(240, FX_BAND, C_BLACK);
     cv_oy = -top;                        /* (this band's rows of the picture) */
     t[0] = 0;
-    if (pad <= PAD_ROLL32 && (roll_sel || set.pads.rsv[0] % 3u))   /* (LOAF BREAKER: THRU KICK or BOTH, or SEL) */
-        text_cat(t, roll_sel || set.pads.rsv[0] % 3u == 1u ? "KICK " : "ALL ");
+    if (pad <= PAD_ROLL32 && (roll_sel || set.pads.rsv[0] % 3u))   /* (LOAF BREAKER: THRU BOOM or BOTH, or SEL) */
+        text_cat(t, roll_sel || set.pads.rsv[0] % 3u == 1u ? "BOOM " : "ALL ");
     text_cat(t, PAD_TITLE[pad]);
     if (pad <= PAD_ROLL32) {
         text_cat(t, " ");
@@ -820,18 +818,12 @@ static int ovl_pad_on(void)
 
 
 /* LOAF BREAKER (11 Nov 2026): a black key's function lit: a pad on (or rolling the kick), the ARP key's effect on,
- * the kicks held quiet, the DISTO switch on, its SUB FX switch on (0.244's BEGINNER restrictions gone: FLEXOR) */
+ * the kicks held quiet (KIL) */
 static int bkf_lit(uint32_t f, const brk_status_t *st)
 {
     if (f < BRK_NPADS)
         return (int)((st->pads >> f) & 1u) || roll_lit(f);
     if (f == BKF_ARP)
         return ovl_pad_on();
-    if (f == BKF_KIL)
-        return kick_hold != 0u;
-    if (f == BKF_DST)                    /* (the switch on, even with the DISTO at 0 %: 0.268, FLEXOR) */
-        return !terror_off;
-    if (f == BKF_DRV)                    /* (0.9.43: the DRIVE switch on, even at 0 %) */
-        return !drive_off;
-    return !subfx_off;                   /* (0.9.43: SUB, the SUB FX switch on, even with no effect set) */
+    return kick_hold != 0u;
 }

@@ -2,23 +2,23 @@
 /* LOAF BREAKER: the TUTORIAL (FLEXOR, 10 Nov 2026): the firmware's basics learnt on the FM-1 itself, a step at a time.
  * Each step says one thing to do in the header (when no other message is up) and blinks the button or keys that do
  * it; when it is done (tut_done), "OK!" and the next: at once, or for a step with a result to hear (an effect, a
- * kick: its `wait`, FLEXOR 0.213) 5 s later (TUT_WAIT). Seven lessons
- * (HOME first: the PERFORM menu): the break, the effects, the kick (0.235: its BEGINNER pages, KICK and SHAPE), the
- * drums (SELECT, PRESET, FX), the pattern, the FX page, the drop, SAVE. Started from SYSTEM › SETUP K3 MODE (TUTORIAL, left of BEGINNER) and on a new FM-1; GLO
+ * kick: its `wait`, FLEXOR 0.213) 5 s later (TUT_WAIT). The lessons
+ * (HOME first: the PERFORM menu): the break, HOME, the effects, the pattern, the sounds (EDIT, keys 1-4 stopped; AFFINE:
+ * LOAF BREAKER's lessons on its hardcore kick gone), the drums (SELECT, PRESET, FX), the FX page, the drop, SAVE.
+ * Started from SYSTEM › SETUP K3 MODE (TUTORIAL, left of BEGINNER) and on a new FM-1; GLO
  * quits it, SEL + GLO skips a step. set.tut: 0 off, 1..TUT_N the step running (kept with SAVE), TUT_DONE finished.
  * (Part of app.c's unity: included there in order, before screen.c, which draws the header.) */
 
 enum { TC_HGEN = 100, TC_HSET, TC_HVIEW, TC_HBACK, TC_HHOLD };   /* (0.9.2, FLEXOR: HOME's tabs) */
-enum { TC_HOME, TC_PLAY, TC_SLICES, TC_BRK, TC_PAD, TC_OVLPG, TC_OVLKEY, TC_EDIT, TC_STOP, TC_KEYS4, TC_KPRE, TC_DISTO, TC_SHAPE, TC_TAIL, TC_PRESETS,
+enum { TC_HOME, TC_PLAY, TC_SLICES, TC_BRK, TC_PAD, TC_OVLPG, TC_OVLKEY, TC_EDIT, TC_STOP, TC_KEYS4,
        TC_SNPG, TC_PPRE, TC_PFX, TC_SEQ, TC_KICKS, TC_SNARE, TC_FXPG, TC_FXT, TC_DROP, TC_SAVE, TC_END };
 #define TK_WHITE 1u                      /* (the keys a step blinks: the white ones, the black ones) */
 #define TK_BLACK 2u
-#define TK_DRUMS 4u                      /* (keys 1-4: the kick, the snare, the hat, the clap, stopped) */
-#define TK_KEY1 8u                       /* (key 1: the kick) */
+#define TK_DRUMS 4u                      /* (keys 1-4: BOOM, the snare, the hat, the clap, stopped) */
 #define TK_KEY2 16u                      /* (key 2: the snare) */
 #define TUT_LESSONS 10u
-static const char *const TUT_LESSON[TUT_LESSONS] = {"THE BREAK", "EFFECTS", "THE KICK", "THE DRUMS", "THE PATTERN", "THE FX",
-                                                    "THE DROP", "SAVE", "DONE", "HOME"};
+static const char *const TUT_LESSON[TUT_LESSONS] = {"THE BREAK", "EFFECTS", "THE SOUNDS", "THE DRUMS", "THE PATTERN",
+                                                    "THE FX", "THE DROP", "SAVE", "DONE", "HOME"};
 static const struct {
     uint8_t lesson, cond, keys, wait;    /* (wait: 1, its result to hear: 5 s before the next; 0: at once) */
     uint16_t btn;                        /* (the buttons it blinks: bit B_*) */
@@ -39,16 +39,11 @@ static const struct {
     {1u, TC_OVLKEY, TK_WHITE, 1u, 0u, "HOLD WHITE KEYS: AN EFFECT EACH"},
     {4u, TC_SEQ, 0u, 0u, 1u << B_SEQ, "PRESS SEQ: THE PATTERN"},   /* (0.252, FLEXOR: THE PATTERN before THE
                                           * KICK: kicks in it first) */
-    {4u, TC_KICKS, TK_WHITE, 1u, 0u, "WHITE KEYS: PUT 2 KICKS IN"},
+    {4u, TC_KICKS, TK_WHITE, 1u, 0u, "WHITE KEYS: PUT 2 BOOMS IN"},
     {4u, TC_SNARE, TK_WHITE, 1u, 0u, "ALGORITHM TO SNARE, ADD ONE"},
-    {2u, TC_EDIT, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: THE KICK"},
+    {2u, TC_EDIT, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: BOOM"},
     {2u, TC_STOP, 0u, 0u, 1u << B_PLAY, "PRESS PLAY: STOP THE BREAK"},   /* (0.252, FLEXOR: heard stopped, keys 1-4) */
-    {2u, TC_KEYS4, TK_DRUMS, 1u, 0u, "KEYS 1-4: KICK SNARE HAT CLAP"},
-    {2u, TC_KPRE, TK_KEY1, 1u, 0u, "TURN KNOB 1, KEY 1: HEAR THE KICK"},
-    {2u, TC_DISTO, TK_KEY1, 1u, 0u, "TURN KNOB 2, KEY 1: ITS DISTO"},
-    {2u, TC_SHAPE, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: SHAPE, ITS TAIL"},
-    {2u, TC_TAIL, TK_KEY1, 1u, 0u, "TURN KNOB 3, KEY 1: LONGER TAIL"},
-    {2u, TC_PRESETS, TK_KEY1, 1u, 0u, "TURN PRESETS, KEY 1: KICK 2"},
+    {2u, TC_KEYS4, TK_DRUMS, 1u, 0u, "KEYS 1-4: BOOM SNARE HAT CLAP"},
     {3u, TC_SNPG, 0u, 0u, 0u, "TURN SELECT: THE SNARE"},
     {3u, TC_PPRE, TK_KEY2, 1u, 0u, "TURN KNOB 1, KEY 2: ITS PRESETS"},
     {3u, TC_PFX, TK_KEY2, 1u, 0u, "TURN KNOB 2, KEY 2: ITS FX"},
@@ -65,9 +60,8 @@ static uint32_t tut_ok;                  /* (a step done: when, |1; 0: none) */
 static int tut_on(void) { return set.tut >= 1u && set.tut <= TUT_N; }
 /* what the steps watch (common.c's counters, counted where it happens: main.c, seq.c), against the step's start */
 static struct {
-    uint32_t wk, padm, padn, kturn, sk4, lane, saves, home, kpre, t, fx, ovlk;
-    uint8_t kslot, drop, brk, disto, ppre, pfx;
-    float tail;
+    uint32_t wk, padm, padn, lane, saves, home, t, fx, ovlk;
+    uint8_t drop, brk, ppre, pfx;
 } tut_at;
 static uint32_t tut_fx_sig(void)        /* (the FX chain's first two slots: their effects, presets included) */
 {
@@ -81,17 +75,11 @@ static void tut_mark(void)
     tut_at.wk = tut_wk;
     tut_at.padm = tut_pads;
     tut_at.padn = tut_padn;
-    tut_at.kturn = tut_kturn;
-    tut_at.sk4 = tut_sk4;
     tut_at.lane = tut_lane;
     tut_at.saves = tut_saves;
     tut_at.home = tut_home;
-    tut_at.kpre = tut_kpre;
-    tut_at.kslot = set.kslot;
     tut_at.drop = drop_n;
     tut_at.brk = set.brk;
-    tut_at.disto = KICK_TERROR(&set.kick);
-    tut_at.tail = set.kick.l[KL_SUB].decay;
     tut_at.ppre = perc_x(PV_SNARE)[PX_PRE];
     tut_at.pfx = perc_x(PV_SNARE)[PX_FX];
     tut_at.fx = tut_fx_sig();
@@ -121,7 +109,7 @@ static void tut_start(void)              /* SETUP K3 left of BEGINNER: from wher
 #define TUT_ASK 0xFDu
 static uint8_t ask_sel = 1u, ask_drawn = 0xFFu;
 static const char *const ASK_NAME[3] = {"TUTORIAL", "BEGINNER", "EXPERT"};
-static const char *const ASK_TEXT[3][2] = {{"26 GUIDED STEPS", "THE BUTTONS TO PRESS BLINK"},
+static const char *const ASK_TEXT[3][2] = {{"26 GUIDED STEPS", "THE BUTTONS TO PRESS BLINK"},   /* (TUT_N) */
                                            {"THE ESSENTIALS", "PLAY RIGHT AWAY"},
                                            {"EVERYTHING", "EVERY SETTING, EVERY PAGE"}};
 static void tut_quit(void);
@@ -223,10 +211,6 @@ static int tut_done(uint32_t c, const brk_status_t *st)
         return tut_ovl - tut_at.ovlk >= 2u;
     case TC_EDIT:
         return ui.page == PG_KICK;
-    case TC_SHAPE:                       /* (BEGINNER's KICK, its SHAPE page) */
-        return ui.page == PG_KICK && keasy_pg == 1u;
-    case TC_TAIL:                        /* (three detents longer; 0.252: then key 1, heard) */
-        return set.kick.l[KL_SUB].decay - tut_at.tail >= 0.059f && (tut_heard & 1u);
     case TC_STOP:
         return !st->playing;
     case TC_KEYS4:                       /* (the four drums each played once, stopped) */
@@ -241,13 +225,6 @@ static int tut_done(uint32_t c, const brk_status_t *st)
         return ui.page == PG_FX && st->playing;
     case TC_FXT:
         return tut_fx_sig() != tut_at.fx;
-    case TC_KPRE:                        /* (another kick, then key 1: heard; 0.252) */
-        return tut_kpre != tut_at.kpre && (tut_heard & 1u);
-    case TC_PRESETS:
-        return set.kslot != tut_at.kslot && (tut_heard & 1u);
-    case TC_DISTO:                       /* (five detents either way: 10 %, then key 1) */
-        return (KICK_TERROR(&set.kick) >= tut_at.disto + 10u || KICK_TERROR(&set.kick) + 10u <= tut_at.disto) &&
-               (tut_heard & 1u);
     case TC_SEQ:
         return ui.page == PG_SEQ;
     case TC_KICKS:
@@ -295,23 +272,15 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
         }
         return 0;
     case TC_KEYS4:
-    case TC_KPRE:
-    case TC_DISTO:
-    case TC_TAIL:
-    case TC_PRESETS:
         if (!kick) {
             *btn = 1u << B_EDIT;
-            return "PRESS EDIT: BACK TO THE KICK";
-        }
-        if (set.novice && c != TC_PRESETS && c != TC_KEYS4 && keasy_pg != (c == TC_TAIL ? 1u : 0u)) {
-            *btn = 1u << B_EDIT;
-            return c == TC_TAIL ? "PRESS EDIT: THE SHAPE TAB" : "PRESS EDIT: THE KICK TAB";
+            return "PRESS EDIT: BACK TO BOOM";
         }
         return 0;
     case TC_SNPG:
         if (!kick && ui.page != PG_PERC) {
             *btn = 1u << B_EDIT;
-            return "PRESS EDIT: BACK TO THE KICK";
+            return "PRESS EDIT: BACK TO BOOM";
         }
         return 0;
     case TC_PPRE:
@@ -329,7 +298,7 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
             return "PRESS SEQ: BACK TO THE PATTERN";
         }
         if (c == TC_KICKS && !sl_kick(ui.seq_lane))
-            return "TURN SELECT: THE KICK LANE";
+            return "ALGORITHM: THE BOOM LANE";
         return 0;
     case TC_FXT:
         if (ui.page != PG_FX) {
@@ -447,8 +416,6 @@ static void tut_leds(uint32_t *b, uint32_t *k, int playing)   /* the step's butt
         *k |= 1u << WK[i];
     for (i = 0; i < 4u && TUT[s].keys & TK_DRUMS; i++)
         *k |= 1u << WK[i];
-    if (TUT[s].keys & TK_KEY1)
-        *k |= 1u << WK[0];
     if (TUT[s].keys & TK_KEY2)
         *k |= 1u << WK[1];
     for (i = 0; i < 11u && TUT[s].keys & TK_BLACK; i++)
