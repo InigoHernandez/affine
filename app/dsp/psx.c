@@ -677,6 +677,26 @@ void psx_bus_set(const psx_bus_t *b) { *(psx_bus_t *)&p_bus = *b; }
 float psx_crush_bits(float crush) { return 16.0f - 14.0f * brk_clampf(crush, 0.0f, 1.0f); }
 float psx_redux_hz(float redux) { return 44100.0f * brk_exp2f(-7.785f * brk_clampf(redux, 0.0f, 1.0f)); }
 uint32_t psx_verb_busy(void) { return verb_idle < 8u; }
+BRK_COLD void psx_verb_taps(uint32_t type, float size, float *ms, float *gain)
+{
+    static const uint8_t C[4] = {R_MLCOMB1, R_MLCOMB2, R_MLCOMB3, R_MLCOMB4}, V[4] = {R_VCOMB1, R_VCOMB2, R_VCOMB3,
+                                                                                     R_VCOMB4};
+    const uint16_t *r = PRESET[type < PSXV_N ? type : 0u];
+    float s = size <= 1.0f ? 0.25f + 0.75f * size : size;
+    uint32_t k;
+    for (k = 0; k < 4u; k++) {           /* (the comb reads the reflections written at mLSAME: the gap, 8-byte units, 4
+                                          * cells each at 22.05 kHz) */
+        int32_t d = (int32_t)r[R_MLSAME] - (int32_t)r[C[k]];
+        ms[k] = (float)(d < 0 ? -d : d) * 4.0f * s * (1000.0f / 22050.0f);
+        gain[k] = (float)(int16_t)r[V[k]] * (1.0f / 32768.0f);
+    }
+}
+float psx_verb_tail(uint32_t type)
+{
+    static const float T[PSXV_N] = {0.80f, 0.95f, 1.10f, 2.35f, 2.25f, 1.35f, 4.2f, 9.9f, 0.75f};   /* (CHAOS: past the
+                                          * 8 s measured) */
+    return T[type < PSXV_N ? type : 0u];
+}
 
 void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb)
 {

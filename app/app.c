@@ -2001,6 +2001,7 @@ static void demo_leds(uint32_t now) { (void)now; }
 #endif
 #include "ui/cdj.c"                   /* (LOAF BREAKER: HOME held: the break scrolling, as on a CDJ) */
 #include "ui/aff.c"                   /* AFFINE: the POLYGON look: its palette, its pixel font, HOME's picture */
+#include "ui/psxp.c"                  /* AFFINE: the PSX page, EFFECTS' fifth tab */
 #include "ui/main.c"
 #undef C_WHITE                           /* (gfx.c's white again after the UI: skins, common.c) */
 #define C_WHITE 0xFFFFu

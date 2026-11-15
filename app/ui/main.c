@@ -56,8 +56,6 @@ static float foot_norm(int i);
 
 /* AFFINE: HOME's gestures as words. compact (HOME's picture): the value alone ("1.2K", "6 BIT", "11K", "SPACE");
  * else as said ("LP 1.2KHZ", "SPACE ECHO 40%") */
-static const char *const VERB_SHORT[PSXV_N] = {"ROOM", "STD S", "STD M", "STD L", "HALL", "HALF", "SPACE", "CHAOS",
-                                               "DELAY"};
 static void home_gest_text(int i, char *t, int compact)
 {
     char v[16];
@@ -177,6 +175,10 @@ static void home_draw(const brk_status_t *st, uint32_t now)
 static void knob_turn(int k, int32_t d)
 {
     brk_fx_t *f = &set.fx;
+    if (FX_PSX()) {                      /* AFFINE: the PSX page */
+        psxp_turn(k - EN_K1, d);
+        return;
+    }
     if (ui.page == PG_OVL) {             /* (LOAF BREAKER, 0.244: the OVERLAY page back on ARP) */
         ovl_turn(k - EN_K1, d);
         return;
@@ -810,7 +812,7 @@ static void input(void)
         seq_clear_drums();
         seq_wait = 0u;
         clr_arm = 0u;
-    } else if (bdn & 1u << B_REC && btn & 1u << B_SEL && ui.page == PG_FX)
+    } else if (bdn & 1u << B_REC && btn & 1u << B_SEL && ui.page == PG_FX && !FX_PSX())
         fx_reset();                      /* LOAF BREAKER: SEL + REC on FX: the slot's effect reset (again: undone; was
                                           * SEL x2) */
     else if (bdn & 1u << B_REC && btn & 1u << B_SEL) {   /* SEL + REC: clear (on SEQ its lane; else the pattern) */
@@ -860,7 +862,8 @@ static void input(void)
         ui.key_turned = 1u;
         app_say("KEY", ui.key_layer ? "SLICE FX" : "LOOP");
         foot_dirty = 1u;
-    } else if (bdn & 1u << B_FX && btn & 1u << B_SEL && ui.page == PG_FX) {   /* SEL + FX: the slot bypassed */
+    } else if (bdn & 1u << B_FX && btn & 1u << B_SEL && ui.page == PG_FX && !FX_PSX()) {   /* SEL + FX: the slot
+                                          * bypassed */
         brk_fxslot_t *sl = fx_sl(fx_foc());
         if (sl->type == FXT_EMPTY)
             app_say("EMPTY", "PRESETS");
@@ -1122,7 +1125,9 @@ static void input(void)
                 ui.ppage = (uint8_t)((ui.ppage + (d > 0 ? 1u : 2u)) % 3u);
                 page_say();
                 ui.redraw |= RG_BLOCKS | RG_FOOT;
-            } else if (ui.page == PG_FX)
+            } else if (FX_PSX())
+                psxp_part_turn(d);       /* (AFFINE: the PSX page's parts) */
+            else if (ui.page == PG_FX)
                 fx_part_turn(d);         /* (0.9.2: the slot's parts; SELECT the slots) */
             else {                     /* the next or previous break */
                 break_ask((set.brk + (d > 0 ? 1u : n_breaks - 1u)) % n_breaks);
@@ -1130,6 +1135,8 @@ static void input(void)
         } else if (k == EN_PRESET && btn & 1u << B_SEL)
             pattern_pick(d);             /* SEL held: the pattern, on any page (AFFINE: HOME's SEL + PRESETS, LOAF
                                           * BREAKER's KICK 1-20, gone) */
+        else if (k == EN_PRESET && FX_PSX())
+            psxp_turn(0, d);             /* (AFFINE: the part's first choice: the verb's type, the codec ...) */
         else if (k == EN_PRESET && ui.page == PG_FX)
             fx_type_turn(d);   /* the focused slot's effect (LOAF
                                           * BREAKER: BEGINNER, a whole scene) */
@@ -1253,6 +1260,10 @@ static void knob_value(int i, char *t)  /* the page's knob i (0..3), as shown un
     t[0] = 0;
     if (ui.page == PG_HOME && ui.shown == -1) {   /* AFFINE: the gestures */
         home_gest_text(i, t, 0);
+        return;
+    }
+    if (FX_PSX()) {
+        psxp_value(i, t);
         return;
     }
     if (ui.page == PG_OVL) {             /* (LOAF BREAKER, 0.244: the OVERLAY page) */
@@ -1385,6 +1396,7 @@ static void draw_tabs(void)
     } else if (ui.page == PG_FX) {
         for (i = 0; i < fx_nslots(); i++)   /* (LOAF BREAKER: BEGINNER's two) */
             x = tab(x, SLOT_NUM[i], i == fx_foc());
+        x = tab(x, "PSX", 0);            /* (AFFINE: SELECT on past the slots) */
         text_cat(part, fx_name(fx_foc()));
         if (ui.fx_page) {                /* "< MB COMP X-OVER >", "< FILTER MOD >" */
             text_cat(part, " ");
@@ -1426,6 +1438,11 @@ static void page_say(void)
     case PG_TRACK: text_cat(t, TPART[ui.tpage % NTPART]); break;
     case PG_OVL: text_cat(t, OPAGE_NAME[ui.opage % 3u]); break;   /* (LOAF BREAKER: its tabs) */
     case PG_FX:
+        if (FX_PSX()) {                  /* (AFFINE) */
+            text_cat(t, "PSX ");
+            text_cat(t, PP_NAME[pp_part % PP_N]);
+            break;
+        }
         text_cat(t, "SLOT ");
         int_text((int32_t)(fx_foc() % BRK_FX_SLOTS) + 1, t + 5);
         text_cat(t, " ");
@@ -1509,6 +1526,8 @@ static void knob_arc(int32_t cx, int32_t cy, float v)
 }
 static float foot_norm(int i)            /* the page's knob i, 0..1, or -1 (no gauge) */
 {
+    if (FX_PSX())
+        return psxp_norm(i);
     if (ui.page == PG_HOME && ui.shown == -1)   /* AFFINE: the gestures (FILTER -1..1, drawn from the middle) */
         return i == 0 ? set.fx.dj : i == 1 ? set.psx.crush : i == 2 ? set.psx.redux : set.psx.send;
     if (ui.page == PG_FX && !mb_detail(fx_foc()) && !x_detail(fx_foc())) {
@@ -1556,8 +1575,8 @@ static const char *knob_name(int i)
         name = "ARP FX";                 /* (0.9.45: BLACK KEYS, an ARP key's own effect) */
     if (ui.page == PG_TRACK && !ui.tpage && !RST_ON && i >= 2 && trk_now()->it[ui.trk_cur % TRK_ITEMS] == TI_DROP)
         name = i == 2 ? "STUTTER" : "GAP KEEPS";   /* (0.9.26: a DROP item's K3, K4) */
-    if (ui.page == PG_FX)            /* the focused slot's effect: its settings, then MIX */
-        name = fx_param_name(ui.fx_focus, (int)i);
+    if (ui.page == PG_FX)            /* the focused slot's effect: its settings, then MIX (AFFINE: the PSX page's) */
+        name = FX_PSX() ? psxp_name((int)i) : fx_param_name(ui.fx_focus, (int)i);
     else if (ui.page == PG_KICK)
         name = kick_knob_name((int)i);
     else if (ui.page == PG_PERC)
@@ -2071,6 +2090,15 @@ void app_frame(void)
             rows_forget(0u, 240u);
             forget_t = now;
         }
+    }
+    if (FX_PSX() && !RST_ON && ui.shown == -1 && !(set.tut && set.tut <= TUT_N)) {
+        static uint32_t psx_t;           /* AFFINE: the PSX page, whole, in the POLYGON look */
+        if (ui.redraw || now - psx_t >= 50u) {
+            psx_t = now;
+            psxp_draw(now);
+        }
+        ui.redraw = 0u;
+        return;
     }
     if (ui.page == PG_HOME && !RST_ON && ui.shown >= -1 && !(set.tut && set.tut <= TUT_N)) {
         static uint32_t home_t;          /* AFFINE: HOME in the POLYGON look, whole, about 30 times a second (the

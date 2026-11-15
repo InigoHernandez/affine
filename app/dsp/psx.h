@@ -86,6 +86,10 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
 float psx_crush_bits(float crush);       /* a gesture's value as the screen says it: bits; Hz */
 float psx_redux_hz(float redux);
 uint32_t psx_verb_busy(void);            /* 1: SPU VERB is sounding (its tail, a freeze) */
+/* for the screen: a preset's four early echoes (its combs: ms after the sound goes in, at SIZE, and their gains
+ * -1..1) and its tail (seconds to -60 dB at SIZE 1, measured by tests/engine/psx_demo.c) */
+void psx_verb_taps(uint32_t type, float size, float *ms, float *gain);
+float psx_verb_tail(uint32_t type);
 
 /* 8-bit mu-law (G.711), for the delay line: 14-bit range in, a byte out and back */
 uint8_t psx_ulaw_enc(int32_t s);         /* s: -32768..32767 */

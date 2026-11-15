@@ -686,6 +686,16 @@ static void fx_algo(int32_t d, uint32_t sel)
     uint32_t base = 0u, ns = fx_nslots();
     uint32_t a = fx_foc(), b = base + (a - base + (d > 0 ? 1u : ns - 1u)) % ns;
     char n[8];
+    if (!sel) {                          /* AFFINE: SELECT goes round the slots, then PSX (focus BRK_FX_SLOTS: psxp.c) */
+        uint32_t cur = ui.fx_focus == BRK_FX_SLOTS ? ns : fx_foc(), nx = (cur + (d > 0 ? 1u : ns)) % (ns + 1u);
+        ui.fx_focus = (uint8_t)(nx == ns ? BRK_FX_SLOTS : nx);
+        ui.fx_page = 0u;
+        page_say();
+        ui.redraw |= RG_ALL;
+        return;
+    }
+    if (ui.fx_focus == BRK_FX_SLOTS)     /* (the PSX page: nothing to move) */
+        return;
     if (sel) {
         brk_fxslot_t tmp = *fx_sl(a);
         brk_mbc_t tm = *mbc_at(a);

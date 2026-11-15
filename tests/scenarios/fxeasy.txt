@@ -2,7 +2,7 @@
 # PRESETS the short list (EMPTY, FILTER, CRUNCH, DRIVE, FLANGER, DELAY, TAPE, CLIP; AFFINE: REVERB retired), then
 # MAGIC EQ, MAGIC MBC.
 # In EXPERT the third slot gets a FILTER, focused; BEGINNER on: the focus back on the first, ALGORITHM goes round the
-# two. (AFFINE: the DST and SUB keys' part gone with the hardcore kick.)
+# two, then the PSX page (AFFINE), then the first again. (AFFINE: the DST and SUB keys' part gone with the hardcore kick.)
 #   app/build/host/affine_host tests/scenarios/fxeasy.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -27,6 +27,9 @@ expect fx_focus 0
 turn SELECT 1 80
 wait 200
 expect fx_focus 1
+turn SELECT 1 80
+wait 200
+expect fx_focus 4
 turn SELECT 1 80
 wait 200
 expect fx_focus 0
