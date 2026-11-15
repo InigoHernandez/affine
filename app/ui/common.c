@@ -172,44 +172,31 @@ static void scr_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 /* GLOUPI BREAKS: the screen's colours, picked on GLOBAL's MORE page (K1) and saved (set.skin). fm1-base's palette
  * (gfx.c pal[]: rules, dim, labels, secondary, values) and the app's own (a block's ground, the block sounding, the
  * white, TAP TEMPO's unlit segments and metronome) from one table */
-#define NSKINS 24u
-/* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.237: the 1.0's skins, picked, ordered and named by him on listening-page style
- * checklists from 48 rendered on the simulator; two rows of twelve swatches on SETUP). Saved as SKIN_NEW | its place:
- * an older save's place in the 18 before is mapped (SKIN_OLD) to the nearest kept */
+#define NSKINS 5u                        /* AFFINE: its own five (LOAF BREAKER's 24 were FLEXOR's) */
+/* AFFINE: the skins, each a palette whose colours have jobs (the handbook's rule): the ground, the cards, rules,
+ * inactive things, labels, the amounts (cool), what plays now (hot), text. POLYGON first, a new FM-1's (the owner's
+ * look, 15 Nov 2026); the others in the era's other moods. Saved as SKIN_NEW | its place */
 #define SKIN_NEW 0x80u
-#define SKIN_DEFAULT 10u                 /* (RED, LOAF BREAKER's own, 0.240; CHOPPAH 0.237-0.239) */
-static const char *const SKIN_NAME[NSKINS] = {"CHROME", "FIRE&ICE", "CHOPPAH", "GLOUPI", "TESS", "OUTRUN", "THUNDER", "CYBERPUNK", "MC SALO", "ACID", "RED", "GARRY", "PIP-BOY", "NEON", "BLACKLIGHT", "PATINA", "SYNTHWAVE", "MIAMI", "ELECTRIC", "ARCTIC", "BREADCRUMBZ", "IRIS", "GLUCKSMAN", "MAXENCE"};
-static const uint8_t SKIN_OLD[18] = {10u, 2u, 19u, 12u, 21u, 23u, 15u, 20u, 0u, 23u, 16u, 17u, 11u, 17u, 3u, 6u, 3u, 9u};   /* (RED AMBER ICE-BLUE PIP-BOY IRIS
-                                          * PINK MINT WHITE BLOOD MAXENCE SYNTHWAVE VAPOR TOXIC MIAMI LAVA GOLD BLAZE ACID) */
-/* each: line, dim, gray, mid (secondary), hi (values), block, white */
-static const uint8_t SKIN_RGB[NSKINS][7][3] = {
-    {{41, 41, 48}, {101, 101, 116}, {198, 198, 208}, {255, 40, 60}, {235, 240, 250}, {21, 21, 24}, {253, 254, 254}}   /* CHROME: chrome white and hot red on black */,
-    {{36, 36, 48}, {89, 89, 116}, {191, 191, 208}, {255, 60, 40}, {130, 230, 255}, {18, 18, 24}, {242, 252, 255}}   /* FIRE&ICE: icy cyan against fire red */,
-    {{34, 34, 40}, {74, 74, 82}, {150, 150, 158}, {232, 136, 30}, {255, 184, 70}, {24, 24, 30}, {255, 255, 255}}   /* CHOPPAH: AMBER until 0.236, CHOPPAH's own: orange */,
-    {{48, 24, 20}, {100, 56, 44}, {190, 160, 150}, {230, 30, 60}, {255, 140, 20}, {24, 10, 8}, {255, 240, 220}}   /* GLOUPI: LAVA until 0.236: molten orange over crimson */,
-    {{41, 14, 48}, {101, 39, 116}, {198, 159, 208}, {245, 60, 130}, {255, 196, 90}, {21, 7, 24}, {255, 249, 238}}   /* TESS: golden peach and magenta, a violet night */,
-    {{21, 10, 48}, {54, 31, 116}, {169, 155, 208}, {180, 60, 255}, {255, 140, 40}, {10, 5, 24}, {255, 244, 234}}   /* OUTRUN: retro orange and violet on a blue night */,
-    {{13, 17, 48}, {37, 47, 116}, {158, 165, 208}, {40, 120, 255}, {255, 240, 60}, {7, 9, 24}, {255, 254, 236}}   /* THUNDER: lightning yellow and electric blue */,
-    {{10, 43, 48}, {30, 105, 116}, {154, 201, 208}, {0, 240, 255}, {255, 236, 40}, {5, 22, 24}, {255, 253, 234}}   /* CYBERPUNK: neon yellow and cyan on a teal night */,
-    {{36, 48, 18}, {89, 116, 48}, {191, 208, 165}, {40, 255, 120}, {255, 225, 0}, {18, 24, 9}, {255, 252, 230}}   /* MC SALO: hazard yellow and radioactive green */,
-    {{46, 42, 14}, {98, 92, 40}, {196, 190, 140}, {255, 64, 28}, {255, 234, 0}, {22, 20, 6}, {255, 255, 228}}   /* ACID: acid yellow, a red-orange beside it */,
-    {{34, 34, 40}, {74, 74, 82}, {150, 150, 158}, {232, 76, 60}, {255, 132, 112}, {24, 24, 30}, {255, 255, 255}}   /* RED: the red from the start, LOAF BREAKER's default (0.240, FLEXOR: in JUNGLE's place) */,
-    {{24, 40, 20}, {60, 90, 50}, {160, 190, 150}, {170, 60, 255}, {190, 255, 40}, {10, 18, 8}, {235, 255, 220}}   /* GARRY: TOXIC until 0.239: acid green, poison purple */,
-    {{14, 44, 22}, {30, 100, 54}, {80, 180, 110}, {40, 220, 100}, {140, 255, 170}, {8, 28, 14}, {200, 255, 210}}   /* PIP-BOY: an old terminal's green */,
-    {{48, 48, 48}, {116, 116, 116}, {208, 208, 208}, {255, 30, 150}, {60, 255, 40}, {24, 24, 24}, {236, 255, 234}}   /* NEON: neon green and neon pink on pure black */,
-    {{28, 12, 48}, {71, 35, 116}, {179, 157, 208}, {60, 255, 100}, {200, 100, 255}, {14, 6, 24}, {250, 240, 255}}   /* BLACKLIGHT: UV violet and fluorescent green */,
-    {{48, 41, 34}, {116, 101, 85}, {208, 198, 188}, {225, 115, 55}, {60, 225, 195}, {24, 21, 17}, {236, 252, 249}}   /* PATINA: verdigris and copper */,
-    {{44, 22, 82}, {96, 58, 150}, {186, 160, 226}, {255, 46, 170}, {40, 236, 255}, {20, 8, 44}, {255, 214, 236}}   /* SYNTHWAVE: neon cyan and hot magenta on indigo */,
-    {{20, 40, 56}, {50, 90, 110}, {150, 190, 200}, {0, 210, 200}, {255, 110, 150}, {8, 22, 32}, {255, 240, 230}}   /* MIAMI: hot coral on deep teal, turquoise */,
-    {{16, 16, 48}, {44, 44, 116}, {163, 163, 208}, {255, 40, 150}, {70, 170, 255}, {8, 8, 24}, {236, 246, 255}}   /* ELECTRIC: electric blue and hot pink */,
-    {{13, 22, 48}, {37, 58, 116}, {158, 172, 208}, {60, 130, 255}, {190, 245, 255}, {6, 11, 24}, {248, 254, 255}}   /* ARCTIC: ice white and steel blue, a polar night */,
-    {{34, 34, 40}, {74, 74, 82}, {150, 150, 158}, {196, 196, 202}, {236, 236, 240}, {24, 24, 30}, {255, 255, 255}}   /* BREADCRUMBZ: WHITE until 0.236: white and greys */,
-    {{34, 32, 44}, {76, 72, 90}, {152, 148, 166}, {150, 100, 240}, {196, 166, 255}, {24, 22, 34}, {255, 255, 255}}   /* IRIS: iris violet */,
-    {{21, 11, 48}, {56, 32, 116}, {170, 155, 208}, {255, 90, 200}, {140, 90, 255}, {11, 5, 24}, {244, 238, 255}}   /* GLUCKSMAN: deep violet and UV pink */,
-    {{60, 12, 48}, {130, 36, 110}, {240, 170, 225}, {255, 0, 170}, {255, 70, 215}, {44, 0, 34}, {255, 232, 250}}   /* MAXENCE: a very loud pink, neon on plum */};
+#define SKIN_DEFAULT 0u
+static const char *const SKIN_NAME[NSKINS] = {"POLYGON", "MEMCARD", "DISC", "BIOS", "AMBER"};
+/* each: line, dim, gray (labels), mid (amounts, secondary), hi (what plays, values), block (cards), white (text),
+ * ground */
+static const uint8_t SKIN_RGB[NSKINS][8][3] = {
+    {{40, 36, 84}, {84, 80, 130}, {120, 118, 150}, {70, 214, 200}, {255, 92, 40}, {24, 22, 52}, {236, 230, 214},
+     {6, 8, 20}},                        /* POLYGON: night, hot orange, cool teal (HOME's) */
+    {{40, 60, 130}, {80, 100, 170}, {150, 168, 210}, {120, 230, 255}, {255, 214, 80}, {20, 34, 96}, {240, 240, 232},
+     {8, 14, 48}},                       /* MEMCARD: the menus' deep blue, the cursor's gold */
+    {{40, 40, 48}, {70, 72, 80}, {110, 112, 120}, {255, 120, 200}, {60, 255, 140}, {22, 22, 26}, {232, 232, 226},
+     {8, 8, 10}},                        /* DISC: the disc's black, an LCD's green */
+    {{60, 66, 84}, {100, 108, 130}, {160, 168, 186}, {255, 180, 60}, {140, 200, 255}, {36, 40, 52}, {245, 247, 250},
+     {16, 18, 24}},                      /* BIOS: grey steel, a pale blue */
+    {{60, 36, 10}, {110, 70, 20}, {170, 110, 40}, {255, 170, 60}, {255, 210, 120}, {30, 18, 6}, {255, 236, 200},
+     {10, 6, 2}}};                       /* AMBER: a monochrome monitor */
+static const uint8_t SKIN_OLD[18] = {0u};   /* (LOAF's older saves: none under AFF1) */
 static uint32_t skin_idx(void) { return (set.skin & 0x7Fu) % NSKINS; }
 static uint32_t skin_old(uint32_t s) { return s < 18u ? SKIN_OLD[s] : SKIN_DEFAULT; }
-static uint16_t skin_block = RGB(24, 24, 30), skin_hi = RGB(255, 132, 112), skin_white = 0xFFFFu;
+static uint16_t skin_block = RGB(24, 22, 52), skin_hi = RGB(255, 92, 40), skin_white = RGB(236, 230, 214),
+                skin_bg = RGB(6, 8, 20);
 /* LOAF BREAKER: SERATO's colours for a wave's column: its lows, mids and highs (0..255 each) as one hue, red (the lows)
  * through yellow, green (the mids), cyan to blue (the highs), at full saturation, br bright (0..255) */
 static uint16_t serato_col(uint32_t lo, uint32_t mi, uint32_t hi, uint32_t br)
@@ -252,9 +239,12 @@ static void skin_apply(uint32_t s)
     skin_block = skin_rgb(c[5], 100u);
     skin_hi = skin_rgb(c[4], 100u);
     skin_white = skin_rgb(c[6], 100u);
+    skin_bg = skin_rgb(c[7], 100u);
 }
 #undef C_WHITE                           /* (the app's white is the skin's: put back after the UI, app.c's end) */
 #define C_WHITE skin_white
+#undef C_BLACK                           /* (AFFINE: the ground is the skin's too, POLYGON's night) */
+#define C_BLACK skin_bg
 
 enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_TRACK, PG_OVL, PG_HSET, NPAGES };
 /* (LOAF BREAKER, 0.9.2, FLEXOR: PG_HSET, HOME's SETTINGS after PERFORM and GENERATOR; PG_TRACK, ENV's TRACKS, PLAY, DROP
@@ -523,41 +513,7 @@ static int32_t cv_text2(int32_t x, int32_t y, const felucca_font_t *f, const cha
 /* a font at n times its size (TAP's tempo: 3) */
 static int32_t cv_textn(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c, uint32_t n)
 {
-    uint32_t r = c >> 11, g = (c >> 5) & 63u, b = c & 31u;
-    for (; *s; s++) {
-        uint32_t gi = glyph(f, (uint8_t)*s), gx, gy, w = f->bw[gi], bpr = (w + 1u) / 2u;
-        const uint8_t *gd = f->data + f->off[gi];
-#ifdef FONT_TRIM                         /* (LOAF BREAKER: the fonts stored trimmed, fm1.toml font_trim: the glyph its lit
-                                          * box, after its left, top and rows) */
-        int32_t ox = gd[0], oy = gd[1];
-        uint32_t rows = gd[2];
-        gd += 3;
-#else
-        int32_t ox = 0, oy = 0;
-        uint32_t rows = f->h;
-#endif
-        for (gy = 0; gy < rows; gy++)
-            for (gx = 0; gx < w; gx++) {
-                uint32_t a = gd[gy * bpr + gx / 2u], k;
-                a = (gx & 1u) ? (a & 15u) : (a >> 4);
-                if (!a)
-                    continue;
-                for (k = 0; k < n * n; k++) {
-                    int32_t px = x + (int32_t)n * ((int32_t)gx + ox - f->pad) + (int32_t)(k % n),
-                            py = y + (int32_t)n * ((int32_t)gy + oy) + (int32_t)(k / n) + cv_oy;
-                    uint32_t at, bg;
-                    if ((uint32_t)px >= cv_w || py < cv_y0 || py >= cv_y1)
-                        continue;
-                    at = (uint32_t)py * cv_w + (uint32_t)px;
-                    bg = swap16(cv_px[at]);
-                    cv_px[at] = swap16((((r * a + (bg >> 11) * (15u - a)) / 15u) << 11) |
-                                       (((g * a + ((bg >> 5) & 63u) * (15u - a)) / 15u) << 5) |
-                                       ((b * a + (bg & 31u) * (15u - a)) / 15u));
-                }
-            }
-        x += (int32_t)n * f->adv[gi];
-    }
-    return x;
+    return aff_cv_textn(x, y, f, s, c, n);   /* (AFFINE: the pixel face, n times its scale: affont.c) */
 }
 
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): a knob BEGINNER leaves out (drawn blank), turned: said where it is */

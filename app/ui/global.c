@@ -541,7 +541,7 @@ static void draw_hset(void)
     text_cat(t, v);
     text_cat(t, " BPM");
     cv_text(6, 2, &FONT_XS, "HOME HELD: WAVEFORM / SLICES", C_DIM);
-    cv_text(6, 14, &FONT_XS, set.wstyle ? "WAVE COLOURS AS SERATO'S" : "WAVE COLOURS AS REKORDBOX'S", C_DIM);
+    cv_text(6, 14, &FONT_XS, "GATE: HOW MUCH OF EVERY SLICE SOUNDS", C_DIM);   /* (AFFINE: K2) */
     cv_text(6, 26, &FONT_XS, t, C_DIM);
     cv_text(6, 38, &FONT_XS, "SELECT: TEMPO", C_DIM);
     cv_blit(0, 140);

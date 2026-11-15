@@ -118,6 +118,7 @@ static void grey_draw(const uint8_t *rle, uint32_t len, const uint16_t *pal, int
 
 /* fm1-base's first screen at power-on, while the breaks are decoded (APP_SPLASH): the mark and the name (LOAF
  * BREAKER: its picture, nearly the whole screen, the version at the top right; held 1.5 s, app_frame) */
+static void aff_title(uint32_t now, const char *top, const char *l1, const char *l2, const char *l3);
 static uint32_t splash_t;                /* when it was drawn (0: gone) */
 static void splash_glitch(uint32_t age)  /* LOAF BREAKER TEST: the start-up picture, its rows jumping, settling by 700 ms */
 {
@@ -150,77 +151,26 @@ void app_splash(void)
     }
     splash_t = plat_ms() | 1u;
 #else
-    cv_begin(240, 60, C_BLACK);
-    mark(10, 16u, 0);
-    cv_blit(0, 50);
-    cv_begin(240, 56, C_BLACK);
-    title(0);
-    cv_blit(0, 118);
-    {
+    {                                    /* AFFINE: its title, the version above it */
         char t[24];
         version_text(t);
-        cv_begin(240, 20, C_BLACK);
-        cv_text((240 - text_w(&FONT_T, t)) / 2, 2, &FONT_T, t, C_GRAY);
-        cv_blit(0, 210);
+        aff_title(plat_ms(), t, "", "", "");
     }
 #endif
 }
 
-static void intro_draw(uint32_t now)
+static void intro_draw(uint32_t now)      /* AFFINE: the start screen, its title moving (the floor, the gem) */
 {
-    uint32_t shown = (now - ui.intro_t0) / INTRO_STEP + 1u;
+    static uint32_t drawn_t;
     char t[32];
-    if (shown > 16u)
-        shown = 16u;
-    if (!ui.intro_drawn)                 /* GLOUPI BREAKS: the splash's picture away first (this screen draws in bands) */
-        lcd_fill(0, 0, 240, 240, C_BLACK);
-    if (shown != ui.intro_drawn) {       /* LOAF BREAKER: a bar of APACHE with the kick on 1 and 9 through SUB DRIVE,
-                                          * as the CDJ view draws it (pp_wave.h: the lows red, the mids green, the highs
-                                          * blue), across the screen, nearly as tall as it goes, coming in a step at a
-                                          * time, clean of the screen effects */
-        uint32_t x, band;
-        ui.intro_drawn = (uint8_t)shown;
-        for (band = 0; band < 2u; band++) {   /* (y 38..110, two bands of 36 about y 74) */
-            cv_begin(240, 36, C_BLACK);
-            for (x = 0; x < shown * 15u && x < 240u; x++) {
-                const uint8_t *v = PP_WAVE[x];
-                uint32_t m = v[0] > v[1] ? v[0] : v[1], br = 110u + (uint32_t)v[3] * 145u / 255u;
-                int32_t h = (int32_t)((uint32_t)v[3] * 32u / 255u);
-                if (v[2] > m)
-                    m = v[2];
-                if (m && h)
-                    cv_rect((int32_t)x, 36 - (int32_t)band * 36 - h, 1, 2 * h + 1,
-                            RGB(v[0] * 255u / m * br / 255u, v[1] * 255u / m * br / 255u, v[2] * 255u / m * br / 255u));
-            }
-            sfx_splash_d = 255u;         /* (no screen effect on it: its colours clean) */
-            cv_blit(0, 38u + band * 36u);
-            sfx_splash_d = 0u;
-        }
-    }
-    if (ui.redraw & RG_HEAD) {
-        const brk_break_t *b = brk_get_break();
-        cv_begin(240, 20, C_BLACK);      /* the version, at the top */
-        version_text(t);
-        cv_text((240 - text_w(&FONT_T, t)) / 2, 2, &FONT_T, t, C_GRAY);
-        cv_blit(0, 16);
-#if CH_LOGO                              /* LOAF BREAKER: its lettering */
-        grey_draw(TITLE_RLE, sizeof TITLE_RLE, TITLE_PAL, TITLE_W, TITLE_H, (240 - TITLE_W) / 2, 114);
-#else
-        cv_begin(240, 56, C_BLACK);
-        title(0);
-        cv_blit(0, 118);
-#endif
-        cv_begin(240, 50, C_BLACK);
-        t[0] = 0;
-        text_cat(t, b ? b->name : "");
-        cv_text((240 - text_w(&FONT_XS, t)) / 2, 2, &FONT_XS, t, C_GRAY);
-        cv_text((240 - text_w(&FONT_T, "PRESS PLAY")) / 2, 20, &FONT_T, "PRESS PLAY", C_AMB);
-        cv_text((240 - text_w(&FONT_T, "BY FLEXOR - BASED ON CHOPPAH")) / 2, 36, &FONT_T,   /* (0.268, FLEXOR: his
-                                          * own firmware now, CHOPPAH credited) */
-                "BY FLEXOR - BASED ON CHOPPAH", C_DIM);
-        cv_blit(0, 190);
-        ui.redraw = 0u;
-    }
+    const brk_break_t *b = brk_get_break();
+    if (ui.intro_drawn && now - drawn_t < 40u && !(ui.redraw & RG_HEAD))
+        return;
+    drawn_t = now;
+    ui.intro_drawn = 1u;
+    version_text(t);
+    aff_title(now, t, b ? b->name : "", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+    ui.redraw = 0u;
 }
 
 /* RESET ALL's screen: a brain seen from the side, an ice pick in through the eye socket, the frontal lobe gone grey,
@@ -239,50 +189,9 @@ static int lobo_in(int32_t x, int32_t y)  /* inside the brain: the cerebrum (fla
         return 1;
     return x >= 146 && x < 162 && y >= 120 && y < 168;
 }
-static void draw_lobotomy(void)
+static void draw_lobotomy(void)          /* AFFINE: RESET ALL done: the title, everything cleared */
 {
-    uint32_t band;
-    for (band = 0; band < 4u; band++) {
-        int32_t top = (int32_t)band * 60, y, x, i;
-        cv_begin(240, 60, C_BLACK);
-        cv_oy = -top;                    /* (draw in screen rows: the canvas shows top..top + 59) */
-        for (y = top; y < top + 60 && y < 172; y++)
-            for (x = 30; x < 222; x++) {
-                float d, ex, ey;
-                uint16_t c;
-                if (!lobo_in(x, y))
-                    continue;
-                ex = (float)(x - 58);    /* the pick's tip, in the frontal lobe */
-                ey = (float)(y - 96);
-                if (!lobo_in(x - 1, y) || !lobo_in(x + 1, y) || !lobo_in(x, y - 1) || !lobo_in(x, y + 1))
-                    c = LB_EDGE;
-                else {                   /* the folds: two wavy fields crossing */
-                    d = brk_sin_turns((float)x * 0.045f + 0.35f * brk_sin_turns((float)y * 0.03f + (float)x * 0.01f)) +
-                        brk_sin_turns((float)y * 0.06f + 0.3f * brk_sin_turns((float)x * 0.025f));
-                    c = brk_absf(d) < 0.14f ? LB_FOLD : LB_PINK;
-                    if (x >= 140 && y >= 118)            /* the cerebellum: finer, level folds */
-                        c = brk_sin_turns((float)y * 0.28f) > 0.6f ? LB_FOLD : LB_PINK;
-                }
-                if (ex * ex + ey * ey < 576.0f)          /* what the pick took: gone grey */
-                    c = c == LB_PINK ? LB_DEAD : c == LB_FOLD ? RGB(52, 52, 58) : c;
-                cv_rect(x, y, 1, 1, c);
-            }
-        for (i = 0; i <= 120; i++) {     /* the pick: a handle, then the shaft up to the tip */
-            int32_t px = 4 + (58 - 4) * i / 120, py = 196 - (196 - 96) * i / 120;
-            if (i < 40)
-                cv_rect(px - 2, py - 2, 5, 5, C_AMB);
-            else
-                cv_rect(px, py, 2, 2, i > 112 ? C_WHITE : C_GRAY);
-        }
-        for (x = 96; x < 236; x++) {     /* the flatline, one last blip */
-            int32_t b = x >= 112 && x < 124 ? (x < 116 ? -(x - 112) * 4 : x < 120 ? -16 + (x - 116) * 6 : 8 - (x - 120) * 2) : 0;
-            cv_rect(x, 182 + b, 1, 2, x < 124 ? C_HI : C_GRAY);
-        }
-        cv_text2((240 - text2_w(&FONT_B, "LOBOTOMIZED")) / 2, 194, &FONT_B, "LOBOTOMIZED", C_HI);
-        cv_text((240 - text_w(&FONT_XS, "ALL SETTINGS CLEARED")) / 2, 226, &FONT_XS, "ALL SETTINGS CLEARED", C_GRAY);
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)top);
-    }
+    aff_title(plat_ms(), "", "ALL CLEARED", "AS A NEW FM-1", "");
 }
 
 /* the start screen's lights: a comet runs through the buttons as the break drops in (OCT- and OCT+, the top row left

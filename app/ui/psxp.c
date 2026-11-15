@@ -308,8 +308,7 @@ static void psxp_draw(uint32_t now)
     char gv[4][12];
     for (top = 0; top < 240; top += 60) {
         cv_begin(240, 60, A_BG0);
-        if (!a_ready)
-            aff_init();
+        aff_check();
         /* the header: PSX and its parts, the one shown lit */
         if (top < 40) {
             int32_t x = 8;

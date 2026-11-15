@@ -120,7 +120,7 @@ static void home_draw(const brk_status_t *st, uint32_t now)
 {
     static int32_t slice_was = -2;
     static uint32_t kick_ms, steps;
-    static char gv[4][8];
+    static char gv[4][12];
     aff_home_t h;
     int32_t i, top;
     uint8_t *z = (uint8_t *)&h;
@@ -150,19 +150,37 @@ static void home_draw(const brk_status_t *st, uint32_t now)
         h.msg0 = ui.msg[0];
         h.msg1 = ui.msg[1];
     }
-    for (i = 0; i < 4; i++) {
-        float g = foot_norm(i);
-        h.gl[i] = knob_name(i);
-        if (ui.shown == -1 && ui.page == PG_HOME)
-            home_gest_text(i, gv[i], 1);
-        else {
-            char t[24];
-            uint32_t k;
-            knob_value(i, t);
-            for (k = 0; k < 7u && t[k]; k++)
-                gv[i][k] = t[k];
-            gv[i][k] = 0;
+    for (i = 0; i < 4; i++) {            /* the knobs as LOAF's foot has them: a key held, KIL, a pad, else HOME's */
+        char t[24];
+        uint32_t k;
+        float g = -1.0f;
+        t[0] = 0;
+        h.gl[i] = "";
+        if (ui.shown >= 100) {
+            if (!set.novice) {
+                h.gl[i] = ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i];
+                if (ui.key_layer)
+                    slx_knob_value(ui.shown - 100, (int)i, t);
+                else
+                    key_knob_value(ui.shown - 100, (int)i, t);
+            }
+        } else if (ui.kil_focus && i == 0) {
+            h.gl[i] = "LATCH";
+            text_cat(t, set.half_mt_off & 4u ? "ON" : "OFF");
+        } else if (ui.shown >= 0) {
+            const char *pn = pad_knob_name(ui.shown, (int)i);
+            if (pn) {
+                h.gl[i] = pn;
+                pad_knob_value(ui.shown, (int)i, t);
+            }
+        } else {
+            h.gl[i] = knob_name(i);
+            home_gest_text(i, t, 1);
+            g = foot_norm(i);
         }
+        for (k = 0; k < 11u && t[k]; k++)
+            gv[i][k] = t[k];
+        gv[i][k] = 0;
         h.gvp[i] = gv[i];
         h.g[i] = g;
     }
@@ -729,7 +747,7 @@ static void input(void)
                 }
             }
             app_say(PERC_VOICE_NAME[ui.pvoice % PERC_VOICES], ui.kclassic ? "CLASSIC VIEW" : ui.kview ? "WAVE VIEW" :
-                    set.wstyle ? "RGB VIEW (SERATO)" : "RGB VIEW (REKORDBOX)");
+                    "RGB VIEW");
             ui.redraw |= RG_BLOCKS | RG_WAVE | RG_FOOT;
             if (!ui.kclassic)
                 lcd_fill(0, 44, 240, 44, C_BLACK);
@@ -1571,7 +1589,7 @@ static const char *knob_name(int i)
                                               {"", "", "", ""},
                                               {"", "PUT", "LOOPS", "BREAK"},
                                               {"AMOUNT", "RATE", "SWEEP", "LATCH"},
-                                              {"VIEW", "WAVE TYPE", "WAVE ZOOM", "BREAK TIME"}};
+                                              {"VIEW", "GATE", "WAVE ZOOM", "BREAK TIME"}};   /* (AFFINE: K2 the gate) */
     static const char *const KN_PITCH[4] = {"PITCH", "GRAIN", "SNAP", "LEVEL"};   /* (SOUNDS' BREAK) */
     static const char *const KN_GROOVE[3][4] = {{"FX", "DRUMS", "ARP", "ROLL"}, {"COMP", "RATIO", "DUCK", "MAX OUT"},
                                                 {"C ATTACK", "C RELEASE", "D RELEASE", "DUCKS"}};
@@ -1618,62 +1636,60 @@ static const char *knob_name(int i)
         name = "METER";              /* (LOAF BREAKER, 0.213: SYSTEM › MIDI K3, EXPERT only) */
     return name ? name : "";
 }
-/* the foot: the pads, then the page and its knobs with their values */
+/* the foot: the pads, then the page and its knobs with their values. AFFINE (POLYGON): a slim strip of the black keys'
+ * functions (lit when on), then the four knobs two by two as HOME's panel (aff_knob_cell: 2x where they fit, the
+ * gauge under) */
 static void draw_foot(const brk_status_t *st)
 {
     uint32_t i;
-    char t[16];
+    char t[24];
     draw_tabs();
     cv_begin(240, 48, C_BLACK);
-    for (i = 0; i < 11u; i++) {          /* (LOAF BREAKER: each key's function, the layout's) */
+    aff_check();
+    for (i = 0; i < 11u; i++) {          /* (each key's function, the layout's) */
         uint32_t f = bk_fn(i);
         int on = f == BKF_ARP ? arpk_on(i) : bkf_lit(f, st);
         int32_t x = 2 + (int32_t)i * 21;
-        cv_rect(x, 0, 20, 14, on ? C_HI : C_BLOCK);
-        cv_text(x + (20 - text_w(&FONT_T, BKF_NAME[f])) / 2, 1, &FONT_T, BKF_NAME[f], on ? C_BLACK : C_GRAY);
+        cv_rect(x, 0, 20, 10, on ? C_HI : C_BLOCK);
+        aff_text(x + 10, 2, BKF_NAME[f], 1, on ? C_BLACK : C_GRAY, 0, 2);
     }
+    cv_rect(0, 11, 240, 1, C_LINE);
+    for (i = 14u; i < 48u; i += 2u)      /* (the two columns apart: a dotted rule) */
+        cv_rect(120, (int32_t)i, 1, 1, C_LINE);
     for (i = 0; i < 4u; i++) {
         const char *name = knob_name((int)i);
-        if (ui.shown >= 100 && set.novice)
-            continue;                    /* (LOAF BREAKER: BEGINNER, a key held: no knob) */
-        if (ui.shown >= 100) {           /* a white key held: its loop, or its slice's effect */
-            cv_text(4 + (int32_t)i * 60, 18, &FONT_T, ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i], C_HI);
+        int32_t x = 4 + (int32_t)(i & 1u) * 122, y = 15 + (int32_t)(i >> 1) * 17;
+        float nv = -1.0f;
+        uint16_t nc = C_GRAY;
+        t[0] = 0;
+        if (ui.shown >= 100) {           /* a white key held: its loop, or its slice's effect (BEGINNER: none) */
+            if (set.novice)
+                continue;
+            name = ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i];
             if (ui.key_layer)
                 slx_knob_value(ui.shown - 100, (int)i, t);
             else
                 key_knob_value(ui.shown - 100, (int)i, t);
-            cv_text(4 + (int32_t)i * 60, 30, &FONT_XS, t, C_WHITE);
-            continue;
-        }
-        if (ui.kil_focus && i == 0u && ui.shown < 100) {   /* LOAF BREAKER: KIL held: K1 its LATCH */
-            cv_text(4, 18, &FONT_T, "LATCH", C_HI);
-            cv_text(4, 30, &FONT_XS, set.half_mt_off & 4u ? "ON" : "OFF", C_WHITE);
-            continue;
-        }
-        if (ui.shown >= 0) {             /* a pad held: its own settings */
+            nc = C_HI;
+        } else if (ui.kil_focus && i == 0u) {   /* KIL held: K1 its LATCH */
+            name = "LATCH";
+            text_cat(t, set.half_mt_off & 4u ? "ON" : "OFF");
+            nc = C_HI;
+        } else if (ui.shown >= 0) {      /* a pad held: its own settings */
             name = pad_knob_name(ui.shown, (int)i);
             if (!name)
                 continue;
-            cv_text(4 + (int32_t)i * 60, 18, &FONT_T, name, C_HI);
             pad_knob_value(ui.shown, (int)i, t);
-            cv_text(4 + (int32_t)i * 60, 30, &FONT_XS, t, C_WHITE);
-            continue;
+            nc = C_HI;
+        } else {
+            if (!trk_knob_ok((int)i) || !glo_knob_ok((int)i))   /* (BEGINNER: a knob it leaves out: blank) */
+                continue;
+            knob_value((int)i, t);
+            nv = foot_norm((int)i);
+            if (ui.page == PG_FX && !FX_PSX())
+                nc = fx_sl(fx_foc())->on ? C_GRAY : C_DIM;
         }
-        if (!trk_knob_ok((int)i) || !glo_knob_ok((int)i))   /* (LOAF BREAKER: BEGINNER, a knob it leaves out: blank) */
-            continue;
-        cv_text(4 + (int32_t)i * 60, 18, &FONT_T, name, ui.page == PG_FX
-                ? (fx_sl(fx_foc())->on ? C_HI : C_DIM) : C_GRAY);
-        knob_value((int)i, t);
-        if (text_w(&FONT_XS, t) > 54)    /* (LOAF BREAKER, 0.238: a value wider than its column, GLUCKSMAN: the
-                                          * smaller letters, from 2 px to the left, not into the next; 0.239: 54) */
-            cv_text(2 + (int32_t)i * 60, 31, &FONT_T, t, C_WHITE);
-        else
-            cv_text(4 + (int32_t)i * 60, 30, &FONT_XS, t, C_WHITE);
-        {                                /* (TEST: its arc, where there is room beside the value) */
-            float nv = foot_norm((int)i);
-            if (nv >= 0.0f && text_w(&FONT_XS, t) <= 38)
-                knob_arc(4 + (int32_t)i * 60 + 49, 37, nv);
-        }
+        aff_knob_cell(x, y, 110, name, t, nv, 0, nc, 0);   /* (the canvas is the foot: its own rows) */
     }
     cv_blit(0, 192);
 }
@@ -2111,6 +2127,17 @@ void app_frame(void)
             rows_forget(0u, 240u);
             forget_t = now;
         }
+    }
+    {                                    /* AFFINE: off a POLYGON page (HOME, PSX) onto LOAF's: everything drawn again (their
+                                          * pictures covered rows LOAF's strips leave alone) */
+        static uint8_t was_aff;
+        uint8_t is_aff = (uint8_t)((ui.page == PG_HOME && ui.shown >= -1) || (FX_PSX() && ui.shown == -1)) &&
+                         !RST_ON && !(set.tut && set.tut <= TUT_N);
+        if (was_aff && !is_aff) {
+            ui.redraw |= RG_ALL;
+            rows_forget(0u, 240u);
+        }
+        was_aff = is_aff;
     }
     if (FX_PSX() && !RST_ON && ui.shown == -1 && !(set.tut && set.tut <= TUT_N)) {
         static uint32_t psx_t;           /* AFFINE: the PSX page, whole, in the POLYGON look */

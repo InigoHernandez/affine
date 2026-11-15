@@ -267,7 +267,7 @@ static void settings_defaults(void)
                                           * screenshots clean) */
     set.wzoom = 3u;                      /* (the scrolling wave: a bar across, as it was) */
     bk_defaults();                       /* (LOAF BREAKER: the black keys: CHOPPAH) */
-    set.skin = 0x8Au;                    /* (LOAF BREAKER, 0.240: RED, common.c's SKIN_NEW | SKIN_DEFAULT) */
+    set.skin = 0x80u;                    /* (AFFINE: POLYGON, common.c's SKIN_NEW | SKIN_DEFAULT) */
 #if defined(PLAT_HOST) && !defined(PLAT_WEB)
     set.novice = 0u;                     /* (TEST: the simulator's scenarios and the manual's screens see it all: EXPERT;
                                           * a scenario turns GLO MORE's K1 for BEGINNER) */
@@ -1986,6 +1986,7 @@ void app_panic(void)
 }
 
 /* ----------------------------------------------------------------------- UI --- */
+#include "ui/affont.c"                /* AFFINE: every page in its pixel font (before the pages) */
 #include "ui/common.c"
 #include "ui/fx.c"
 #include "ui/pads.c"
@@ -2015,3 +2016,5 @@ static void demo_leds(uint32_t now) { (void)now; }
 #include "ui/main.c"
 #undef C_WHITE                           /* (gfx.c's white again after the UI: skins, common.c) */
 #define C_WHITE 0xFFFFu
+#undef C_BLACK                           /* (and its black: AFFINE's ground is the skin's in the UI only) */
+#define C_BLACK 0x0000u

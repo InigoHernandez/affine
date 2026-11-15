@@ -6,9 +6,9 @@
 #include "brk.h"
 #include "brk_fx.h"
 
-#define APP_NAME "LOAF BREAKER"     /* LOAF BREAKER (was GLOUPI BREAKS): the name on the platform's screens */
-#define APP_TAGLINE "AMEN CHOPPER"
-#define APP_SPLASH_RGB RGB(255, 132, 112)   /* GLOUPI BREAKS red (gfx.c RED's brightest) */
+#define APP_NAME "AFFINE"           /* AFFINE: the name on the platform's screens (LOAF BREAKER's before) */
+#define APP_TAGLINE "JUNGLE BREAK CHOPPER"
+#define APP_SPLASH_RGB RGB(255, 92, 40)     /* AFFINE: POLYGON's hot orange */
 #define APP_SYS_TEXT                     /* the platform's own screens (crash, safe mode, update, calibration) write in
                                           * CHOPPAH's faces (app_sys_* in app.c): fm1-base's own 15- and 31-pixel ones
                                           * stay out of the flash (28 KB) */
@@ -48,7 +48,7 @@ void app_loop(void);
 void app_tick(void);
 int app_ble_at_boot(void);
 #define APP_BLE_AT_BOOT (app_ble_at_boot())
-#define BLE_DEVICE_NAME "CHOPPAH"
+#define BLE_DEVICE_NAME "AFFINE"
 /* Bluetooth audio out (fm1.toml bt_audio, PRD A-72): its packet queue (40 x 332 B) in the pool, not RAM (the RAM is
  * the tighter here: the reverb's lines are in it) */
 #define BP_MQ_ATTR PLAT_POOL

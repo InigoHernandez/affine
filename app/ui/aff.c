@@ -7,33 +7,46 @@
  *   whole pixels (it jitters as it turns), kicked by each new slice. Under it the four gestures, two by two.
  * Drawn in bands of the canvas's rows (240 x 60): aff_home_band(h, top) draws the screen's rows top .. top + 59 with
  * cv_rect / cv_pset only. The font is app/aff_font.h (MONO2K's, CC BY-SA 4.0), whole-pixel scales. */
-#include "aff_font.h"
 
 #define A_RGB(r, g, b) ((uint16_t)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
-/* the palette: each colour one job */
-#define A_BG0 A_RGB(6, 8, 20)                /* night: the page */
-#define A_BG1 A_RGB(30, 26, 64)              /* the sky's foot, empty bars */
-#define A_INK A_RGB(236, 230, 214)           /* text, values */
-#define A_DIM A_RGB(120, 118, 150)           /* labels, rules */
-#define A_HOT A_RGB(255, 92, 40)             /* what plays now (one colour, one job) */
-#define A_COOL A_RGB(70, 214, 200)           /* the effects' amounts */
+/* the palette: each colour one job. In the firmware the skin's (common.c: POLYGON's by default); off the device
+ * (tests/look/home.c) POLYGON's own */
+#ifdef NSKINS
+#define A_BG0 C_BLACK                        /* night: the page (the skin's ground) */
+#define A_BG1 C_BLOCK                        /* the cards, empty bars */
+#define A_INK C_WHITE                        /* text, values */
+#define A_DIM C_GRAY                         /* labels, rules */
+#define A_HOT C_HI                           /* what plays now (one colour, one job) */
+#define A_COOL C_AMB                         /* the effects' amounts */
+#else
+#define A_BG0 A_RGB(6, 8, 20)
+#define A_BG1 A_RGB(24, 22, 52)
+#define A_INK A_RGB(236, 230, 214)
+#define A_DIM A_RGB(120, 118, 150)
+#define A_HOT A_RGB(255, 92, 40)
+#define A_COOL A_RGB(70, 214, 200)
+#endif
 
 static const uint8_t A_BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
 
 /* a ramp: n colours from a to b (RGB 8-bit triples), the dither picks between neighbours */
 #define A_RAMP 5u
 typedef struct { uint16_t c[A_RAMP]; } a_ramp_t;
-static void a_ramp(a_ramp_t *r, uint32_t a, uint32_t b)   /* a, b: 0xRRGGBB */
+static void a_ramp3(a_ramp_t *r, const uint8_t *a, const uint8_t *b)
 {
-    uint32_t i;
+    uint32_t i, k;
     for (i = 0; i < A_RAMP; i++) {
-        uint32_t ch[3], k;
-        for (k = 0; k < 3u; k++) {
-            int32_t x = (int32_t)(a >> (16u - 8u * k) & 255u), y = (int32_t)(b >> (16u - 8u * k) & 255u);
-            ch[k] = (uint32_t)(x + (y - x) * (int32_t)i / (int32_t)(A_RAMP - 1u));
-        }
+        uint32_t ch[3];
+        for (k = 0; k < 3u; k++)
+            ch[k] = (uint32_t)((int32_t)a[k] + ((int32_t)b[k] - (int32_t)a[k]) * (int32_t)i / (int32_t)(A_RAMP - 1u));
         r->c[i] = A_RGB(ch[0], ch[1], ch[2]);
     }
+}
+static void a_mix3(uint8_t *o, const uint8_t *a, const uint8_t *b, int32_t pct)   /* o = a + (b - a) x pct % */
+{
+    uint32_t k;
+    for (k = 0; k < 3u; k++)
+        o[k] = (uint8_t)((int32_t)a[k] + ((int32_t)b[k] - (int32_t)a[k]) * pct / 100);
 }
 /* t 0..256 to a ramp's colour at pixel (x, y): the step below or above by the Bayer matrix */
 static inline uint16_t a_dith(const a_ramp_t *r, int32_t t, int32_t x, int32_t y)
@@ -48,72 +61,47 @@ static inline uint16_t a_dith(const a_ramp_t *r, int32_t t, int32_t x, int32_t y
 }
 static a_ramp_t ar_sky, ar_floor0, ar_floor1, ar_lane, ar_lane2, ar_gem_hi, ar_gem_lo, ar_bar;
 static uint8_t a_ready;
+static uint32_t a_skin = 0xFFu;          /* (the skin the ramps were made for) */
+/* the dither ramps from the palette: the sky from the ground to the cards, the floor's two tiles, the lane and the
+ * gem from the hot colour, the gauges from the cards to the amounts' colour */
 static void aff_init(void)
 {
-    a_ramp(&ar_sky, 0x060814u, 0x1E1A40u);
-    a_ramp(&ar_floor0, 0x060814u, 0x22204Au);
-    a_ramp(&ar_floor1, 0x060814u, 0x403A78u);
-    a_ramp(&ar_lane, 0x060814u, 0xFF5C28u);
-    a_ramp(&ar_lane2, 0x060814u, 0xFFA060u);
-    a_ramp(&ar_gem_hi, 0x6E2014u, 0xFFB070u);   /* (the faces turned up catch the light) */
-    a_ramp(&ar_gem_lo, 0x1E0A18u, 0xC0452Au);
-    a_ramp(&ar_bar, 0x1E1A40u, 0x46D6C8u);
+    static const uint8_t POLY[8][3] = {{40, 36, 84}, {84, 80, 130}, {120, 118, 150}, {70, 214, 200}, {255, 92, 40},
+                                       {24, 22, 52}, {236, 230, 214}, {6, 8, 20}};
+    const uint8_t (*c)[3] = POLY;
+    uint8_t t1[3], t2[3];
+#ifdef NSKINS
+    c = SKIN_RGB[skin_idx()];
+    a_skin = skin_idx();
+#endif
+    a_ramp3(&ar_sky, c[7], c[5]);
+    a_ramp3(&ar_floor0, c[7], c[0]);
+    a_mix3(t1, c[0], c[1], 50);
+    a_ramp3(&ar_floor1, c[7], t1);
+    a_ramp3(&ar_lane, c[7], c[4]);
+    a_mix3(t1, c[4], c[6], 40);
+    a_ramp3(&ar_lane2, c[7], t1);
+    a_mix3(t1, c[4], c[7], 55);
+    a_mix3(t2, c[4], c[6], 45);
+    a_ramp3(&ar_gem_hi, t1, t2);
+    a_mix3(t1, c[4], c[7], 85);
+    a_mix3(t2, c[4], c[7], 20);
+    a_ramp3(&ar_gem_lo, t1, t2);
+    a_ramp3(&ar_bar, c[5], c[3]);
     a_ready = 1u;
 }
+static void aff_check(void)              /* (the ramps made again after the skin changes) */
+{
+#ifdef NSKINS
+    if (!a_ready || a_skin != skin_idx())
+        aff_init();
+#else
+    if (!a_ready)
+        aff_init();
+#endif
+}
 
-/* ---------------------------------------------------------------------------------------------- the font --- */
-static int32_t aff_text_w(const char *s, int32_t z)
-{
-    int32_t w = 0;
-    for (; *s; s++) {
-        uint32_t c = (uint8_t)*s;
-        if (c >= 'a' && c <= 'z')
-            c -= 32u;
-        w += (int32_t)(c >= AFF_FIRST && c <= AFF_LAST ? AFF_W[c - AFF_FIRST] : 2u) * z + z;
-    }
-    return w > 0 ? w - z : 0;
-}
-/* s at (x, y) (y: the capitals' top), z times; band: the screen row the canvas starts at. align 0 left, 1 right,
- * 2 centre. Returns the x after it */
-static int32_t aff_text(int32_t x, int32_t y, const char *s, int32_t z, uint16_t c, int32_t band, int align)
-{
-    if (align == 1)
-        x -= aff_text_w(s, z);
-    else if (align == 2)
-        x -= aff_text_w(s, z) / 2;
-    y -= (int32_t)AFF_CAP_TOP * z + band;
-    if (y + (int32_t)AFF_ROWS * z <= 0 || y >= 60)
-        return x + aff_text_w(s, z);
-    for (; *s; s++) {
-        uint32_t ch = (uint8_t)*s, g, r, w;
-        if (ch >= 'a' && ch <= 'z')
-            ch -= 32u;
-        if (ch < AFF_FIRST || ch > AFF_LAST) {
-            x += 3 * z;
-            continue;
-        }
-        g = ch - AFF_FIRST;
-        w = AFF_W[g];
-        for (r = 0; r < AFF_ROWS; r++) {
-            uint32_t bits = AFF_BITS[g * AFF_ROWS + r], k = 0;
-            while (bits) {               /* runs of lit pixels as one rect each */
-                uint32_t run = 0;
-                while (!(bits & 0x80u)) {
-                    bits = (bits << 1) & 0xFFu;
-                    k++;
-                }
-                while (bits & 0x80u) {
-                    bits = (bits << 1) & 0xFFu;
-                    run++;
-                }
-                cv_rect(x + (int32_t)k * z, y + (int32_t)r * z, (int32_t)run * z, z, c);
-                k += run;
-            }
-        }
-        x += (int32_t)w * z + z;
-    }
-    return x - z;
-}
+/* (the font: app/ui/affont.c, included before the pages: every page writes in it) */
 
 /* ------------------------------------------------------------------------------------------------- HOME --- */
 typedef struct {
@@ -354,12 +342,31 @@ static void home_bar(int32_t x, int32_t y, int32_t w, float amt, int bipolar, in
     }
 }
 
+/* a knob's cell: its name left, its value right, both 2x if they fit the width, else the name at 1x, then the value;
+ * its gauge under them (norm -1: none; bip: from the middle, -1..1). y: the capitals' top on the screen */
+static void aff_knob_cell(int32_t x, int32_t y, int32_t w, const char *name, const char *v, float norm, int bip,
+                          uint16_t ncol, int32_t band)
+{
+    int32_t lw, vw, lz, vz;
+    if (!name || !name[0])
+        return;
+    v = v ? v : "";
+    lw = aff_text_w(name, 2);
+    vw = aff_text_w(v, 2);
+    lz = lw + vw + 6 <= w ? 2 : 1;
+    lw = aff_text_w(name, lz);
+    vz = lw + vw + 6 <= w ? 2 : 1;
+    aff_text(x, lz == 2 ? y : y + 3, name, lz, ncol, band, 0);
+    aff_text(x + w, vz == 2 ? y : y + 3, v, vz, A_INK, band, 1);
+    if (norm >= 0.0f || (bip && norm >= -1.0f))
+        home_bar(x, y + 13, w, norm, bip, band);
+}
+
 static void aff_home_band(const aff_home_t *h, int32_t band)
 {
     int32_t x, y, i;
     char t[24];
-    if (!a_ready)
-        aff_init();
+    aff_check();
     /* the sky: night down to the horizon, dithered */
     for (y = band; y < band + 60 && y < AH_PANEL; y++) {
         int32_t k = y < AH_HORIZ ? y * 256 / AH_HORIZ : 0;
@@ -440,12 +447,55 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
         cv_rect(0, AH_PANEL - band, 240, 1, A_DIM);
         for (i = 0; i < 4; i++) {
             int32_t gx = 8 + (i & 1) * 120, gy = 198 + (i >> 1) * 21;
-            if (!h->gl[i] || !h->gl[i][0])
-                continue;
-            aff_text(gx, gy, h->gl[i], 2, A_DIM, band, 0);
-            aff_text(gx + 106, gy, h->gvp[i] ? h->gvp[i] : "", 2, A_INK, band, 1);
-            if (h->g[i] >= -1.0f && (h->g[i] >= 0.0f || (h->bip >> i & 1u)))
-                home_bar(gx, gy + 13, 106, h->g[i], (int)(h->bip >> i & 1u) && i == 0, band);
+            aff_knob_cell(gx, gy, 106, h->gl[i], h->gvp[i], h->g[i], (int)(h->bip >> i & 1u) && i == 0, A_DIM, band);
         }
+    }
+}
+
+/* AFFINE's title screen (the boot, the start screen, RESET ALL's): the night, the floor drifting toward us, the gem
+ * turning, AFFINE large above it; under the floor up to three lines: l1 at 2x (the break), l2 hot (PRESS PLAY), l3
+ * small and dim (the credit); top: the version, small */
+static void aff_title_band(int32_t band, uint32_t now, const char *top, const char *l1, const char *l2, const char *l3)
+{
+    aff_home_t h;
+    int32_t x, y;
+    uint8_t *z = (uint8_t *)&h;
+    uint32_t i;
+    for (i = 0; i < sizeof h; i++)
+        z[i] = 0u;
+    aff_check();
+    h.slice = -1;
+    h.steps = now / 600u;
+    h.phase = (float)(now % 600u) / 600.0f;
+    h.t_ms = now;
+    h.kick_ms = now - 1000u;
+    for (y = band; y < band + 60 && y < AH_PANEL; y++) {
+        int32_t k = y < AH_HORIZ ? y * 256 / AH_HORIZ : 0;
+        for (x = 0; x < 240; x++)
+            cv_pset(x, y - band, y < AH_HORIZ ? a_dith(&ar_sky, k, x, y) : A_BG0);
+    }
+    if (band + 60 > AH_PANEL)
+        cv_rect(0, AH_PANEL - band, 240, 240 - AH_PANEL, A_BG0);
+    if (band <= AH_HORIZ && band + 60 > AH_HORIZ)
+        cv_rect(0, AH_HORIZ - band, 240, 1, A_DIM);
+    home_floor(&h, band);
+    home_gem(&h, band);
+    if (top && top[0])
+        aff_text(120, 4, top, 1, A_DIM, band, 2);
+    aff_text(120, 16, "AFFINE", 4, A_INK, band, 2);
+    if (l1 && l1[0])
+        aff_text(120, 198, l1, 2, A_INK, band, 2);
+    if (l2 && l2[0])
+        aff_text(120, 215, l2, 1, A_HOT, band, 2);
+    if (l3 && l3[0])
+        aff_text(120, 228, l3, 1, A_DIM, band, 2);
+}
+static void aff_title(uint32_t now, const char *top, const char *l1, const char *l2, const char *l3)
+{
+    int32_t t;
+    for (t = 0; t < 240; t += 60) {
+        cv_begin(240, 60, A_BG0);
+        aff_title_band(t, now, top, l1, l2, l3);
+        cv_blit(0, (uint32_t)t);
     }
 }

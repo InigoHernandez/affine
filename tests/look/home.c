@@ -20,6 +20,11 @@ static void cv_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
         for (i = x; i < x + w; i++)
             cv_pset(i, j, c);
 }
+static void cv_begin(uint32_t w, uint32_t h, uint16_t bg) { (void)w; (void)h; (void)bg; }   /* (aff_title's canvas: the */
+static void cv_blit(uint32_t x, uint32_t y) { (void)x; (void)y; }                       /* frame here is whole) */
+typedef struct { uint8_t h; } felucca_font_t;   /* (fm1-base's faces, their line heights alone: affont.c's wrappers) */
+static const felucca_font_t FONT_T = {12}, FONT_XS = {15}, FONT_B = {16};
+#include "ui/affont.c"
 #include "ui/aff.c"
 static void frame(const aff_home_t *h, const char *path)
 {
