@@ -1,0 +1,39 @@
+# AFFINE's build settings (fm1-base's tools/build.py: ./build.sh). AFFINE is forked from LOAF BREAKER (FLEXOR,
+# https://github.com/FLEXOR-R/loaf-breaker, 4f8722c), itself CHOPPAH's fork (Laurens Profittlich,
+# https://github.com/profikid/fm1-break-choppah): its own name, files and identity, both credited
+name = "AFFINE"
+id_prefix = "FM-1_2815"        # package identity, AFFINE's own (0xAFF): dev FM-1_281500, releases FM-1_2815XXYYZZ;
+                               # no identity on the Firmware Hub's catalogue matches a release id (checked 15 Nov 2026)
+usb_manufacturer = "AFFINE"
+usb_product = "AFFINE FM-1"
+ble = false                    # GLOUPI BREAKS: no Bluetooth (CHOPPAH: true, Bluetooth MIDI, PRD A-71)
+ble_stack = "own"              # fm1-base's own stack: nothing of JieLi's, ~40 KB
+bt_audio = false               # GLOUPI BREAKS: no Bluetooth audio out (CHOPPAH: true, PRD A-72)
+usb_audio_in = true            # the FM-1 recordable over USB (PRD A-50)
+usb_audio_out = false
+mirror = true                  # LOAF BREAKER (0.9.43, FLEXOR): the screen and panel live on a computer over USB, the
+                               # panel played from it (fm1-base's web/mirror: the site's mirror/; tools/fm1_mirror.py)
+pool_spare = 3072              # LOAF BREAKER (0.9.43): the mirror's buffers (mr_seg, mr_msg, mr_wire, ~3 KB) spent the
+                               # pool's 8 KB margin on purpose; 3,352 B are left: anything more in the pool frees its room first
+midi_stamp = true             # LOAF BREAKER: MIDI in (the clock) stamped where it lands, USB and TRS (fm1-base)
+words = "words.tsv"
+font_trim = true               # LOAF BREAKER: each glyph stored as its lit box (the same pixels, the fonts ~55 % smaller);
+                               # the unused faces (S, M, L: base's sys_text, APP_SYS_TEXT here) are left out by the
+                               # compiler, being static and never read
+include = ["dsp"]
+o2 = ["dsp/*.c"]               # the engine, at -O2
+unity_opt = "z"                # the platform and the UI at -Oz (the engine stays -O2): smaller
+boot_pack = true               # the start-up's RAM images stored LZMA-packed: smaller
+# the site (tools/make_site.py)
+title = "AFFINE"
+install_app = "site/install_app.js"   # confetti when the install is done
+tagline = "A PS1-era jungle break chopper for the FM-1"
+repo = "https://github.com/InigoHernandez/affine"
+licence = "MPL-2.0"
+credits = "Built on LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich, on fm1-base and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments). Breaks by Cyberworm (rhythm-lab.com, royalty free)."
+# firmware.json (required by fm1-base for a --release build: the releases of loaf.yml)
+author = "Sequencist (AFFINE), from LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich"
+description = "AFFINE: a PS1-era jungle break chopper for the M-VAVE FM-1. Royalty-free Amens cut into slices on the keys, performance effects on every key and knob, the PS1 sound chip's reverbs, bit crush, bit redux, sample grit and filters."
+tags = ["drum-machine", "sampler"]
+install = "https://charlesvestal.github.io/fm1-base/install/"
+screenshot = "docs/img/affine_card.png"

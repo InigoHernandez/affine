@@ -1,0 +1,123 @@
+# CHOPPAH: each pad held shows its animation; K1-K4 tune it while held (LOAF BREAKER, 0.9.26 FLEXOR LAYOUT: the 4th key RND, the 5th HALF SPEED, the
+# 6th FILTER, the 7th the ARP key, the 8th VINYL BREAK, the 9th KIL: the sequencer's kicks quiet while held, the 10th TER, as SUB: the kick's TERROR on (an amount at nothing: 50 %), off (its amount kept), on;
+# REVERSE, FREEZE, GATE and DUB have no key)
+#   app/build/host/loaf-breaker_host tests/scenarios/pads.txt app/build/scenarios
+wait 4200
+tap PLAY
+wait 800
+peakreset
+key b0 down
+wait 250
+turn K2 10 10
+wait 300
+wait 350
+shot p_roll8.png
+key b0 up
+wait 250
+key b1 down
+wait 250
+turn K1 -1 10
+wait 300
+wait 350
+shot p_roll16.png
+key b1 up
+wait 250
+key b4 down
+wait 250
+turn K1 6 10
+wait 300
+wait 350
+shot p_half.png
+key b4 up
+wait 250
+key b3 down
+wait 250
+turn K2 -4 10
+wait 300
+wait 350
+shot p_rnd.png
+key b3 up
+wait 250
+key b5 down
+wait 250
+wait 350
+shot p_filter.png
+key b5 up
+wait 250
+key b7 down
+wait 250
+turn K3 2 10
+wait 300
+expect brk_dj 48
+turn K2 3 10
+wait 300
+shot p_stop.png
+expect brk_dj 54
+turn K2 -3 10
+wait 300
+expect brk_dj 42
+key b7 up
+wait 250
+key b6 down
+wait 250
+turn K2 5 10
+wait 300
+wait 350
+shot p_arp.png
+key b6 up
+wait 250
+key b8 down
+wait 250
+turn K2 20 10
+wait 300
+wait 350
+shot p_kil.png
+key b8 up
+wait 250
+# (0.265, FLEXOR: DST a switch, DISTO used or not, its amount never touched: at 0 % it stays 0 %)
+key b9 down
+wait 250
+expect ter_off 1
+expect terror 0
+shot p_ter.png
+key b9 up
+wait 250
+key b9 down
+wait 30
+key b9 up
+wait 250
+expect ter_off 0
+expect terror 0
+key b9 down
+wait 30
+key b9 up
+wait 250
+expect ter_off 1
+key b9 down
+wait 30
+key b9 up
+wait 250
+expect ter_off 0
+key b10 down
+wait 250
+turn K2 8 10
+wait 300
+wait 350
+shot p_dub.png
+key b10 up
+wait 250
+shot p_after.png
+expect peak_db_min -30
+tap SAVE
+wait 50
+expect store_writes 11
+# LOAF BREAKER: a roll pad's K3 is the kick's filter (HOME's K3): the rolls' pitch stays 0
+key b0 down
+wait 100
+turn K3 5 10
+wait 50
+expect roll_pitch_x10 0
+shot r_kickflt.png
+turn K3 -10 10
+wait 50
+key b0 up
