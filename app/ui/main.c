@@ -50,6 +50,130 @@ static uint32_t ed_live_t;              /* (LOAF BREAKER 0.9.43: the editor's LI
 static uint8_t lvl_fast;                /* LOAF BREAKER: LFO + K1-K4: the levels by 5 % a detent (the MIXER's own
                                           * page: 2 %) */
 static float lvl_step(int32_t d) { (void)d; return lvl_fast ? 0.05f : 0.02f; }
+static const char *knob_name(int i);    /* (below) */
+static void knob_value(int i, char *t);
+static float foot_norm(int i);
+
+/* AFFINE: HOME's gestures as words. compact (HOME's picture): the value alone ("1.2K", "6 BIT", "11K", "SPACE");
+ * else as said ("LP 1.2KHZ", "SPACE ECHO 40%") */
+static const char *const VERB_SHORT[PSXV_N] = {"ROOM", "STD S", "STD M", "STD L", "HALL", "HALF", "SPACE", "CHAOS",
+                                               "DELAY"};
+static void home_gest_text(int i, char *t, int compact)
+{
+    char v[16];
+    t[0] = 0;
+    if (i == 0) {                        /* FILTER: the DJ filter's cutoff */
+        float dj = set.fx.dj, hz;
+        if (dj > -0.01f && dj < 0.01f) {
+            text_cat(t, "OFF");
+            return;
+        }
+        if (!compact) {
+            dj_text(dj, t);
+            return;
+        }
+        hz = dj > 0.0f ? 20.0f * brk_exp2f(dj * 8.2f) : 18000.0f * brk_exp2f(dj * 7.8f);
+        if (hz >= 1000.0f) {
+            tenths_text((int32_t)(hz / 100.0f + 0.5f), t);
+            text_cat(t, "K");
+        } else
+            int_text((int32_t)(hz + 0.5f), t);
+        return;
+    }
+    if (i == 1) {                        /* CRUSH: the bits left */
+        if (set.psx.crush < 0.01f) {
+            text_cat(t, "OFF");
+            return;
+        }
+        int_text((int32_t)(psx_crush_bits(set.psx.crush) + 0.5f), t);
+        text_cat(t, " BIT");
+        return;
+    }
+    if (i == 2) {                        /* REDUX: the rate left */
+        float hz = psx_redux_hz(set.psx.redux);
+        if (set.psx.redux < 0.01f) {
+            text_cat(t, "OFF");
+            return;
+        }
+        if (hz >= 1000.0f) {
+            int_text((int32_t)(hz / 1000.0f + 0.5f), t);
+            text_cat(t, "K");
+        } else
+            int_text((int32_t)(hz + 0.5f), t);
+        if (!compact)
+            text_cat(t, "HZ");
+        return;
+    }
+    if (set.psx.send < 0.01f) {          /* VERB: the send into SPU VERB, its preset */
+        text_cat(t, "OFF");
+        return;
+    }
+    text_cat(t, compact ? VERB_SHORT[set.psx.vtype % PSXV_N] : PSXV_NAME[set.psx.vtype % PSXV_N]);
+    if (!compact) {
+        text_cat(t, " ");
+        pct_text(set.psx.send, v);
+        text_cat(t, v);
+    }
+}
+
+/* AFFINE: HOME drawn whole in the POLYGON look (app/ui/aff.c): the header, the floor, the gem, the panel of the four
+ * knobs as they are now (the gestures; a pad or a key held: its own settings) */
+static void home_draw(const brk_status_t *st, uint32_t now)
+{
+    static int32_t slice_was = -2;
+    static uint32_t kick_ms, steps;
+    static char gv[4][8];
+    aff_home_t h;
+    int32_t i, top;
+    uint8_t *z = (uint8_t *)&h;
+    for (i = 0; i < (int32_t)sizeof h; i++)
+        z[i] = 0u;
+    if (st->slice != slice_was) {        /* (a new slice: the gem's jolt, the floor a row on) */
+        slice_was = st->slice;
+        kick_ms = now;
+        if (st->slice >= 0)
+            steps++;
+    }
+    h.brk = n_bank + n_user ? break_name(set.brk) : "NO BREAK";
+    h.bpm_x10 = set.tempo_x10;
+    h.slice = st->slice;
+    h.pat = pat_cur();
+    h.bar = st->bar + 1u;
+    h.beat = st->bar16 >= 0 ? (uint32_t)st->bar16 / 4u + 1u : 1u;
+    h.steps = steps;
+    h.phase = st->playing ? st->phase : 0.0f;
+    h.playing = st->playing;
+    h.t_ms = now;
+    h.kick_ms = kick_ms;
+    h.pad = ui.shown >= 0 && ui.shown < (int32_t)BKF_N ? BKF_LONG[ui.shown] : ui.shown >= 100 ? "KEY HELD" : 0;
+    if (now < ui.msg_until) {            /* (app_say's message, for its moment) */
+        h.msg0 = ui.msg[0];
+        h.msg1 = ui.msg[1];
+    }
+    for (i = 0; i < 4; i++) {
+        float g = foot_norm(i);
+        h.gl[i] = knob_name(i);
+        if (ui.shown == -1 && ui.page == PG_HOME)
+            home_gest_text(i, gv[i], 1);
+        else {
+            char t[24];
+            uint32_t k;
+            knob_value(i, t);
+            for (k = 0; k < 7u && t[k]; k++)
+                gv[i][k] = t[k];
+            gv[i][k] = 0;
+        }
+        h.gvp[i] = gv[i];
+        h.g[i] = g;
+    }
+    h.bip = ui.shown == -1 ? 1u : 0u;    /* (FILTER from the middle) */
+    for (top = 0; top < 240; top += 60) {
+        cv_begin(240, 60, A_BG0);
+        aff_home_band(&h, top);
+        cv_blit(0, (uint32_t)top);
+    }
+}
+
 static void knob_turn(int k, int32_t d)
 {
     brk_fx_t *f = &set.fx;
@@ -119,22 +243,16 @@ static void knob_turn(int k, int32_t d)
         }                                /* (K4: the MELODY's fader 0.200-0.208; the ARP's route 0.9.29-0.9.30: SENDS
                                           * alone since, FLEXOR) */
         ui.redraw |= RG_BLOCKS;
-    } else if (ui.page == PG_HOME) {
-        if (k == EN_K1) {                /* the gate: how much of every slice sounds (complexity: GENERATOR) */
-            set.gate = (uint8_t)clamp((int32_t)(set.gate ? set.gate : 100u) + d * 5, 5, 100);
-            if (set.gate >= 100u)
-                app_say("GATE", "OFF");
-            else
-                say_int("GATE", set.gate, "%");
-        } else if (k == EN_K2) {         /* the break's DJ filter (LOAF BREAKER: a low-pass alone) */
-            brk_flt_turn(d);             /* (LOAF BREAKER: a low-pass alone, pads.c) */
-        } else if (k == EN_K3) {         /* GLOUPI BREAKS: the drums' DJ filter (CHOPPAH: FX) */
-            kick_flt_turn(d);
-        } else {                         /* GLOUPI BREAKS: the kick's SUB decay (AFFINE: BOOM's DECAY; CHOPPAH:
-                                          * COMPLEXITY, on GENERATOR alone now) */
-            kick_layer_t *l = &set.kick.l[KL_SUB];
-            l->decay = knob_f(l->decay, d, 0.02f, 0.0f, 1.0f);
-            say_int("SUB DECAY", (int32_t)(kick_decay_ms(KL_SUB, l->decay) + 0.5f), " MS");
+    } else if (ui.page == PG_HOME) {     /* AFFINE: the four gestures (the gate on SETTINGS K2 now) */
+        if (k == EN_K1) {                /* FILTER: the DJ filter, left the low-pass, right the high-pass */
+            brk_flt_turn(d);
+        } else {                         /* CRUSH, REDUX, VERB: the PSX bus (psx.h), 0 off */
+            float *g = k == EN_K2 ? &set.psx.crush : k == EN_K3 ? &set.psx.redux : &set.psx.send;
+            char t[16];
+            *g = knob_f(*g, d, 0.02f, 0.0f, 1.0f);
+            home_gest_text(k - EN_K1, t, 0);
+            app_say(knob_name(k - EN_K1), t);
+            changed_fx();
         }
     } else if (ui.page == PG_HSET) {     /* (LOAF BREAKER, 0.9.2: HOME's SETTINGS) */
         hset_turn(k - EN_K1, d);
@@ -1133,6 +1251,10 @@ static void leds(void)
 static void knob_value(int i, char *t)  /* the page's knob i (0..3), as shown under its name */
 {
     t[0] = 0;
+    if (ui.page == PG_HOME && ui.shown == -1) {   /* AFFINE: the gestures */
+        home_gest_text(i, t, 0);
+        return;
+    }
     if (ui.page == PG_OVL) {             /* (LOAF BREAKER, 0.244: the OVERLAY page) */
         ovl_value(i, t);
         return;
@@ -1387,6 +1509,8 @@ static void knob_arc(int32_t cx, int32_t cy, float v)
 }
 static float foot_norm(int i)            /* the page's knob i, 0..1, or -1 (no gauge) */
 {
+    if (ui.page == PG_HOME && ui.shown == -1)   /* AFFINE: the gestures (FILTER -1..1, drawn from the middle) */
+        return i == 0 ? set.fx.dj : i == 1 ? set.psx.crush : i == 2 ? set.psx.redux : set.psx.send;
     if (ui.page == PG_FX && !mb_detail(fx_foc()) && !x_detail(fx_foc())) {
         const brk_fxslot_t *sl = fx_sl(fx_foc());
         return sl->type ? (i == 3 ? sl->mix : sl->p[i & 3]) : -1.0f;
@@ -1399,7 +1523,7 @@ static float foot_norm(int i)            /* the page's knob i, 0..1, or -1 (no g
 /* the page's knob i (0..3) name, as the foot shows it (LOAF BREAKER 0.9.43: the editor's too) */
 static const char *knob_name(int i)
 {
-    static const char *const KN[NPAGES][4] = {{"GATE", "FILTER", "DRUM FLT", "SUB DECAY"},
+    static const char *const KN[NPAGES][4] = {{"FILTER", "CRUSH", "REDUX", "VERB"},   /* (AFFINE: HOME's gestures) */
                                               {"CMPLX", "ANCHOR", "ROLL", "FILL"},
                                               {"P1", "P2", "P3", "MIX"},
                                               {"CLOCK IN", "CLOCK OUT", "", ""},
@@ -1947,6 +2071,17 @@ void app_frame(void)
             rows_forget(0u, 240u);
             forget_t = now;
         }
+    }
+    if (ui.page == PG_HOME && !RST_ON && ui.shown >= -1 && !(set.tut && set.tut <= TUT_N)) {
+        static uint32_t home_t;          /* AFFINE: HOME in the POLYGON look, whole, about 30 times a second (the
+                                          * floor scrolls, the gem turns), in place of LOAF's deck; the tutorial, RESET
+                                          * and the shortcuts card keep LOAF's screens for now */
+        if (ui.redraw || now - home_t >= 33u) {
+            home_t = now;
+            home_draw(&st, now);
+        }
+        ui.redraw = 0u;
+        return;
     }
     if (!ui.redraw)
         return;
@@ -2967,7 +3102,8 @@ int app_expect(const char *what, int *got)
                                     "seq_brk", "brkview", "bk_pre", "bk_fn", "bk_key", "frz_len", "opage", "auto_save",
                                     "bhalf", "wiped", "skin", "bstut", "bgapm", "pads", "padlat", "fthru", "key",
                                     "key_n", "klen0", "rdiv0", "n_user", "n_breaks", "brk_dj", "rthru",
-                                    "arp_bits", "bk_arpfx", "kit", "psmp"};
+                                    "arp_bits", "bk_arpfx", "kit", "psmp", "gate", "crush", "redux", "send", "vtype",
+                                    "codec", "skchance"};   /* (AFFINE: the gate, the PSX bus, x100) */
     int v[sizeof W / sizeof W[0]];
     uint32_t i, n = 0u;
     v[n++] = ui.page;
@@ -3093,6 +3229,13 @@ int app_expect(const char *what, int *got)
     v[n++] = (int)arpk_fx(ui.bk_sel);    /* (the BLACK KEYS page's key: its ARP effect) */
     v[n++] = (int)kit_has;               /* (0.9.45: the drum samples, a bit each: SN HH CP) */
     v[n++] = perc_smp(PV_SNARE);         /* (the snare playing its sample) */
+    v[n++] = set.gate ? set.gate : 100;  /* (AFFINE: the gate, SETTINGS K2; 100 off) */
+    v[n++] = (int)(set.psx.crush * 100.0f + 0.5f);
+    v[n++] = (int)(set.psx.redux * 100.0f + 0.5f);
+    v[n++] = (int)(set.psx.send * 100.0f + 0.5f);
+    v[n++] = set.psx.vtype;
+    v[n++] = set.psx.codec;
+    v[n++] = (int)(set.psx.skchance * 100.0f + 0.5f);
     for (i = 0; i < n; i++)
         if (!strcmp(what, W[i])) {
             *got = v[i];

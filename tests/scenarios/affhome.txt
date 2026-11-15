@@ -1,0 +1,30 @@
+# AFFINE: HOME in the POLYGON look: the four gestures turned while playing, each heard (affhome.wav, ~40 s) and shown.
+#   0-4 s the break; 4-10 CRUSH down to 2 bits and back; 11-17 REDUX down and back; 18-26 VERB up (SPACE ECHO);
+#   26-31 FILTER low-pass down; 31-40 everything back, the reverb's tail ringing out.
+#   app/build/host/affine_host tests/scenarios/affhome.txt app/build/scenarios
+wait 4200
+wav affhome.wav
+tap PLAY
+wait 4000
+shot ah_home.png
+turn K2 50 60
+wait 600
+shot ah_crush.png
+turn K2 -50 60
+wait 600
+turn K3 50 60
+wait 600
+turn K3 -50 60
+wait 600
+turn K4 40 60
+wait 4000
+expect send 80
+expect crush 0
+shot ah_gestures.png
+turn K1 -40 90
+wait 1000
+shot ah_filter.png
+turn K1 40 40
+turn K4 -40 20
+wait 8000
+wavstop

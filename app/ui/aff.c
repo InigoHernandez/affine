@@ -124,9 +124,12 @@ typedef struct {
     uint32_t bar, beat;                  /* for the position: bar (1..), beat (1..4) */
     uint32_t steps;                      /* steps played (the floor scrolls a row a step) */
     float phase;                         /* how far into the step, 0..1 */
-    float g[4];                          /* the gestures: FILTER -1..1, CRUSH, REDUX, VERB 0..1 */
-    char gv[4][8];                       /* their values as words */
+    float g[4];                          /* the four knobs' gauges, 0..1 (-1: none; bipolar ones -1..1) */
+    const char *gl[4];                   /* their names */
+    const char *gvp[4];                  /* their values as words */
+    uint8_t bip;                         /* bit i: knob i drawn from the middle (FILTER) */
     const char *pad;                     /* a pad held: its name (0: none) */
+    const char *msg0, *msg1;             /* a message (app_say) for a moment: in the header's first line (0: none) */
     uint32_t t_ms;                       /* the clock (the gem turns with it) */
     uint32_t kick_ms;                    /* when the slice last changed (the gem's jolt) */
     uint8_t playing;
@@ -353,7 +356,6 @@ static void home_bar(int32_t x, int32_t y, int32_t w, float amt, int bipolar, in
 
 static void aff_home_band(const aff_home_t *h, int32_t band)
 {
-    static const char *const GN[4] = {"FILTER", "CRUSH", "REDUX", "VERB"};
     int32_t x, y, i;
     char t[24];
     if (!a_ready)
@@ -371,10 +373,17 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
     home_floor(h, band);
     home_gem(h, band);
     /* the header: the break and the tempo, then the pattern, the slice (or the pad held), the position */
+    if (band < 40 && h->msg0) {          /* a message for a moment: what was turned and to what */
+        int32_t w1 = h->msg1 ? aff_text_w(h->msg1, 2) : 0;
+        aff_text(8, 8, h->msg0, 2, A_INK, band, 0);
+        if (h->msg1 && 8 + aff_text_w(h->msg0, 2) + 10 + w1 <= 232)
+            aff_text(232, 8, h->msg1, 2, A_HOT, band, 1);
+    }
     if (band < 40) {
-        aff_text(8, 8, h->brk ? h->brk : "", 2, A_INK, band, 0);
+        if (!h->msg0)
+            aff_text(8, 8, h->brk ? h->brk : "", 2, A_INK, band, 0);
         t[0] = 0;
-        {
+        if (!h->msg0) {
             uint32_t b = h->bpm_x10;
             int32_t n = 0;
             char d[8];
@@ -391,9 +400,11 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
                 t[i] = d[n - 1 - i];
             t[n] = 0;
         }
-        aff_text(232, 8, t, 2, A_INK, band, 1);
-        if (h->playing && h->phase < 0.5f && 8 - band < 60)   /* the beat, lit on the step */
-            cv_rect(196, 10 - band, 2, 6, A_HOT);
+        if (!h->msg0) {
+            aff_text(232, 8, t, 2, A_INK, band, 1);
+            if (h->playing && h->phase < 0.5f && 8 - band < 60)   /* the beat, lit on the step */
+                cv_rect(196, 10 - band, 2, 6, A_HOT);
+        }
         t[0] = (char)('A' + h->pat / 16u);
         t[1] = (char)('0' + (h->pat % 16u + 1u) / 10u);
         t[2] = (char)('0' + (h->pat % 16u + 1u) % 10u);
@@ -429,9 +440,12 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
         cv_rect(0, AH_PANEL - band, 240, 1, A_DIM);
         for (i = 0; i < 4; i++) {
             int32_t gx = 8 + (i & 1) * 120, gy = 198 + (i >> 1) * 21;
-            aff_text(gx, gy, GN[i], 2, A_DIM, band, 0);
-            aff_text(gx + 106, gy, h->gv[i], 2, A_INK, band, 1);
-            home_bar(gx, gy + 13, 106, i == 0 ? h->g[0] : h->g[i], i == 0, band);
+            if (!h->gl[i] || !h->gl[i][0])
+                continue;
+            aff_text(gx, gy, h->gl[i], 2, A_DIM, band, 0);
+            aff_text(gx + 106, gy, h->gvp[i] ? h->gvp[i] : "", 2, A_INK, band, 1);
+            if (h->g[i] >= -1.0f && (h->g[i] >= 0.0f || (h->bip >> i & 1u)))
+                home_bar(gx, gy + 13, 106, h->g[i], (int)(h->bip >> i & 1u) && i == 0, band);
         }
     }
 }

@@ -476,11 +476,21 @@ static void global_part(uint32_t g)      /* GLO (again: the next part) and ALGOR
 /* LOAF BREAKER (0.9.2, FLEXOR): HOME's SETTINGS, the waveform's settings where it is played: K1 VIEW (the waveform or
  * the slices; HOME held still flips it), K2 WAVE TYPE (REKORDBOX, SERATO; SYSTEM EFFECTS' K3 until 0.9.24), K3 WAVE ZOOM (SYSTEM
  * SETUP's K2 until 0.9.1), K4 BREAK TIME (SYSTEM MIDI's K4 until 0.9.1). VIEW saved in bkeys.bk[BK_VIEW] */
-static const char *const HSET_NAME[4] = {"VIEW", "WAVE TYPE", "WAVE ZOOM", "BREAK TIME"};
+static const char *const HSET_NAME[4] = {"VIEW", "GATE", "WAVE ZOOM", "BREAK TIME"};   /* (AFFINE: K2 the gate, HOME's
+                                          * K1 before; LOAF's WAVE TYPE gone with its deck view) */
 static void hset_value(int i, char *t)
 {
     t[0] = 0;
-    text_cat(t, i == 0 ? (ui.blocks ? "SLICES" : "WAVEFORM") : i == 1 ? (set.wstyle ? "SERATO" : "REKORDBOX")
+    if (i == 1) {                        /* (AFFINE: the gate, how much of every slice sounds) */
+        if (!set.gate || set.gate >= 100u)
+            text_cat(t, "OFF");
+        else {
+            int_text(set.gate, t);
+            text_cat(t, "%");
+        }
+        return;
+    }
+    text_cat(t, i == 0 ? (ui.blocks ? "SLICES" : "WAVEFORM")
                 : i == 2 ? CDJ_ZNAME[set.wzoom % CDJ_ZN] : (set.bkeys.bk[BK_BHALF] & 1u ? "HALF" : "NORMAL"));
 }
 static void hset_turn(int i, int32_t d)
@@ -490,7 +500,7 @@ static void hset_turn(int i, int32_t d)
         ui.blocks = d > 0 ? 1u : 0u;     /* (right the slices, left the waveform) */
         set.bkeys.bk[BK_VIEW] = ui.blocks;
     } else if (i == 1)
-        set.wstyle = d > 0 ? 1u : 0u;
+        set.gate = (uint8_t)clamp((int32_t)(set.gate ? set.gate : 100u) + d * 5, 5, 100);
     else if (i == 2)
         set.wzoom = (uint8_t)clamp((int32_t)(set.wzoom % CDJ_ZN) + (d > 0 ? 1 : -1), 0, CDJ_ZN - 1);
     else

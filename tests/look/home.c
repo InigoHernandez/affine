@@ -49,10 +49,11 @@ int main(int argc, char **argv)
     h.bpm_x10 = 1750;
     h.pat = 0;
     h.playing = 1;
-    h.g[0] = -0.45f; strcpy(h.gv[0], "1.2K");
-    h.g[1] = 0.62f; strcpy(h.gv[1], "6 BIT");
-    h.g[2] = 0.48f; strcpy(h.gv[2], "11K");
-    h.g[3] = 0.71f; strcpy(h.gv[3], "SPACE");
+    h.g[0] = -0.45f; h.gvp[0] = "1.2K"; h.gl[0] = "FILTER";
+    h.g[1] = 0.62f; h.gvp[1] = "6 BIT"; h.gl[1] = "CRUSH";
+    h.g[2] = 0.48f; h.gvp[2] = "11K"; h.gl[2] = "REDUX";
+    h.g[3] = 0.71f; h.gvp[3] = "SPACE"; h.gl[3] = "VERB";
+    h.bip = 1u;
     /* the still: slice 7 playing */
     h.slice = 6; h.steps = 6; h.phase = 0.3f; h.bar = 3; h.beat = 2; h.t_ms = 2300; h.kick_ms = 0;
     snprintf(path, sizeof path, "%s/home.ppm", out);

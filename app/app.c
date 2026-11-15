@@ -138,6 +138,8 @@ typedef struct {
     uint8_t tut;                         /* LOAF BREAKER: the TUTORIAL (tutor.c): 0 off, 1.. its step running, 0xFE
                                           * finished, 0xFD the mode asked */
     uint8_t pxv;                         /* LOAF BREAKER: PX_OK: smem holds the drums' extras, perc_x() */
+    psx_bus_t psx;                       /* AFFINE: the PSX bus (psx.h): HOME's gestures (crush, redux, send), SPU
+                                          * VERB, CODEC, CRUSH and REDUX's ways, SKIP; vthrow live, never saved set */
     /* (AFF1's last field: append new ones here, and move SET_SIZE_MIN on only with a new magic) */
 } settings_t;
 #define PX_OK 0xA5u
@@ -256,6 +258,7 @@ static void settings_defaults(void)
     for (k = 0; k < sizeof set; k++)     /* (every field: no leftovers from a save that didn't load) */
         z[k] = 0u;
     set.magic = SET_MAGIC;
+    psx_bus_defaults(&set.psx);          /* (AFFINE: the PSX bus at rest: the gestures at 0, SPACE ECHO waiting) */
     set.scrfx = 50u;                     /* (the screen effect's AMOUNT: half) */
     set.sfx_on = 0u;                     /* (the screen effects: none at the start and after RESET ALL; the site's
                                           * screenshots clean) */
@@ -337,6 +340,13 @@ static void skin_apply(uint32_t s);    /* (ui/common.c) */
 static uint32_t skin_old(uint32_t s); /* (ui/common.c: an older save's skin, 0..17, to the 1.0's) */
 /* LOAF BREAKER: the FX chain's part of settings_apply (its four slots, their extras), and BOOM's (its sound, the ARP's
  * REESE in its key): a knob of theirs applies them alone (changed_fx, changed_kick) */
+static uint8_t verb_held;                /* AFFINE: a VERB THROW key down (pads.c): the mix into SPU VERB at full */
+static void psx_apply(void)
+{
+    psx_bus_t b = set.psx;
+    b.vthrow = verb_held ? 1.0f : 0.0f;
+    psx_bus_set(&b);
+}
 static void fx_apply(void)
 {
     uint32_t k;
@@ -348,6 +358,7 @@ static void fx_apply(void)
     } else
         brk_fx_set(&set.fx);
     brk_fx_flt_thru(bk_fthru());         /* (the FILTER key's THRU, 0.9.26) */
+    psx_apply();                         /* (AFFINE: the PSX bus, with the VERB key's throw as it is now) */
     for (k = 0; k < BRK_FX_SLOTS; k++) {
         brk_fx_set_mbc(k, &set.mbc[k]);
         brk_fx_set_fxx(k, &set.fxx[k]);
@@ -1989,6 +2000,7 @@ static void demo_frame(uint32_t now) { (void)now; }
 static void demo_leds(uint32_t now) { (void)now; }
 #endif
 #include "ui/cdj.c"                   /* (LOAF BREAKER: HOME held: the break scrolling, as on a CDJ) */
+#include "ui/aff.c"                   /* AFFINE: the POLYGON look: its palette, its pixel font, HOME's picture */
 #include "ui/main.c"
 #undef C_WHITE                           /* (gfx.c's white again after the UI: skins, common.c) */
 #define C_WHITE 0xFFFFu
