@@ -118,16 +118,18 @@ first AFFINE build, read while playing.
 2. **Engine** (done, 06dc900): the PSX effects as one platform-free module (`app/dsp/psx.c`), 38 checks and demo
    WAVs in `./build.sh test`, a host bench (`build/engine/psx_bench`). Waiting: the owner's ear.
 3. **The look** (done: the owner picked POLYGON).
-4. **Strip the kick**, free its memory, put in BOOM (a worktree agent, in progress).
-5. **Wire the effects:** the PSX bus (done, 6a2a425); then HOME's gestures, the PSX page, pads, overlays.
-6. **The picked look:** HOME (done off the device, 1cc85ac); then the chrome, the palette, every page, splash,
-   update screen.
+4. **Strip the kick** (done, merged 32d9637): LOAF's hardcore kick out (image -37 KB, RAM -6 KB, pool -10 KB),
+   BOOM in (808, JUNGLE, DUB, TIGHT; TUNE, DECAY, LEVEL; SHAPE in EXPERT), settings magic AFF1, OBJ_FREE0..3 kept.
+5. **Wire the effects** (done): the PSX bus (6a2a425); HOME's four gestures (1eeec85); the PSX page, EFFECTS'
+   fifth tab (6488140); the black keys VRB, SKP, CRS and AFFINE's layout (574fac2). Still: PSX overlays on ARP.
+6. **The picked look:** HOME and the PSX page drawn in POLYGON on the device (1eeec85, 6488140); still: the other
+   pages (Barlow today), the splash, the update screen, the skins as palettes.
 7. **Motion record and scenes.**
 8. **Device:** the owner's FM-1 test, the CPU meter read; then the site, the manual, the hub kit.
 
 ## 7. Open, for the owner
 
 - Which ten breaks go into the bank? (A first pick at 160-175 BPM is in; a listening page can come with the demos.)
-- BOOM: keep a light kick for jungle subs, or the breaks' own kicks only? (Not answered: BOOM is being built, the
-  plan's default.)
+- BOOM: keep a light kick for jungle subs, or the breaks' own kicks only? (Not answered: BOOM is built, the plan's
+  default; its four presets in build/review/sounds/affine-boom-tour.m4a.)
 - The sounds: the effects tour and the nine reverbs.
