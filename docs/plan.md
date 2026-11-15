@@ -100,9 +100,9 @@ first AFFINE build, read while playing.
 ## 6. Steps
 
 1. **Import** (done): the fork, the royalty-free bank, the identity, this plan.
-2. **Engine:** the PSX effects as one platform-free module (`app/dsp/psx.c`), tested and rendered with `./build.sh test`;
-   demo WAVs over the bank for the owner's ear.
-3. **The look:** three stills for the owner to pick from.
+2. **Engine** (done, 06dc900): the PSX effects as one platform-free module (`app/dsp/psx.c`), 38 checks and demo
+   WAVs in `./build.sh test`, a host bench against LOAF's plate (`build/engine/psx_bench`). Waiting: the owner's ear.
+3. **The look** (stills done, c0fa286: `tools/look_stills.py`). Waiting: the owner's pick.
 4. **Strip the kick**, free its memory, put in BOOM.
 5. **Wire the effects:** FX chain types, pads, HOME's gestures, overlays.
 6. **The picked look:** screen, splash, update screen, skins as palettes.
