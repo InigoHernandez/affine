@@ -12,22 +12,19 @@ static void break_ask(uint32_t i);      /* (main.c) */
 static const char *const TPART[NTPART] = {"TRACKS", "PLAY", "DROP", "KNOB", "BUILD", "RESET"};
 #define NTORD 4u
 static const uint8_t TORDER[NTORD] = {0u, 1u, 2u, 4u};   /* (ENV's parts in order: BUILD after DROP; LOAF BREAKER TEST:
-                                          * KNOB out (EDIT KICK's KNOBS has it all), RESET on GLO, its sixth part) */
+                                          * KNOB out (AFFINE: gone, SEL + K1-K4 free), RESET on GLO, its sixth part) */
 #define NGPART 6u                        /* (GLO's parts' code: MIDI, PITCH (SOUNDS' BREAK), SETUP, EFFECTS, FX SET,
                                           * RESET; SYSTEM shows GLO_ORD's) */
 #define RST_ON (ui.page == PG_GLOBAL && ui.gpage == 5u)   /* (GLO RESET: drawn and turned by ENV's code here) */
 /* RESET (ENV's last part): K1 what (a list: more to come), K4 turned right twice within 3 s: back to the start */
-enum { RST_DROP, RST_BUILD, RST_KNOB, RST_KICK, RST_KTONE, RST_KICKS, RST_DRUMS, RST_MIX, RST_FX, RST_STEPS, RST_PADS,
-       RST_KEYS, RST_TRACK, RST_SCREEN, RST_WIPE, RST_ALL, NRST };   /* (RST_WIPE: 0.263, FLEXOR; EVERYTHING last) */   /* (LOAF BREAKER: ALL, RESET ALL, was the PITCH part's K4) */
-static const char *const RST_NAME[NRST] = {"DROP", "BUILD", "KNOB", "KICK", "KICK TONE", "ALL KICKS", "DRUMS", "MIX",
-                                           "FX CHAIN", "STEPS", "PADS", "KEYS", "TRACK", "SCREEN", "WIPE MEMORY",
-                                           "EVERYTHING"};
+enum { RST_DROP, RST_BUILD, RST_KICK, RST_DRUMS, RST_MIX, RST_FX, RST_STEPS, RST_PADS, RST_KEYS, RST_TRACK, RST_SCREEN,
+       RST_WIPE, RST_ALL, NRST };        /* (RST_WIPE: 0.263, FLEXOR; EVERYTHING last. AFFINE: KNOB, KICK TONE, ALL
+                                          * KICKS gone with the hardcore kick; KICK is BOOM) */
+static const char *const RST_NAME[NRST] = {"DROP", "BUILD", "BOOM", "DRUMS", "MIX", "FX CHAIN", "STEPS", "PADS", "KEYS",
+                                           "TRACK", "SCREEN", "WIPE MEMORY", "EVERYTHING"};
 static const char *const RST_WHAT[NRST] = {"BUILD 4 BARS, NEXT PATTERN, SAME BREAK, CRASH 100%",
                                           "SNARE ROLL, HIGH-PASS, RISER 100%, NO GAP",
-                                          "THIS KICK'S: K1 DRIVE, K2 SCREAM, K3 D+ SCREECH, K4 DISTO",
-                                          "THE KICK SELECTED (ITS MEMORY): ROTTERDAM, SYNTH, BASS, C SUB, MORPH AT 0, VOLUME KEPT",
-                                          "THE KICK'S EQ FLAT, ITS TWO FX SLOTS EMPTY",
-                                          "KICK 1-20 AS THEY CAME (909 .. SPINE), SYNTH AT 0, THEIR KNOBS AS THEY START",
+                                          "BOOM AS IT CAME: 808, ITS LEVEL KEPT",
                                           "SNARE, HAT, CLAP: THE MEMORY PLAYING AS IT CAME",
                                           "THE MIXER: LEVELS, SWING, COMP AND DUCK OFF, MAX OUT -3 DB",
                                           "THE FOUR SLOTS AS THEY CAME, EACH EFFECT'S MEMORY FORGOTTEN",
@@ -35,8 +32,8 @@ static const char *const RST_WHAT[NRST] = {"BUILD 4 BARS, NEXT PATTERN, SAME BRE
                                           "THE BLACK KEYS: ROLLS, THRU, FILTER, GATE, LATCH, THE ARP KEY",
                                           "THE WHITE KEYS' LOOPS AND SLICE EFFECTS",
                                           "THIS TRACK: FROM ITEM 1, EVERY ITEM'S BREAK SAME",
-                                          "SKIN RED, SCREEN EFFECTS OFF, THEIR SETTINGS 50%, WAVE ZOOM 1 BAR, DRUM VIEW ZOOM AUTO",
-                                          "ALL LOAF BREAKER SAVES ERASED, FOR ANOTHER FIRMWARE: INSTALL IT NEXT",
+                                          "SKIN RED, SCREEN EFFECTS OFF, THEIR SETTINGS 50%, WAVE ZOOM 1 BAR",
+                                          "ALL AFFINE SAVES ERASED, FOR ANOTHER FIRMWARE: INSTALL IT NEXT",
                                           "EVERYTHING AS IT CAME, ALL 64 PATTERNS, SAVED AT ONCE: 15 TURNS"};
 /* LOAF BREAKER (0.263, FLEXOR): WIPE MEMORY, before installing another firmware: every sector LOAF BREAKER saves in
  * (its objects: 0xB6000..0xDBFFF, 0xDE000..0xDFFFF; the panel's calibration, 0xDC000, every fm1-base firmware's, kept)
@@ -124,47 +121,11 @@ static void reset_do(uint32_t w)
         set.drop_after = 0u;
         set.drop_brk = 0u;
         set.drop_crash = 100u;
-        set.drop_kick = 0u;
     } else if (w == RST_BUILD) {
         set.drop_style = DS_SNARE;
         set.drop_sweep = 0u;
         set.drop_riser = 50u;
         set.drop_gap = 0u;
-    } else if (w == RST_KNOB) {          /* KNOB: the knobs' functions */
-        set.selk_asg = set.selk_asg2 = 0u;
-        set.selk_hi &= 112u;             /* (the knobs alone: TER's, DRV's and SUB's state kept) */
-    } else if (w == RST_KTONE) {           /* KICK TONE: its EQ flat, its FX slots empty, their memory forgotten */
-        uint32_t k;
-        for (k = 0; k < 8u; k++)
-            set.keq[k] = 0.5f;
-        for (k = 0; k < BRK_KFX_SLOTS; k++) {
-            brk_fx_slot_defaults(&set.kfx[k], FXT_EMPTY);
-            set.kfx[k].on = 0u;
-            brk_fxx_defaults(&set.kfxx[k], FXT_EMPTY);
-            brk_mbc_defaults(&set.kmbc[k]);
-        }
-        pats.kfm_ok = 0u;
-    } else if (w == RST_KICKS) {         /* ALL KICKS: KICK 1-10 as they came, the one selected with them */
-        float vol = set.kick.volume;
-        uint32_t k, j;
-        for (k = 0; k < KICK_MEMS; k++) {
-            kick_preset(kmem_at(k), kmem_pre(k));
-            (*kmem_at(k)).volume = vol;
-            for (j = 0; j < KS_N; j++)
-                ksmem_at(k)[j] = 0;
-        }
-        set.kick = (*kmem_at(set.kslot % KICK_MEMS));
-        for (j = 0; j < KS_N; j++)
-            set.ksyn[j] = 0;
-        set.selk_asg = set.selk_asg2 = set.selk_hi = set.csub = set.kmorph = set.kmorph_to = 0u;   /* (their knobs as they start) */
-        set.kbass[0] = set.kbass[1] = 0u;
-        set.kbass[2] = set.kbass[3] = 50u;
-        kx_all();
-        klab_defaults();                 /* (LOAF BREAKER: their KICK LAB off) */
-        kx2_defaults();                  /* (0.9.45: their TOK and TAIL GATE off) */
-        kmem_extras();                   /* (0.9.33: KICK 7 TERROR, KICK 8 SPINE, whole; the one selected's EQ too) */
-        kfx_get(set.kslot);
-        changed_fx();
     } else if (w == RST_DRUMS) {         /* DRUMS: each drum's memory playing as it came (its preset) */
         uint32_t v;
         for (v = 0; v < PERC_VOICES; v++) {
@@ -228,39 +189,23 @@ static void reset_do(uint32_t w)
         uint32_t k;
         pats.trk[set.trk % NTRACKS].rsv[0] = 0u;   /* (TRK_FROM, below) */
         for (k = 0; k < TRK_ITEMS; k++)
-            steps.tb[set.trk % NTRACKS][k] = steps.tk[set.trk % NTRACKS][k] = 0u;
+            steps.tb[set.trk % NTRACKS][k] = 0u;
     } else if (w == RST_SCREEN) {        /* SCREEN: the skin, the screen effects and their settings, WAVE ZOOM as they
                                           * start (GLO MORE, EFFECTS, FX SET) */
         set.skin = SKIN_NEW | SKIN_DEFAULT;   /* (LOAF BREAKER, 0.240: RED) */
         set.sfx_on = 0u;
         set.scrfx = set.sfx_kick = set.sfx_drop = set.sfx_len = 50u;
         set.wzoom = 3u;
-        set.ezoom = 0u;                  /* (LOAF BREAKER: EDIT ZOOM AUTO) */
         ui.redraw = RG_ALL;
-    } else {                               /* LOAF BREAKER: KICK: the kick selected (KICK 1-10) as it starts: ROTTERDAM,
-                                          * its TERRORs and effects with it, its SYNTH at 0, its BASS, CLEAN SUB
-                                          * and MORPH off; its volume
-                                          * kept; its memory with it */
+    } else {                             /* AFFINE: BOOM: as it starts, 808, its level kept */
         float vol = set.kick.volume;
-        uint32_t j;
         kick_defaults(&set.kick);
         set.kick.volume = vol;
-        for (j = 0; j < KS_N; j++)
-            set.ksyn[j] = 0;
-        set.kbass[0] = set.kbass[1] = 0u;
-        set.kbass[2] = set.kbass[3] = 50u;
-        set.csub = set.kmorph = set.kmorph_to = 0u;   /* (CLEAN SUB and MORPH off; ENV KNOB's choices: RESET KNOB) */
-        set.selk_hi &= (uint8_t)~112u;   /* (its TERROR, its DRIVE and its SUB FX on again, TER, DRV, SUB) */
-        (*kmem_at(set.kslot % KICK_MEMS)) = set.kick;
-        for (j = 0; j < KS_N; j++)
-            ksmem_at(set.kslot % KICK_MEMS)[j] = 0;
-        memset(&klab.cur, 0, sizeof klab.cur);   /* (LOAF BREAKER: its KICK LAB off) */
-        memset(kx2_at(set.kslot), 0, sizeof(kick_x2_t));   /* (0.9.45: its TOK and TAIL GATE off) */
-        (*klmem_at(set.kslot % KICK_MEMS)) = klab.cur;
+        set.kpre = 0u;
     }
     changed();
 }
-static const char *const DS_NAME[DS_N] = {"SNARE ROLL", "KICK ROLL", "KICK+SNARE", "STUTTER", "SWEEP ONLY", "RANDOM"};
+static const char *const DS_NAME[DS_N] = {"SNARE ROLL", "BOOM ROLL", "BOOM+SNARE", "STUTTER", "SWEEP ONLY", "RANDOM"};
 static const char *const SWEEP_NAME[4] = {"HIGH-PASS", "LOW-PASS", "NONE", "RANDOM"};
 static uint32_t drop_rng = 0x2545F491u;
 static uint32_t drop_rand(uint32_t n)    /* 0..n-1, by chance (the drops unlike each other) */
@@ -273,22 +218,8 @@ static const char *const TRK_END_NAME[3] = {"LOOP", "STOP", "HOLD"};
 static track_t *trk_now(void) { return &pats.trk[set.trk % NTRACKS]; }
 #define TRK_FROM (trk_now()->rsv[0])     /* LOAF BREAKER: the track's first item (TRACKS: SEL + PLAY; PLAY's FROM), saved
                                           * with it */
-static uint8_t *trk_brk(uint32_t i) { return &steps.tb[set.trk % NTRACKS][i % TRK_ITEMS]; }   /* (the item's break) */
-static uint8_t *trk_kick(uint32_t i) { return &steps.tk[set.trk % NTRACKS][i % TRK_ITEMS]; }   /* (LOAF BREAKER: its
-                                          * kick: 0 the one playing, n KICK n) */
-static uint8_t trk_kick_due;             /* (a track's next item's kick, + 1: taken as its pattern comes in) */
-static void kick_mem_go(uint32_t n);
-static void trk_kick_go(uint32_t i, int now)   /* a pattern item coming: its own kick, now or as it comes in */
-{
-    uint32_t k = *trk_kick(i);
-    trk_kick_due = 0u;
-    if (!k || k > KICK_MEMS || k - 1u == set.kslot % KICK_MEMS)
-        return;
-    if (now)
-        kick_mem_go(k - 1u);
-    else
-        trk_kick_due = (uint8_t)k;
-}
+static uint8_t *trk_brk(uint32_t i) { return &steps.tb[set.trk % NTRACKS][i % TRK_ITEMS]; }   /* (the item's break;
+                                          * AFFINE: LOAF BREAKER's item's kick gone) */
 static int trk_is_pat(const track_t *t, uint32_t i)
 {
     uint32_t v = t->it[i % TRK_ITEMS];
@@ -357,24 +288,13 @@ static int trk_pat_from(const track_t *t, uint32_t i, int wrap)   /* the first p
 
 /* the drop asked for: a build into pattern to (its drums ready for the render), or (building) the drop at the
  * next bar */
-static uint8_t drop_kick_want, drop_kick_back;   /* LOAF BREAKER: the build's kick (+ 1, 0: the one playing), and the
-                                          * one to come back at the drop (+ 1) */
 static void drop_start_k(uint32_t to, int item);
 static uint8_t b_stut;                   /* (0.9.26, FLEXOR: this build's STUTTER, a track's DROP item's K3: the break
                                           * rolled over the BUILD's style; kept in the item's break byte, a DROP's unused:
                                           * bit 0; bits 1-2 its K4, what the GAP keeps, b_gapm) */
 static const char *const GAPM_NAME[4] = {"NOTHING", "BREAK", "DRUMS", "ECHOES"};
-static void drop_kick_text(char *t)      /* (DROP's PRESETS: SAME, KICK n) */
-{
-    if (!set.drop_kick || set.drop_kick > KICK_MEMS)
-        text_cat(t, "SAME");
-    else {
-        text_cat(t, "KICK ");
-        int_text((int32_t)set.drop_kick, t + 5);
-    }
-}
 static void drop_start(uint32_t to) { drop_start_k(to, -1); }
-static void drop_start_k(uint32_t to, int item)   /* item: a track's DROP item (its kick), -1 none (DROP's PRESETS) */
+static void drop_start_k(uint32_t to, int item)   /* item: a track's DROP item (its STUTTER, its GAP), -1 none */
 {
     if (!playing_now()) {
         app_say("DROP", "PLAY FIRST");
@@ -388,7 +308,6 @@ static void drop_start_k(uint32_t to, int item)   /* item: a track's DROP item (
         drop_to = to / NPAT % NGRP == set.pgrp ? (uint8_t)(to % NPAT) : 0xFFu;
         if (drop_to == 0xFFu && grp_blocked(ui.drop_pat))
             ui.drop_pat = 0xFFu;
-        drop_kick_want = item >= 0 ? *trk_kick((uint32_t)item) : set.drop_kick;   /* (the build's kick) */
         b_stut = (uint8_t)(item >= 0 && *trk_brk((uint32_t)item) & 1u);
         b_gapm = (uint8_t)(item >= 0 ? *trk_brk((uint32_t)item) >> 1 & 3u : 0u);
         p = &pats.p[set.pattern % NPAT];
@@ -461,7 +380,6 @@ static void track_play(int home)
     pat_next = -1;
     pat_apply();
     trk_brk_go((uint32_t)i);             /* (its break) */
-    trk_kick_go((uint32_t)i, 1);         /* (LOAF BREAKER: its kick) */
     if (playing_now())
         transport(1, 1);                 /* (from bar 1) */
     else {
@@ -483,7 +401,6 @@ static void track_stop(const char *why)
 {
     ui.trk_on = 0u;
     ui.trk_drop = 0xFFu;
-    trk_kick_due = 0u;
     app_say("TRACK", why);
     ui.redraw |= RG_HEAD | RG_BLOCKS;
 }
@@ -527,7 +444,6 @@ static void track_next(void)
     if (t->it[i] - 1u != pat_cur() && !grp_blocked(t->it[i] - 1u))
         pat_next = (int8_t)(t->it[i] - 1u);
     trk_brk_go(i);                       /* (its break, from the same bar: break_poll swaps at its last 16th) */
-    trk_kick_go(i, 0);                   /* (LOAF BREAKER: its kick, as its pattern comes in) */
     ui.redraw |= RG_HEAD | RG_BLOCKS;
 }
 /* the main loop, each frame: the loops counted (one as its last bar begins), the next item asked for */
@@ -545,10 +461,6 @@ static void track_poll(const brk_status_t *st)
         return;
     if (st->step < ui.trk_prev) {        /* a new loop */
         ui.trk_cnt = 0u;
-        if (trk_kick_due) {              /* (LOAF BREAKER: the item come in: its kick) */
-            kick_mem_go(trk_kick_due - 1u);
-            trk_kick_due = 0u;
-        }
         if (ui.trk_stop) {
             transport(0, 0);
             track_stop("END");
@@ -584,441 +496,9 @@ static void track_dropped(void)
         return;
     ui.trk_pos = ui.trk_drop;
     ui.trk_drop = 0xFFu;
-    trk_kick_go(ui.trk_pos, 1);          /* (LOAF BREAKER: the pattern dropped into: its kick, with the drop) */
     ui.trk_loops = 0u;
     ui.trk_cnt = 0u;
     ui.trk_prev = -1;
-}
-
-/* ---- KNOB: the SEL + knob functions, each its settings (K1 its amount, as SEL + its knob). Functions: 0 DUCK, 1 TERROR
- * 2, 2 COMP, 3 TERROR, 4 TERROR + (TERROR's more: no amount of its own), 5 DRIVE (the kick's INTENSITY). SEL + K1 is
- * DUCK, SEL + K3 COMP; SEL + K2 and SEL + K4 each the function KNOB gives them (LOAF BREAKER TEST: set.selk_asg) ---- */
-/* LOAF BREAKER (9 Nov 2026): 9 TUNE (the kick's, SYNTH's), 10 DECAY (the SUB's), 11 REV BASS (its amount, start,
- * curve), 12 GLIDE, 13 CLEAN SUB (the round sine under the distortion), 14 MORPH (towards another kick memory) */
-/* LOAF BREAKER (10 Nov 2026, early next gen): 15 PITCH DROP (SYNTH's DROP, its TIME), 16 RUMBLE (its amount, its
- * time), 17 PUNCH (MACRO's), 18 DRUM FLT (the drums' filter, SEL + SELECT's), 19 HOLD (SYNTH's), 20 KICK FX (the
- * kick's two FX slots' mix) */
-#define SK_N 21u
-/* (LOAF BREAKER, 10 Nov 2026: on the screen TERROR is DISTO, TERROR 2 SCREAM, TERROR + DISTO +, its settings D+ ..: names
- * a newcomer reads; the code keeps TERROR's) */
-static const char *const SK_NAME[SK_N] = {"DUCK", "SCREAM", "COMP", "DISTO", "DISTO +", "DRIVE", "D+ TYPE",
-                                          "D+ SCREECH", "D+ TAIL", "TUNE", "DECAY", "REV BASS", "GLIDE", "CLEAN SUB",
-                                          "MORPH", "PITCH DROP", "RUMBLE", "PUNCH", "DRUM FLT", "HOLD", "KICK FX"};
-static const char *const SK_SHORT[SK_N] = {"DUCK", "SCREAM", "COMP", "DISTO", "D+ DRIVE", "DRIVE", "D+ TYPE", "SCRCH",
-                                           "D+ TAIL", "TUNE", "DECAY", "REV B", "GLIDE", "C SUB", "MORPH", "P DROP",
-                                           "RUMBLE", "PUNCH", "D FLT", "HOLD", "K FX"};
-static const char *const SK_KNOB[SK_N][4] = {{"AMOUNT", "ATTACK", "RELEASE", "DUCKS"}, {"AMOUNT", "SUB", "SCREAM", "PUSH"},
-                                             {"AMOUNT", "RATIO", "ATTACK", "RELEASE"}, {"AMOUNT", "SUB", "FIZZ", "SUSTAIN"},
-                                             {"DRIVE", "TYPE", "SCREECH", "TAIL"}, {"AMOUNT", "", "", ""},
-                                             {"TYPE", "", "", ""}, {"SCREECH", "", "", ""}, {"TAIL", "", "", ""},
-                                             {"SEMITONES", "", "", ""}, {"SUB DECAY", "", "", ""},
-                                             {"AMOUNT", "START", "CURVE", ""}, {"TIME", "", "", ""}, {"AMOUNT", "", "", ""},
-                                             {"AMOUNT", "TO KICK", "", ""}, {"AMOUNT", "TIME", "", ""},
-                                             {"AMOUNT", "TIME", "", ""}, {"AMOUNT", "", "", ""}, {"FILTER", "", "", ""},
-                                             {"HOLD", "", "", ""}, {"FX 1 MIX", "FX 2 MIX", "", ""}};
-static const char *const T_TYPE_NAME[KICK_T_TYPES] = {"FOLD", "CLIP", "CRUSH", "RECT", "TUBE", "HALF", "SINE",
-                                                      "WRAP", "FUZZ"};   /* (0.255: four more, FLEXOR) */
-/* what a SEL + knob can be given (KNOB, PRESETS), in that order: its code 1..15 is its place + 1 (0: the knob's own) */
-#define SK_CODES 21u                     /* (codes past 15: selk_hi's fifth bit) */
-static const uint8_t SK_CODE[SK_CODES] = {0u, 1u, 2u, 3u, 4u, 6u, 7u, 8u, 5u, 9u, 10u, 11u, 12u, 13u, 14u, 15u, 16u,
-                                          17u, 18u, 19u, 20u};
-static const uint8_t SK_OWN[4] = {5u, 1u, 7u, 3u};   /* K1 DRIVE, K2 TERROR 2, K3 T+ SCREECH, K4 TERROR (LOAF BREAKER:
-                                          * DUCK and COMP no more: the MIXER's MASTER has them) */
-static const char *sk_short(uint32_t f) { return SK_SHORT[f % SK_N]; }   /* (EDIT KICK's KNOBS) */
-static const char *sk_kname(uint32_t f, int i) { return SK_KNOB[f % SK_N][i & 3]; }
-/* LOAF BREAKER: KNOBS' STYLE: the four functions a style gives SEL + K1..K4 (SK_* indexes) */
-#define KSTYLES 8u
-static const char *const KSTYLE_NAME[KSTYLES] = {"TERROR", "EARLY NEXT GEN", "HARDCORE", "NEW SCHOOL", "RAWSTYLE",
-                                                 "INDUSTRIAL", "FRENCHCORE", "LIVE BUILD"};
-/* (FLEXOR's rule: a style with DRIVE has it on K1, one with TERROR has it on K4) */
-static const uint8_t KSTYLE[KSTYLES][4] = {{5u, 1u, 7u, 3u}, {15u, 16u, 17u, 18u}, {5u, 17u, 10u, 3u}, {5u, 13u, 6u, 3u},
-                                           {11u, 12u, 15u, 8u}, {7u, 6u, 10u, 20u}, {5u, 10u, 1u, 15u},
-                                           {18u, 14u, 16u, 19u}};   /* (no TUNE: not a knob's) */
-static uint8_t kstyle_at;                /* (the style picked last: where turning goes on from) */
-static int sk_live(uint32_t f) { return f != 0u && f != 2u && f != 9u; }   /* (a function a SEL + knob may have;
-                                          * LOAF BREAKER: TUNE no more, SYNTH +'s K4 has it; a knob given it before: its
-                                          * own again) */
-static uint32_t sk_code(uint32_t knob)   /* the knob's code, 0 its own */
-{
-    uint8_t b = knob == 1u || knob == 3u ? set.selk_asg : set.selk_asg2;
-    return (knob >= 2u ? b >> 4 : b & 15u) | (uint32_t)(set.selk_hi >> (knob & 3u) & 1u) << 4;
-}
-static void sk_code_set(uint32_t kn, uint32_t code)   /* (LOAF BREAKER: its code, the fifth bit in selk_hi) */
-{
-    uint8_t *b = kn == 1u || kn == 3u ? &set.selk_asg : &set.selk_asg2;
-    uint32_t sh = kn >= 2u ? 4u : 0u;
-    *b = (uint8_t)((*b & ~(15u << sh)) | (code & 15u) << sh);
-    set.selk_hi = (uint8_t)((set.selk_hi & ~(1u << (kn & 3u))) | (code >> 4 & 1u) << (kn & 3u));
-}
-static uint32_t selk_fn(uint32_t knob)   /* the function SEL + K1..K4 turns */
-{
-    uint32_t c = sk_code(knob & 3u);
-    return c && c <= SK_CODES && sk_live(SK_CODE[c - 1u]) ? SK_CODE[c - 1u] : SK_OWN[knob & 3u];
-}
-static uint8_t *sk_byte(uint32_t f, int i)   /* a setting's byte (the TERRORs': the kick's, int8 -50..50) */
-{
-    kick_t *k = &set.kick;
-    static uint8_t *const DUCKB[3] = {&set.duck, &set.duck_att, &set.duck_rel};
-    static uint8_t *const COMPB[4] = {&set.comp, &set.comp_ratio, &set.comp_att, &set.comp_rel};
-    if (f == 0u)
-        return i < 3 ? DUCKB[i] : &set.duck_what;
-    if (f == 2u)
-        return COMPB[i & 3];
-    if (f == 4u)
-        return i == 0 ? &KICK_T_DRIVE(k) : i == 1 ? &KICK_T_TYPE(k) : i == 2 ? &KICK_T_SCREECH(k) : &KICK_T_TAIL(k);
-    if (i == 0)
-        return kick_hc(k, f == 1u ? 2 : 1);
-    if (f == 1u)
-        return i == 1 ? &KICK_T2_SUB(k) : i == 2 ? &KICK_T2_SCREAM(k) : &KICK_T2_PUSH(k);
-    return i == 1 ? &KICK_T_SUB(k) : i == 2 ? &KICK_T_FIZZ(k) : &KICK_T_SUS(k);
-}
-static int sk_signed(uint32_t f, int i)  /* a setting -50 .. +50 (int8) */
-{
-    return (f == 1u || f == 3u) ? i > 0 : f == 4u && (i == 0 || i == 3);
-}
-static void selk_value(uint32_t f, int i, char *t)
-{
-    uint8_t v;
-    int32_t sv;
-    t[0] = 0;
-    if (f >= 15u) {                      /* LOAF BREAKER: PITCH DROP, RUMBLE, PUNCH, DRUM FLT, HOLD, KICK FX */
-        if (f == 15u && i < 2)
-            ks_text(i ? KS_TIME : KS_DROP, t);
-        else if (f == 16u && i < 2)
-            ks_text(i ? KS_RTIME : KS_RUMBLE, t);
-        else if (f == 17u && i == 0)
-            pct_text(kick_macro_value(1), t);
-        else if (f == 18u && i == 0)
-            kick_flt_text(t);
-        else if (f == 19u && i == 0)
-            ks_text(KS_HOLD, t);
-        else if (f == 20u && i < 2)
-            pct_text(set.kfx[i].mix, t);
-        return;
-    }
-    if (f >= 9u) {                       /* LOAF BREAKER: TUNE, DECAY, REV BASS, GLIDE, CLEAN SUB, MORPH */
-        int32_t x = f == 9u ? set.ksyn[KS_TUNE] : 0;
-        if (f == 9u && i == 0) {
-            if (x > 0)
-                text_cat(t, "+");
-            int_text(x, t + (x > 0 ? 1 : 0));
-            text_cat(t, " ST");
-        } else if (f == 10u && i == 0) {
-            int_text((int32_t)(kick_decay_ms(KL_SUB, set.kick.l[KL_SUB].decay) + 0.5f), t);
-            text_cat(t, " MS");
-        } else if (f == 11u && i < 3) {
-            int_text(set.kbass[1 + i], t);
-            text_cat(t, "%");
-        } else if (f == 12u && i == 0) {
-            int_text((int32_t)((float)set.kbass[0] * (float)set.kbass[0] * 0.04f + 0.5f), t);
-            text_cat(t, " MS");
-        } else if (f == 13u && i == 0) {
-            int_text(set.csub, t);
-            text_cat(t, "%");
-        } else if (f == 14u && i == 0) {
-            int_text(set.kmorph, t);
-            text_cat(t, "%");
-        } else if (f == 14u && i == 1) {
-            text_cat(t, "KICK ");
-            int_text((int32_t)(set.kmorph_to % KICK_MEMS) + 1, t + 5);
-        }
-        return;
-    }
-    if (f >= 6u) {                       /* (T+ TYPE, SCREECH, TAIL alone: TERROR +'s) */
-        if (i == 0)
-            selk_value(4u, (int)(f - 5u), t);
-        return;
-    }
-    if (f == 5u) {                       /* DRIVE: the kick's INTENSITY */
-        if (i == 0)
-            pct_text(set.kick.intensity, t);
-        return;
-    }
-    v = *sk_byte(f, i);
-    sv = (int8_t)v;
-    if (f == 4u && i == 1)
-        text_cat(t, T_TYPE_NAME[v < KICK_T_TYPES ? v : 0u]);
-    else if (f == 4u && i == 2) {        /* SCREECH: its band */
-        if (!v)
-            text_cat(t, "OFF");
-        else {
-            int_text((int32_t)(500.0f * brk_exp2f_c((float)v * 0.0332f) + 0.5f), t);
-            text_cat(t, " HZ");
-        }
-    } else if (sk_signed(f, i) && !(i == 1 || (f == 1u && i == 2))) {
-        if (sv > 0)
-            text_cat(t, "+");
-        int_text(sv, t + (sv > 0 ? 1 : 0));
-    } else if (i == 0) {                 /* the amount */
-        if (!v)
-            text_cat(t, "OFF");
-        else if (f == 2u) {              /* COMP: its threshold */
-            tenths_text(-(int32_t)v * 36 / 10, t);
-            text_cat(t, " DB");
-        } else {
-            int_text(v, t);
-            text_cat(t, "%");
-        }
-    } else if (f == 0u)
-        if (i == 3)
-            text_cat(t, v == 1u ? "+ DRUMS" : "BREAK");
-        else
-            ms_text(i == 1 ? att_ms(v) : rel_ms(v), t);
-    else if (f == 2u) {
-        if (i == 1) {
-            float r = COMP_RATIO[v & 7u];
-            if (r < 2.0f)
-                text_cat(t, "1.5");
-            else
-                int_text((int32_t)r, t);
-            text_cat(t, ":1");
-        } else
-            ms_text(i == 2 ? att_ms(v) : rel_ms(v), t);
-    } else {                             /* SUB, SCREAM: about their frequency */
-        int_text((int32_t)((i == 1 ? 110.0f * brk_exp2f_c((float)sv * 0.024f) : 620.0f * brk_exp2f_c((float)sv * 0.04f)) + 0.5f), t);
-        text_cat(t, " HZ");
-    }
-}
-static float sk_norm(uint32_t f, int i)  /* a setting 0..1, as its bar */
-{
-    uint8_t v;
-    if (f >= 15u)                        /* (LOAF BREAKER: PITCH DROP .. KICK FX) */
-        return f == 15u ? (i < 2 ? ks_normj(i ? KS_TIME : KS_DROP) : 0.0f) :
-               f == 16u ? (i < 2 ? ks_normj(i ? KS_RTIME : KS_RUMBLE) : 0.0f) :
-               f == 17u ? (i ? 0.0f : kick_macro_value(1)) :
-               f == 18u ? (i ? 0.0f : ((float)set.kick_dj + 100.0f) * 0.005f) :
-               f == 19u ? (i ? 0.0f : ks_normj(KS_HOLD)) : (i < 2 ? set.kfx[i].mix : 0.0f);
-    if (f >= 9u)                         /* (LOAF BREAKER: TUNE .. MORPH) */
-        return f == 9u ? (i ? 0.0f : ((float)set.ksyn[KS_TUNE] + 12.0f) * (1.0f / 24.0f)) :
-               f == 10u ? (i ? 0.0f : set.kick.l[KL_SUB].decay) :
-               f == 11u ? (i < 3 ? (float)set.kbass[1 + i] * 0.01f : 0.0f) :
-               f == 12u ? (i ? 0.0f : (float)set.kbass[0] * 0.01f) :
-               f == 13u ? (i ? 0.0f : (float)set.csub * 0.01f) :
-               i == 0 ? (float)set.kmorph * 0.01f : i == 1 ? (float)(set.kmorph_to % KICK_MEMS) * (1.0f / (float)(KICK_MEMS - 1u)) : 0.0f;
-    if (f >= 6u)
-        return i == 0 ? sk_norm(4u, (int)(f - 5u)) : 0.0f;
-    if (f == 5u)
-        return i == 0 ? set.kick.intensity : 0.0f;
-    v = *sk_byte(f, i);
-    if (sk_signed(f, i))
-        return ((float)(int8_t)v + 50.0f) * 0.01f;
-    if (f == 4u && i == 1)
-        return (float)v / (float)(KICK_T_TYPES - 1u);
-    if ((f == 0u && i == 3))
-        return (float)v;
-    if (f == 2u && i == 1)
-        return (float)(v & 7u) * (1.0f / 7.0f);
-    return (float)v * 0.01f;
-}
-/* turned: SEL + its knob (i 0), on KNOB, or on EDIT KICK's TERROR parts */
-static uint8_t sk_quiet;                 /* (LOAF BREAKER: a preset putting values back: nothing said) */
-static void selk_turn(uint32_t f, int i, int32_t d)
-{
-    char t[16], n[20];
-    if (f == 18u) {                      /* LOAF BREAKER: DRUM FLT: SEL + SELECT's own (its say, its change) */
-        if (i == 0)
-            kick_flt_turn(d);
-        ui.redraw |= RG_BLOCKS | RG_FOOT;
-        return;
-    }
-    if (f >= 15u) {                      /* LOAF BREAKER: PITCH DROP, RUMBLE, PUNCH, HOLD, KICK FX */
-        if ((f == 15u || f == 16u) && i < 2)
-            ks_add(f == 15u ? (i ? KS_TIME : KS_DROP) : (i ? KS_RTIME : KS_RUMBLE), d);
-        else if (f == 17u && i == 0) {
-            uint32_t j;
-            for (j = 0; j < KM_N; j++)
-                *kick_macro(1, j) = knob_f(*kick_macro(1, j), d, 0.02f, 0.0f, 1.0f);
-        } else if (f == 19u && i == 0)
-            ks_add(KS_HOLD, d);
-        else if (f == 20u && i < 2)
-            set.kfx[i].mix = knob_f(set.kfx[i].mix, d, 0.02f, 0.0f, 1.0f);
-        else
-            return;
-    } else if (f >= 9u) {                /* LOAF BREAKER: TUNE, DECAY, REV BASS, GLIDE, CLEAN SUB, MORPH */
-        if (f == 9u && i == 0)
-            set.ksyn[KS_TUNE] = (int8_t)clamp((int32_t)set.ksyn[KS_TUNE] + (d > 0 ? 1 : -1), -12, 12);
-        else if (f == 10u && i == 0)
-            set.kick.l[KL_SUB].decay = knob_f(set.kick.l[KL_SUB].decay, d, 0.02f, 0.0f, 1.0f);
-        else if (f == 11u && i < 3)
-            set.kbass[1 + i] = (uint8_t)clamp((int32_t)set.kbass[1 + i] + d * 2, 0, 100);
-        else if (f == 12u && i == 0)
-            set.kbass[0] = (uint8_t)clamp((int32_t)set.kbass[0] + d * 2, 0, 100);
-        else if (f == 13u && i == 0)
-            set.csub = (uint8_t)clamp((int32_t)set.csub + d * 2, 0, 100);
-        else if (f == 14u && i == 0)
-            set.kmorph = (uint8_t)clamp((int32_t)set.kmorph + d * 2, 0, 100);
-        else if (f == 14u && i == 1)
-            set.kmorph_to = (uint8_t)clamp((int32_t)(set.kmorph_to % KICK_MEMS) + (d > 0 ? 1 : -1), 0, KICK_MEMS - 1);
-        else
-            return;
-    } else if (f >= 6u) {                /* (T+ TYPE, SCREECH, TAIL alone) */
-        if (i == 0)
-            selk_turn(4u, (int)(f - 5u), d);
-        return;
-    } else if (f == 5u) {                /* DRIVE */
-        if (i)
-            return;
-        set.kick.intensity = knob_f(set.kick.intensity, d, 0.02f, 0.0f, 1.0f);
-    } else {
-        uint8_t *b = sk_byte(f, i);
-        if (sk_signed(f, i))
-            *b = (uint8_t)(int8_t)clamp((int32_t)(int8_t)*b + d * 2, -50, 50);
-        else if (f == 4u && i == 1)
-            *b = (uint8_t)clamp((int32_t)*b + (d > 0 ? 1 : -1), 0, (int32_t)KICK_T_TYPES - 1);   /* (LOAF BREAKER: RECT,
-                                          * TUBE too; 0.255 HALF, SINE, WRAP, FUZZ) */
-        else if (f == 0u && i == 3)
-            *b = (uint8_t)clamp((int32_t)*b + (d > 0 ? 1 : -1), 0, 1);
-        else if (f == 2u && i == 1)
-            *b = (uint8_t)clamp((int32_t)*b + (d > 0 ? 1 : -1), 0, 7);
-        else
-            *b = (uint8_t)clamp((int32_t)*b + d * 2, 0, 100);
-    }
-    if (!sk_quiet) {
-        selk_value(f, i, t);
-        n[0] = 0;
-        text_cat(n, SK_NAME[f % SK_N]);
-        if (i || f == 4u) {
-            text_cat(n, " ");
-            text_cat(n, SK_KNOB[f % SK_N][i & 3]);
-        }
-        app_say(n, t);
-    }
-    if (f == 0u || f == 2u)              /* (DUCK, COMP: the mix's; KICK FX the chain's; the rest the kick's alone) */
-        changed();
-    else if (f == 20u)
-        changed_fx();
-    else
-        changed_kick();
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-/* PRESETS on KNOB: what SEL + the knob picked does (DUCK, TERROR 2, COMP, TERROR, T+ DRIVE, T+ TYPE, T+ SCREECH,
- * T+ TAIL, DRIVE), any of the four */
-static void selk_assign_k(uint32_t kn, int32_t d)   /* (ENV KNOB's knob, or EDIT KICK's K SET's) */
-{
-    uint32_t f, c = 0u, k;
-    char n[12] = "SEL + K";
-    kn &= 3u;
-    f = selk_fn(kn);
-    for (k = 0; k < SK_CODES; k++)       /* (where it is in the list now) */
-        if (SK_CODE[k] == f)
-            c = k;
-    do                                   /* (DUCK and COMP passed over) */
-        c = (uint32_t)clamp((int32_t)c + (d > 0 ? 1 : -1), 0, (int32_t)SK_CODES - 1);
-    while (!sk_live(SK_CODE[c]) && c > 0u && c < SK_CODES - 1u);
-    if (!sk_live(SK_CODE[c]))
-        c = c ? SK_CODES - 1u : 1u;
-    sk_code_set(kn, c + 1u);
-    n[7] = (char)('1' + kn);
-    n[8] = 0;
-    app_say(n, SK_NAME[selk_fn(kn)]);
-    changed();
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-
-/* LOAF BREAKER: after the eight styles, PRESET 1-4: FLEXOR's own, the four knobs' functions and their values, the same
- * for every kick (steps.kpre); PRESETS onto one: the kick playing takes it; SAVE there: the kick's four knobs into it */
-#define KPRESETS 4u
-static const char *const KPRE_NAME[KPRESETS] = {"PRESET 1", "PRESET 2", "PRESET 3", "PRESET 4"};
-static void sk_set_norm(uint32_t f, float want)   /* a knob's function to a value (0..1), turned there quietly */
-{
-    uint32_t n;
-    float was = sk_norm(f, 0), now;
-    sk_quiet = 1u;
-    for (n = 0; n < 600u && (was < want - 0.004f || was > want + 0.004f); n++) {
-        int32_t d = was < want ? 1 : -1;
-        selk_turn(f, 0, d);
-        now = sk_norm(f, 0);
-        if (now == was || (d > 0 ? now > want : now < want)) {   /* (stuck, or past it: the nearer of the two) */
-            if (now != was && (d > 0 ? now - want > want - was : want - now > was - want))
-                selk_turn(f, 0, -d);
-            break;
-        }
-        was = now;
-    }
-    sk_quiet = 0u;
-}
-static const char *kstyle_name(void)    /* the style the four knobs have now, or CUSTOM */
-{
-    static const char *const EMPTY[KPRESETS] = {"PRESET 1 (EMPTY)", "PRESET 2 (EMPTY)", "PRESET 3 (EMPTY)",
-                                                "PRESET 4 (EMPTY)"};
-    uint32_t s, k;
-    if (kstyle_at >= KSTYLES) {          /* (LOAF BREAKER: the PRESET n picked first, its knobs still as it gave them) */
-        const uint8_t *p = steps.kpre[kstyle_at - KSTYLES];
-        for (k = 0; k < 4u && sk_code(k) == p[k]; k++)
-            ;
-        if (!p[8])
-            return EMPTY[kstyle_at - KSTYLES];
-        if (k == 4u)
-            return KPRE_NAME[kstyle_at - KSTYLES];
-    }
-    for (s = 0; s < KSTYLES; s++) {
-        for (k = 0; k < 4u && selk_fn(k) == KSTYLE[s][k]; k++)
-            ;
-        if (k == 4u)
-            return KSTYLE_NAME[s];
-    }
-    for (s = 0; s < KPRESETS; s++) {     /* (LOAF BREAKER: a preset's four functions) */
-        for (k = 0; k < 4u && steps.kpre[s][8] && sk_code(k) == steps.kpre[s][k]; k++)
-            ;
-        if (k == 4u)
-            return KPRE_NAME[s];
-    }
-    return "CUSTOM";
-}
-static uint8_t kcust[9], kleft[9];      /* the knobs as FLEXOR had them before PRESETS turned; as PRESETS left them */
-static void kpre_take(uint8_t *p)        /* the four knobs now: codes, values (0..200), 1 */
-{
-    uint32_t k;
-    for (k = 0; k < 4u; k++) {
-        float v = sk_norm(selk_fn(k), 0);
-        p[k] = (uint8_t)sk_code(k);
-        p[4 + k] = (uint8_t)(v < 0.0f ? 0.0f : v > 1.0f ? 200.0f : v * 200.0f + 0.5f);
-    }
-    p[8] = 1u;
-}
-static void kpre_put(const uint8_t *p)   /* the kick playing takes them */
-{
-    uint32_t k;
-    for (k = 0; k < 4u; k++)
-        sk_code_set(k, p[k]);
-    for (k = 0; k < 4u; k++)
-        sk_set_norm(selk_fn(k), (float)p[4 + k] * 0.005f);
-    changed();
-}
-static void kstyle_turn(int32_t d)
-{
-    uint32_t k, c;
-    uint8_t now[9];
-    kpre_take(now);                      /* (changed since PRESETS last turned: those are FLEXOR's knobs, kept for an
-                                          * empty PRESET n, so that SAVE there stores them) */
-    for (k = 0; k < 8u && now[k] == kleft[k]; k++)
-        ;
-    if (k < 8u)
-        for (k = 0; k < 9u; k++)
-            kcust[k] = now[k];
-    kstyle_at = (uint8_t)((kstyle_at + (d > 0 ? 1u : KSTYLES + KPRESETS - 1u)) % (KSTYLES + KPRESETS));
-    if (kstyle_at >= KSTYLES) {          /* (LOAF BREAKER: PRESET 1-4: stored, its knobs; empty, FLEXOR's own back) */
-        const uint8_t *p = steps.kpre[kstyle_at - KSTYLES];
-        kpre_put(p[8] ? p : kcust);
-        app_say(p[8] ? "STYLE" : KPRE_NAME[kstyle_at - KSTYLES], p[8] ? KPRE_NAME[kstyle_at - KSTYLES] : "EMPTY: SAVE STORES");
-    } else {
-        for (k = 0; k < 4u; k++) {       /* (each knob: the function's code, its place in SK_CODE + 1) */
-            for (c = 0; c < SK_CODES && SK_CODE[c] != KSTYLE[kstyle_at][k]; c++)
-                ;
-            sk_code_set(k, c + 1u);
-        }
-        app_say("STYLE", KSTYLE_NAME[kstyle_at]);
-    }
-    kpre_take(kleft);
-    set_dirty = 1u;
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-static int kpre_store(void)              /* LOAF BREAKER: SAVE on STYLE, PRESET n picked: the four knobs into it; 0 not */
-{
-    if (ui.page != PG_KICK || ui.kpage != KP_STYLE || kstyle_at < KSTYLES)
-        return 0;
-    kpre_take(steps.kpre[kstyle_at - KSTYLES]);
-    return 1;
 }
 
 /* ---- the page ---- */
@@ -1107,16 +587,9 @@ static void track_value(int i, char *t)
             text_cat(t, TRK_END_NAME[tr->end % 3u]);
         return;
     }
-    if (i == 0) {                        /* TRACKS: the item's kick (LOAF BREAKER; the item: ALGORITHM) */
-        if (!trk_is_pat(tr, ui.trk_cur) && tr->it[ui.trk_cur % TRK_ITEMS] != TI_DROP)
-            text_cat(t, "-");
-        else if (!*trk_kick(ui.trk_cur))
-            text_cat(t, "SAME");
-        else {
-            text_cat(t, "KICK ");
-            int_text((int32_t)*trk_kick(ui.trk_cur), t + 5);
-        }
-    }
+    if (i == 0)                          /* TRACKS: K1 nothing (AFFINE: LOAF BREAKER's item's kick gone; the item:
+                                          * ALGORITHM) */
+        ;
     else if (i == 1)
         trk_item_text(tr, ui.trk_cur % TRK_ITEMS, t, r);
     else if (i == 2) {
@@ -1139,7 +612,7 @@ static void track_value(int i, char *t)
 }
 static void track_say(int i)             /* the knob turned, on the strip */
 {
-    static const char *const N[NTPART][4] = {{"KICK", "PUT", "LOOPS", "BREAK"}, {"PLAY", "FROM ITEM", "AT THE END", ""},
+    static const char *const N[NTPART][4] = {{"", "PUT", "LOOPS", "BREAK"}, {"PLAY", "FROM ITEM", "AT THE END", ""},
                                         {"BUILD", "AFTER DROP", "DROP BREAK", "CRASH"}, {"", "", "", ""},
                                         {"BUILD STYLE", "SWEEP", "RISER", "GAP"}, {"RESET", "RESET", "RESET", "RESET"}};
     char t[20];
@@ -1151,7 +624,7 @@ static void track_say(int i)             /* the knob turned, on the strip */
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's SONG keeps each part's essentials: TRACKS the item's pattern (K2)
  * and its loops (K3); PLAY the track (K1); DROP the build's length (K1); BUILD its style (K1). The rest as it was set */
 static int trk_knob_ok(int i)            /* (0.9.22, FLEXOR: BEGINNER's SONG whole, as EXPERT's: every knob, ALGORITHM
-                                          * the items, PRESETS' BUILD KICK and TEMPO RISE) */
+                                          * the items, PRESETS' TEMPO RISE) */
 {
     (void)i;
     return 1;
@@ -1239,12 +712,9 @@ static void track_turn(int i, int32_t d)
             app_say("ITEM", s);
             ui.redraw |= RG_BLOCKS | RG_FOOT;
             return;
-        } else if (i == 0) {             /* LOAF BREAKER: K1 the item's kick: SAME (the one playing), KICK 1..10; a
-                                          * DROP's: its build's (back at the drop) */
-            if (!trk_is_pat(t, c) && t->it[c] != TI_DROP)
-                return;
-            *trk_kick(c) = (uint8_t)clamp((int32_t)*trk_kick(c) + dir, 0, (int32_t)KICK_MEMS);
-        } else if (i == 1) {             /* END, EMPTY, DROP, P1..P64 (LOAF BREAKER: DROP just left of P1, the 64
+        } else if (i == 0)               /* (AFFINE: K1 free, the item's kick gone) */
+            return;
+        else if (i == 1) {               /* END, EMPTY, DROP, P1..P64 (LOAF BREAKER: DROP just left of P1, the 64
                                           * past; EMPTY left of it, a case emptied: gone with one more turn left, or
                                           * ENV held) */
             static uint32_t del_t;       /* (0.9.26, FLEXOR: an item deleted, K2 left does nothing until the knob has
@@ -1263,10 +733,9 @@ static void track_turn(int i, int32_t d)
                     t->it[k] = t->it[k + 1u];
                     t->rep[k] = t->rep[k + 1u];
                     *trk_brk(k) = *trk_brk(k + 1u);
-                    *trk_kick(k) = *trk_kick(k + 1u);
                 }
                 t->it[TRK_ITEMS - 1u] = TI_END;
-                *trk_brk(TRK_ITEMS - 1u) = *trk_kick(TRK_ITEMS - 1u) = 0u;
+                *trk_brk(TRK_ITEMS - 1u) = 0u;
                 if (TRK_FROM > c)        /* (the first item: where it was) */
                     TRK_FROM--;
                 app_say("ITEM", "DELETED");
@@ -1377,10 +846,9 @@ static void track_gap(void)
             t->it[k] = t->it[k + 1u];
             t->rep[k] = t->rep[k + 1u];
             *trk_brk(k) = *trk_brk(k + 1u);
-            *trk_kick(k) = *trk_kick(k + 1u);
         }
         t->it[TRK_ITEMS - 1u] = TI_END;
-        *trk_brk(TRK_ITEMS - 1u) = *trk_kick(TRK_ITEMS - 1u) = 0u;
+        *trk_brk(TRK_ITEMS - 1u) = 0u;
         if (ui.trk_on && ui.trk_pos > c)
             ui.trk_pos--;
         if (ui.trk_drop != 0xFFu && ui.trk_drop > c)
@@ -1405,11 +873,10 @@ static void track_gap(void)
         t->it[k] = t->it[k - 1u];
         t->rep[k] = t->rep[k - 1u];
         *trk_brk(k) = *trk_brk(k - 1u);
-        *trk_kick(k) = *trk_kick(k - 1u);
     }
     t->it[c + 1u] = TI_GAP;
     t->rep[c + 1u] = 0u;
-    *trk_brk(c + 1u) = *trk_kick(c + 1u) = 0u;
+    *trk_brk(c + 1u) = 0u;
     ui.trk_cur = (uint8_t)(c + 1u);
     if (ui.trk_on && ui.trk_pos > c && ui.trk_pos + 1u < TRK_ITEMS)
         ui.trk_pos++;                    /* (a track playing: on where it was) */
@@ -1622,10 +1089,6 @@ static void track_picture(int32_t top)
         cv_text(132, 58, &FONT_XS, "PLAYING ENDS IN IT", C_GRAY);
         cv_text(132, 78, &FONT_XS, "SEL + ENV BUILDING:", C_GRAY);
         cv_text(132, 90, &FONT_XS, "THE DROP NEXT BAR", C_GRAY);
-        cv_text(132, 110, &FONT_XS, "PRESETS: BUILD KICK", C_GRAY);   /* (LOAF BREAKER) */
-        s[0] = 0;
-        drop_kick_text(s);
-        cv_text(132, 122, &FONT_XS, s, set.drop_kick ? C_HI : C_DIM);
         cv_oy = 0;
         return;
     }
@@ -1685,10 +1148,6 @@ static void track_picture(int32_t top)
         {
             uint16_t c = now || t->it[i] == TI_DROP ? C_BLACK : i == n ? C_DIM : C_WHITE;
             char kk[6] = "";
-            if (t->it[i] == TI_DROP && *trk_kick(i) && *trk_kick(i) <= KICK_MEMS) {
-                kk[0] = 'K';
-                int_text((int32_t)*trk_kick(i), kk + 1);
-            }
             if (t->it[i] == TI_DROP && *trk_brk(i) & 1u)
                 text_cat(kk, "S");       /* (0.9.26: its STUTTER; what its GAP keeps: B, D, E) */
             if (t->it[i] == TI_DROP && *trk_brk(i) >> 1 & 3u) {
@@ -1696,9 +1155,9 @@ static void track_picture(int32_t top)
                 kk[kn] = "BDE"[(*trk_brk(i) >> 1 & 3u) - 1u];
                 kk[kn + 1u] = 0;
             }
-            if (t->it[i] == TI_DROP && kk[0]) {   /* (LOAF BREAKER: its build's kick under it, S its STUTTER) */
+            if (t->it[i] == TI_DROP && kk[0]) {   /* (LOAF BREAKER: S its STUTTER under it, what its GAP keeps) */
                 cv_text(x + (28 - text_w(&FONT_XS, "DRP")) / 2, y + 3, &FONT_XS, "DRP", c);
-                {                        /* (too wide, "K20SE": the smaller face) */
+                {                        /* (too wide: the smaller face) */
                     const felucca_font_t *kf = text_w(&FONT_XS, kk) > 27 ? &FONT_T : &FONT_XS;
                     cv_text(x + (28 - text_w(kf, kk)) / 2, y + 16, kf, kk, c);
                 }
@@ -1706,9 +1165,9 @@ static void track_picture(int32_t top)
                 cv_text(x + (28 - text_w(&FONT_XS, "DRP")) / 2, y + 9, &FONT_XS, "DRP", c);
             else {
                 cv_text(x + (28 - text_w(&FONT_T, s)) / 2, y + 3, &FONT_T, s, c);
-                if (r[0]) {                  /* (its loops, its own break, its own kick: "X4 B3 K7", the first ones
-                                          * left out where they don't fit) */
-                    char b[4] = "B", kk[4] = "K";
+                if (r[0]) {                  /* (its loops, its own break: "X4 B3", the first ones left out where they
+                                          * don't fit) */
+                    char b[4] = "B";
                     const char *part[3];
                     uint16_t col[3];
                     uint32_t np = 0u, q, a = 0u;
@@ -1719,11 +1178,6 @@ static void track_picture(int32_t top)
                         int_text((int32_t)*trk_brk(i), b + 1);
                         part[np] = b;
                         col[np++] = now ? C_BLACK : C_AMB;
-                    }
-                    if (*trk_kick(i) && *trk_kick(i) <= KICK_MEMS) {
-                        int_text((int32_t)*trk_kick(i), kk + 1);
-                        part[np] = kk;
-                        col[np++] = now ? C_BLACK : C_HI;
                     }
                     for (;;) {                   /* (from the first that fits on) */
                         w = 0;

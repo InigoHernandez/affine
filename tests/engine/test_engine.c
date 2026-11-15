@@ -1254,11 +1254,10 @@ static void test_eq_tape(void)
 }
 
 /* the DJ filter is the break's: a low-passed break goes dark while the kick joining through the chain and the
- * drums around it stay bright; GLOUPI BREAKS: the kick's own (brk_fx_kick_dj) darkens the kick; FILTER THROW the
- * break */
+ * drums around it stay bright; FILTER THROW the break (AFFINE: the kick's own filter gone) */
 static void test_dj_break(void)
 {
-    static float tone[BLOCK], z[BLOCK], k[BLOCK];
+    static float tone[BLOCK], z[BLOCK];
     brk_fx_t p;
     uint32_t i, b;
     float pk[5];
@@ -1267,8 +1266,11 @@ static void test_dj_break(void)
         tone[i] = 0.25f * sinf(6.2831853f * 4000.0f * (float)i / (float)BRK_SR);
         z[i] = 0.0f;
     }
-    for (which = 0; which < 5; which++) {   /* the tone as the break, as thru, as post, as the kick, as the break with
-                                             * FILTER THROW held */
+    pk[3] = 0.0f;
+    for (which = 0; which < 5; which++) {   /* the tone as the break, as thru, as post, (3: the kick's own, gone), as
+                                             * the break with FILTER THROW held */
+        if (which == 3)
+            continue;
         brk_fx_init();
         brk_fx_defaults(&p);
         p.dj = -1.0f;
@@ -1277,50 +1279,27 @@ static void test_dj_break(void)
         brk_fx_set(&p);
         pk[which] = 0.0f;
         for (b = 0; b < 60u; b++) {
-            if (which == 3) {
-                for (i = 0; i < BLOCK; i++)
-                    k[i] = tone[i];
-                brk_fx_kick_dj(k, BLOCK, -1.0f);
-                for (i = 0; i < BLOCK; i++)
-                    bl[i] = k[i];
-            } else
-                brk_fx_process(which == 0 || which == 4 ? tone : z, which == 1 ? tone : 0, 0, 0, which == 2 ? tone : 0,
-                               bl, br, BLOCK, which == 4 ? 1u << PAD_FILTER : 0u);
+            brk_fx_process(which == 0 || which == 4 ? tone : z, which == 1 ? tone : 0, 0, 0, which == 2 ? tone : 0,
+                           bl, br, BLOCK, which == 4 ? 1u << PAD_FILTER : 0u);
             if (b > 40u)
                 for (i = 0; i < BLOCK; i++)
                     if (fabsf(bl[i]) > pk[which])
                         pk[which] = fabsf(bl[i]);
         }
     }
-    CHECK(pk[0] < 0.01f && pk[1] > 0.2f && pk[2] > 0.2f && pk[3] < 0.01f,
-          "DJ filter low-passed: the break %.3f, drums through the chain %.3f, around it %.3f; the drums' own: %.3f",
-          pk[0], pk[1], pk[2], pk[3]);
+    CHECK(pk[0] < 0.01f && pk[1] > 0.2f && pk[2] > 0.2f,
+          "DJ filter low-passed: the break %.3f, drums through the chain %.3f, around it %.3f", pk[0], pk[1], pk[2]);
     CHECK(pk[4] < 0.01f, "FILTER THROW held: the break low-passed (%.3f)", pk[4]);
 }
 
-/* LOAF BREAKER: the drums' filter: off at 0, a 40 Hz sub well down at 20 % (its high-pass), a 4 kHz tone well down at
- * -50 % (its low-pass) */
-static void test_kick_hp(void)
+/* LOAF BREAKER: the drums' filter (HOME's DRUM FLT) on the snare, the hat and the clap: a 40 Hz tone well down at 20 %
+ * (its high-pass). (AFFINE: the kick's own filter, brk_fx_kick_dj, gone with the kick's FX) */
+static void test_drum_flt(void)
 {
     static float k[BLOCK];
-    static const float POS[3] = {0.0f, 0.2f, -0.5f};
-    float pk[3];
-    uint32_t i, b, w;
-    for (w = 0; w < 3u; w++) {
-        pk[w] = 0.0f;
-        for (b = 0; b < 200u; b++) {
-            for (i = 0; i < BLOCK; i++)
-                k[i] = 0.25f * sinf(6.2831853f * (w == 2u ? 4000.0f : 40.0f) * (float)(b * BLOCK + i) / (float)BRK_SR);
-            brk_fx_kick_dj(k, BLOCK, POS[w]);
-            if (b > 150u)
-                for (i = 0; i < BLOCK; i++)
-                    if (fabsf(k[i]) > pk[w])
-                        pk[w] = fabsf(k[i]);
-        }
-    }
-    CHECK(pk[0] > 0.24f && pk[1] < 0.1f && pk[2] < 0.1f,
-          "DRUM FILTER: 40 Hz off %.3f, high-passed at 20 %% %.3f; 4 kHz low-passed at -50 %% %.3f", pk[0], pk[1], pk[2]);
-    for (b = 0, pk[0] = 0.0f; b < 200u; b++) {   /* LOAF BREAKER: the same filter on the other drums */
+    float pk[1];
+    uint32_t i, b;
+    for (b = 0, pk[0] = 0.0f; b < 200u; b++) {
         for (i = 0; i < BLOCK; i++)
             k[i] = 0.25f * sinf(6.2831853f * 40.0f * (float)(b * BLOCK + i) / (float)BRK_SR);
         brk_fx_drums_dj(0, k, BLOCK, 0.2f);
@@ -1819,72 +1798,6 @@ static float span_peak(uint32_t a, uint32_t b)
     return p;
 }
 
-/* LOAF BREAKER: the KICK LAB: all 0 sounds as before; END cuts it; the TAIL FILTER darkens it; CLEAN keeps the tail
- * as loud; STACK plays another kick's attack, then this one */
-static void test_kick_lab(void)
-{
-    kick_t k, a;
-    kick_lab_t lab;
-    static float ref[BRK_SR / 2];
-    float pk, t0, t1;
-    uint32_t i, zc0 = 0u, zc1 = 0u;
-    int8_t syn[KS_N];
-    memset(syn, 0, sizeof syn);
-    memset(&lab, 0, sizeof lab);
-    kick_set_synth(syn);
-    kick_defaults(&k);
-    KICK_TERROR(&k) = 60u;
-    kick_set_lab(&lab);
-    kick_set_stack(0, 0, 0);
-    kick_run(&k, BRK_SR / 2, 0u);
-    memcpy(ref, kick_buf, sizeof ref);
-    lab.end = 9u;                        /* (200 ms) */
-    kick_set_lab(&lab);
-    pk = kick_run(&k, BRK_SR / 2, 0u);
-    CHECK(span_peak(BRK_SR / 4, BRK_SR / 2) < 1e-3f && pk > 0.3f, "END cuts the kick at 200 ms (after: %.4f)",
-          span_peak(BRK_SR / 4, BRK_SR / 2));
-    lab.end = 0u;
-    lab.filt = 80u;
-    lab.ftime = 30u;
-    kick_set_lab(&lab);
-    kick_run(&k, BRK_SR / 2, 0u);
-    for (i = BRK_SR / 5; i < BRK_SR / 3; i++) {   /* (zero crossings: the brightness, 200 .. 333 ms) */
-        zc0 += (ref[i - 1] < 0.0f) != (ref[i] < 0.0f);
-        zc1 += (kick_buf[i - 1] < 0.0f) != (kick_buf[i] < 0.0f);
-    }
-    CHECK(zc1 * 2u < zc0, "the TAIL FILTER darkens the tail (%u crossings, %u without)", zc1, zc0);
-    memset(&lab, 0, sizeof lab);
-    lab.mode = 1u;
-    kick_set_lab(&lab);
-    kick_run(&k, BRK_SR / 2, 0u);
-    t0 = span_peak(BRK_SR / 10, BRK_SR / 5);
-    t1 = 0.0f;
-    for (i = BRK_SR / 10; i < BRK_SR / 5; i++)
-        t1 = fabsf(ref[i]) > t1 ? fabsf(ref[i]) : t1;
-    CHECK(t0 > t1 * 0.7f && t0 < t1 * 1.4f, "CLEAN keeps the tail about as loud (%.2f, %.2f)", t0, t1);
-    memset(&lab, 0, sizeof lab);
-    lab.src = 1u;
-    lab.cross = 50u;
-    lab.fade = 40u;
-    kick_preset(&a, 0u);                 /* (909's attack) */
-    a.volume = k.volume;
-    kick_set_stack(&a, syn, &lab);
-    kick_set_lab(&lab);
-    kick_set_solo(2u);                   /* (the tail alone: nothing before the hand-over) */
-    kick_run(&k, BRK_SR / 2, 0u);
-    CHECK(span_peak(0u, BRK_SR / 50) < 1e-6f && span_peak(BRK_SR / 10, BRK_SR / 5) > 0.1f,
-          "STACK's SOLO TAIL: silent through the attack, then the tail");
-    kick_set_solo(0u);
-    pk = kick_run(&k, BRK_SR / 2, 0u);
-    CHECK(pk > 0.1f && pk < 1.5f, "STACK sounds (%.2f)", pk);
-    for (i = BRK_SR / 5; i < BRK_SR / 2 && fabsf(kick_buf[i] - ref[i]) < 1e-6f; i++)
-        ;
-    CHECK(i == BRK_SR / 2, "after the hand-over the kick is its own (from %u)", i);
-    kick_set_stack(0, 0, 0);
-    memset(&lab, 0, sizeof lab);
-    kick_set_lab(&lab);
-}
-
 static void test_kick(void)
 {
     kick_t k, solo;
@@ -1892,7 +1805,7 @@ static void test_kick(void)
     float p, first = 0.0f, prev_peak = -1.0f;
     int differ = 0, bounded = 1;
     kick_defaults(&k);
-    CHECK(sizeof(kick_t) == 136u, "kick_t is %u bytes (136)", (unsigned)sizeof(kick_t));
+    CHECK(sizeof(kick_t) == 76u, "kick_t is %u bytes (76)", (unsigned)sizeof(kick_t));
     p = kick_run(&k, n, 1000u);
     CHECK(span_peak(0, 1000u) == 0.0f, "kick: silent before its hit (%.4f)", span_peak(0, 1000u));
     CHECK(p > 0.4f && p <= 1.0f, "kick: a full hit (peak %.3f)", p);
@@ -1908,15 +1821,7 @@ static void test_kick(void)
             solo.l[o].level = o == l ? 1.0f : 0.0f;
         p = kick_run(&solo, n, 0u);
         CHECK(p > 0.05f && p <= 1.0f, "kick: %s alone sounds (peak %.3f)", KICK_LAYER_NAME[l], p);
-        for (o = 0; o < KICK_FX; o++) {  /* and through each of its effects, bounded */
-            solo.l[l].fx = (uint8_t)o;
-            solo.l[l].fa = solo.l[l].fb = 0.8f;
-            p = kick_run(&solo, n / 4u, 0u);
-            if (!(p <= 1.0f) || (o != KFX_RING && p < 0.01f))
-                bounded = 0;
-        }
     }
-    CHECK(bounded, "kick: every layer through every effect sounds and stays in range");
     /* SUB's pitch: 30 Hz at 0, 90 at 1; after its drop, the zero crossings say so */
     solo = k;
     solo.intensity = 0.0f;
@@ -2169,6 +2074,105 @@ static void test_rewind(void)
           (int)st.step, (int)st.bar16, (int)st.bar64);
 }
 
+/* AFFINE: BOOM's four presets (808, JUNGLE, DUB, TIGHT), each a hit of 2 s at the default volume: never clipped, a
+ * sensible level, a pure low end (the sub on its note after the drop), its tail as long as its name says. WAVs:
+ * boom_808.wav .. boom_tight.wav (a hit each), boom_tour.wav (each preset 8 bars at 170 BPM, an 808 line on the
+ * steps' notes: ~45 s) */
+static void test_boom(void)
+{
+    static const uint32_t P[4] = {KICK_PRESET_808, KICK_PRESET_JUNGLE, KICK_PRESET_DUB, KICK_PRESET_TIGHT};
+    static const char *const W[4] = {"boom_808.wav", "boom_jungle.wav", "boom_dub.wav", "boom_tight.wav"};
+    static const float TAIL_MS[4] = {900.0f, 400.0f, 1200.0f, 150.0f};
+    static const float NOTE_HZ[4] = {41.20f, 49.00f, 36.71f, 55.00f};   /* (E1, G1, D1, A1) */
+    uint32_t q, i, n = 2u * BRK_SR;
+    int ok = 1;
+    for (q = 0; q < 4u; q++) {
+        kick_t k;
+        uint16_t at = 0u;
+        float pk = 0.0f, e = 0.0f, env = 0.0f, hz;
+        uint32_t last = 0u, zc = 0u;
+        kick_defaults(&k);
+        kick_preset(&k, P[q]);
+        kick_set(&k);
+        kick_init();
+        for (i = 0; i < n; i += BLOCK)
+            kick_render(buf + i, BLOCK, &at, i == 0u ? 1u : 0u);
+        for (i = 0; i < n; i++) {
+            float a = fabsf(buf[i]);
+            pk = a > pk ? a : pk;
+            if (i < BRK_SR / 5u)
+                e += buf[i] * buf[i];
+        }
+        for (i = 0; i < n; i++) {        /* (its level followed, ~5 ms down: where it passes -40 dB below the peak) */
+            float a = fabsf(buf[i]);
+            env = a > env ? a : env * 0.9955f;
+            if (env > pk * 0.01f)
+                last = i;
+        }
+        {                                /* (its note: the rising crossings of 150..450 ms, past the drop, from the
+                                          * first to the last, each placed between its two samples) */
+            uint32_t a = BRK_SR * 15u / 100u, b = BRK_SR * 45u / 100u;
+            float t0 = 0.0f, t1 = 0.0f;
+            if (TAIL_MS[q] < 300.0f) {   /* (TIGHT: 60..140 ms) */
+                a = BRK_SR * 6u / 100u;
+                b = BRK_SR * 14u / 100u;
+            }
+            for (i = a + 1u; i < b; i++)
+                if (buf[i - 1] < 0.0f && buf[i] >= 0.0f) {
+                    float x = (float)(i - 1u) + buf[i - 1] / (buf[i - 1] - buf[i]);
+                    if (!zc)
+                        t0 = x;
+                    t1 = x;
+                    zc++;
+                }
+            hz = zc > 1u ? (float)(zc - 1u) * (float)BRK_SR / (t1 - t0) : 0.0f;
+        }
+        {
+            float rms_db = 10.0f * log10f(e / (float)(BRK_SR / 5u) + 1e-12f), ms = (float)last * 1000.0f / (float)BRK_SR;
+            printf("  BOOM %-7s peak %.2f (%.1f dBFS), RMS of its first 200 ms %.1f dBFS, -40 dB at %4.0f ms (%.0f), "
+                   "%.1f Hz (%.1f)\n", KICK_PRESET_NAME[P[q]], pk, 20.0f * log10f(pk), rms_db, ms, TAIL_MS[q], hz,
+                   NOTE_HZ[q]);
+            if (!(pk < 0.98f && pk > 0.5f && rms_db > -18.0f && ms > TAIL_MS[q] * 0.6f && ms < TAIL_MS[q] * 1.6f &&
+                  fabsf(hz - NOTE_HZ[q]) < NOTE_HZ[q] * 0.12f))
+                ok = 0;
+        }
+        wav(W[q], buf, buf, n);
+    }
+    CHECK(ok, "BOOM: 808, JUNGLE, DUB, TIGHT unclipped, loud enough, on their notes, their tails as named");
+    {                                    /* the tour: each preset 8 bars at 170 BPM, hits on 1 and the 11th 16th, notes
+                                          * 0 0 0 0, +3 +3, -2 -2 a bar */
+        static float tour[46u * BRK_SR];
+        static const int8_t NOTE[8] = {0, 0, 0, 0, 3, 3, -2, -2};
+        uint32_t step = (uint32_t)((float)BRK_SR * 15.0f / 170.0f), bar = 16u * step, len = 4u * 8u * bar, t;
+        float pk = 0.0f;
+        for (q = 0; q < 4u; q++) {
+            kick_t k;
+            kick_defaults(&k);
+            kick_preset(&k, P[q]);
+            kick_set(&k);
+            kick_init();
+            for (t = 0; t < 8u * bar; t += BLOCK) {
+                uint32_t o = q * 8u * bar + t, b = t / bar, s0 = b * bar, h[2] = {s0, s0 + 10u * step}, m;
+                uint16_t ha[2];
+                float pm[2];
+                uint32_t nh = 0u;
+                for (m = 0; m < 2u; m++)
+                    if (h[m] >= t && h[m] < t + BLOCK) {
+                        ha[nh] = (uint16_t)(h[m] - t);
+                        pm[nh++] = powf(2.0f, (float)NOTE[b % 8u] / 12.0f);
+                    }
+                kick_pitches(pm);
+                kick_render(tour + o, BLOCK, ha, nh);
+            }
+        }
+        kick_pitches(0);
+        for (i = 0; i < len; i++)
+            pk = fabsf(tour[i]) > pk ? fabsf(tour[i]) : pk;
+        CHECK(pk < 0.98f, "BOOM tour: %.1f s at 170 BPM, peak %.2f (unclipped)", (float)len / (float)BRK_SR, pk);
+        wav("boom_tour.wav", tour, tour, len);
+    }
+}
+
 /* LOAF BREAKER (crossbreed): a kick hit at a note an octave up (kick_pitches 2) has about twice the cycles */
 static void test_kick_notes(void)
 {
@@ -2193,197 +2197,6 @@ static void test_kick_notes(void)
     }
     CHECK(zc[1] * 10u > zc[0] * 15u && zc[1] * 10u < zc[0] * 25u, "KICK NOTE: an octave up, about twice the cycles (%u, %u)",
           zc[0], zc[1]);
-}
-
-/* LOAF BREAKER: TERROR 2 changes the kick and stays in range */
-static void test_terror2(void)
-{
-    kick_t k;
-    float pk[2], df = 0.0f;
-    static float dry[35u * BLOCK];
-    uint32_t m, i;
-    for (m = 0; m < 2u; m++) {
-        uint16_t at = 0u;
-        kick_preset(&k, 0u);
-        k.volume = 0.8f;
-        KICK_TERROR2(&k) = m ? 100u : 0u;
-        kick_set(&k);
-        kick_init();
-        for (i = 0; i < 35u * BLOCK; i += BLOCK)
-            kick_render(kick_buf + i, BLOCK, &at, i == 0u ? 1u : 0u);
-        for (i = 0, pk[m] = 0.0f; i < 35u * BLOCK; i++) {
-            if (fabsf(kick_buf[i]) > pk[m]) pk[m] = fabsf(kick_buf[i]);
-            if (!m) dry[i] = kick_buf[i];
-            else df += fabsf(kick_buf[i] - dry[i]);
-        }
-    }
-    df /= (float)(35u * BLOCK);
-    CHECK(pk[1] <= 1.0f && pk[1] > 0.3f && df > 0.05f, "TERROR 2: bounded (%.3f) and far from the dry kick (%.3f)", pk[1], df);
-}
-
-/* LOAF BREAKER: the kick's SYNTH: HOLD keeps it up longer, RUMBLE leaves a tail after it, TUNE moves it, all bounded */
-static int16_t rumble_line[4096];
-static float kick_energy(const int8_t *syn, uint32_t from, uint32_t to, float *pk)
-{
-    kick_t k;
-    uint16_t at = 0u;
-    uint32_t i;
-    float e = 0.0f;
-    kick_preset(&k, 3u);
-    k.volume = 0.8f;
-    kick_rumble_buf(rumble_line, 4096u);
-    kick_set_synth(syn);
-    kick_set(&k);
-    kick_init();
-    for (i = 0; i < 60u * BLOCK; i += BLOCK)
-        kick_render(kick_buf + i, BLOCK, &at, i == 0u ? 1u : 0u);
-    for (i = 0; i < 60u * BLOCK; i++) {
-        if (i >= from && i < to)
-            e += kick_buf[i] * kick_buf[i];
-        if (fabsf(kick_buf[i]) > *pk)
-            *pk = fabsf(kick_buf[i]);
-    }
-    return e;
-}
-static void test_kick_synth(void)
-{
-    int8_t s[KS_N] = {0};
-    float pk = 0.0f, base_tail, hold_tail, rum_tail, tuned;
-    uint32_t a = 20u * BLOCK, b = 60u * BLOCK;
-    base_tail = kick_energy(s, a, b, &pk);
-    s[KS_HOLD] = 40;
-    hold_tail = kick_energy(s, a, b, &pk);
-    s[KS_HOLD] = 0;
-    s[KS_RUMBLE] = 50;
-    rum_tail = kick_energy(s, a, b, &pk);
-    s[KS_RUMBLE] = 0;
-    s[KS_TUNE] = 12;
-    tuned = kick_energy(s, 0u, 4u * BLOCK, &pk);
-    s[KS_TUNE] = 0;
-    CHECK(hold_tail > base_tail * 1.2f && rum_tail > base_tail * 1.2f && tuned > 0.0f && pk <= 1.3f,
-          "KICK SYNTH: HOLD %.3f and RUMBLE %.3f against %.3f after 120 ms, peak %.2f", hold_tail, rum_tail, base_tail, pk);
-    kick_set_synth(s);
-}
-
-/* LOAF BREAKER TEST: the REVERSE BASS swells between two kicks (the beat's end louder than without it, bounded), and
- * GLIDE slides the second kick's pitch from the first's (more crossings just after it than a jump down) */
-static uint32_t kick_crossings(float glide, uint32_t from, uint32_t to)
-{
-    kick_t k;
-    uint16_t at = 0u;
-    uint32_t i, n = 0u;
-    int8_t s[KS_N] = {0};
-    float pm1 = 1.0f, pm2 = 0.5f;
-    kick_preset(&k, 3u);
-    k.volume = 0.8f;
-    kick_set_synth(s);
-    kick_set(&k);
-    kick_set_bass(glide, 0.0f, 0.5f, 0.5f);
-    kick_init();
-    for (i = 0; i < 60u * BLOCK; i += BLOCK) {
-        kick_pitches(i == 0u ? &pm1 : &pm2);
-        kick_render(kick_buf + i, BLOCK, &at, i == 0u || i == 20u * BLOCK ? 1u : 0u);
-    }
-    kick_pitches(0);
-    {                                    /* (the sub's: low-passed, the click and the grit left out) */
-        float lp = 0.0f, prev = 0.0f;
-        for (i = from; i < to; i++) {
-            lp += (kick_buf[i] - lp) * 0.04f;
-            if (i > from)
-                n += (prev < 0.0f) != (lp < 0.0f);
-            prev = lp;
-        }
-    }
-    return n;
-}
-static void test_kick_bass(void)
-{
-    int8_t s[KS_N] = {0};
-    float pk = 0.0f, base, rb;
-    uint32_t spb = 50u * BLOCK, cj, cg;
-    s[KS_HOLD] = -50;                    /* (a short kick: the beat's end its own) */
-    kick_set_beat((float)spb);
-    kick_set_bass(0.0f, 0.0f, 0.5f, 0.5f);
-    base = kick_energy(s, spb * 3u / 4u, spb - 100u, &pk);
-    kick_set_bass(0.0f, 1.0f, 0.5f, 0.5f);
-    rb = kick_energy(s, spb * 3u / 4u, spb - 100u, &pk);
-    kick_set_bass(0.0f, 0.0f, 0.5f, 0.5f);
-    CHECK(rb > base * 4.0f + 1.0f && pk <= 1.3f, "REVERSE BASS: %.2f at the beat's end against %.2f, peak %.2f", rb, base, pk);
-    cj = kick_crossings(0.0f, 20u * BLOCK + 300u, 20u * BLOCK + 4000u);
-    cg = kick_crossings(150.0f, 20u * BLOCK + 300u, 20u * BLOCK + 4000u);
-    kick_set_bass(0.0f, 0.0f, 0.5f, 0.5f);
-    CHECK(cg > cj, "GLIDE: %u crossings after the second kick sliding, %u jumping", cg, cj);
-}
-
-/* LOAF BREAKER (TEST): TERROR's more: CLIP and CRUSH sound apart from FOLD, SCREECH and DRIVE move it, all bounded */
-static void test_terror_more(void)
-{
-    kick_t k;
-    static float ref[35u * BLOCK];
-    float df[4], pk = 0.0f;
-    uint32_t m, i;
-    for (m = 0; m < 5u; m++) {
-        uint16_t at = 0u;
-        kick_preset(&k, 0u);
-        k.volume = 0.8f;
-        KICK_TERROR(&k) = 60u;
-        KICK_T_TYPE(&k) = (uint8_t)(m == 1u ? 1u : m == 2u ? 2u : 0u);
-        KICK_T_SCREECH(&k) = (uint8_t)(m == 3u ? 60u : 0u);
-        KICK_T_DRIVE(&k) = (uint8_t)(int8_t)(m == 4u ? 40 : 0);
-        kick_set(&k);
-        kick_init();
-        for (i = 0; i < 35u * BLOCK; i += BLOCK)
-            kick_render(kick_buf + i, BLOCK, &at, i == 0u ? 1u : 0u);
-        if (m)
-            df[m - 1u] = 0.0f;
-        for (i = 0; i < 35u * BLOCK; i++) {
-            if (!m)
-                ref[i] = kick_buf[i];
-            else
-                df[m - 1u] += fabsf(kick_buf[i] - ref[i]);
-            if (fabsf(kick_buf[i]) > pk)
-                pk = fabsf(kick_buf[i]);
-        }
-    }
-    for (m = 0; m < 4u; m++)
-        df[m] /= (float)(35u * BLOCK);
-    CHECK(pk <= 1.2f && df[0] > 0.005f && df[1] > 0.005f && df[2] > 0.005f && df[3] > 0.005f,
-          "TERROR +: CLIP %.3f, CRUSH %.3f, SCREECH %.3f, DRIVE %.3f apart from the plain fold, peak %.2f", df[0], df[1],
-          df[2], df[3], pk);
-}
-
-/* LOAF BREAKER: KICK FX: the kick's own slots on its buffer (in place), the chain's apart. A RING there moves the
- * kick; a REVERB there (not allowed) passes it on untouched; bypassed, untouched */
-static void test_kick_fx(void)
-{
-    static float x[BLOCK], y[BLOCK];
-    brk_fxslot_t s;
-    brk_fxx_t xx;
-    uint32_t m, i, b;
-    float df[3];
-    brk_fx_init();
-    for (m = 0; m < 3u; m++) {
-        brk_fx_slot_defaults(&s, m == 1u ? FXT_REVERB : FXT_RING);
-        s.on = (uint8_t)(m != 2u);
-        s.mix = 1.0f;
-        brk_fxx_defaults(&xx, s.type);
-        brk_fx_set_kick_slot(0u, &s);
-        brk_fx_set_fxx(BRK_FX_SLOTS, &xx);
-        df[m] = 0.0f;
-        for (b = 0; b < 8u; b++) {
-            for (i = 0; i < BLOCK; i++)
-                x[i] = y[i] = 0.5f * sinf(6.2831853f * 60.0f * (float)(b * BLOCK + i) / (float)BRK_SR);
-            brk_fx_kick(x, BLOCK);
-            for (i = 0; i < BLOCK; i++)
-                df[m] += fabsf(x[i] - y[i]);
-        }
-        df[m] /= (float)(8u * BLOCK);
-    }
-    CHECK(df[0] > 0.05f && df[1] < 1e-6f && df[2] < 1e-6f, "KICK FX: a RING moves the kick (%.3f), a REVERB (%.6f) and a bypass (%.6f) don't",
-          df[0], df[1], df[2]);
-    brk_fx_slot_defaults(&s, FXT_EMPTY);
-    s.on = 0u;
-    brk_fx_set_kick_slot(0u, &s);
 }
 
 /* LOAF BREAKER (0.256): BREAK TIME HALF: at twice the break's tempo, its steps every other 16th; the drums' steps
@@ -2436,14 +2249,10 @@ int main(int argc, char **argv)
     test_half_master();
     test_half_time();
     test_vinyl();
-    test_kick_hp();
+    test_drum_flt();
     test_rewind();
-    test_terror2();
     test_kick_notes();
-    test_kick_fx();
-    test_terror_more();
-    test_kick_synth();
-    test_kick_bass();
+    test_boom();
     test_gate();
     test_swap();
     test_snap();
@@ -2457,7 +2266,6 @@ int main(int argc, char **argv)
     test_overload();
     test_dj_break();
     test_kick();
-    test_kick_lab();
     test_perc();
     test_generator();
     test_pads();

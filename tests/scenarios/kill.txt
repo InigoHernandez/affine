@@ -1,6 +1,6 @@
 # LOAF BREAKER: the 10th black key, KIL: held, the sequencer's kicks are quiet (khits stays 0); let go, they play again. Its LATCH (K1 while held): a press quiet, the next back.
 # The kick on steps 1, 5, 9, 13 of each of its lane's four bars (SEQ).
-#   app/build/host/loaf-breaker_host tests/scenarios/kill.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/kill.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 200

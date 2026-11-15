@@ -1,15 +1,15 @@
 # LOAF BREAKER: SEL + SELECT, on any page, turns the drums' filter (DRUM FLT, HOME's K3; was the kick's memories).
 # A track playing, PRESETS still picks the pattern (a DRUM FLT there, tried in 0.167, undone).
-#   app/build/host/loaf-breaker_host tests/scenarios/trkflt.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/trkflt.txt app/build/scenarios
 wait 4200
 tap ENV
 wait 300
-expect kslot 3
+expect kpreset 0
 press SEL
 turn SELECT -6 10
 release SEL
 wait 200
-expect kslot 3
+expect kpreset 0
 expect kick_dj -26
 shot sel_flt.png
 tap PLAY

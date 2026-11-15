@@ -1,6 +1,7 @@
-# LOAF BREAKER TEST: the test firmware's new things. The start-up glitch; ARP: the OVERLAY page (0.244; FILL gone); the kick's BASS part (GLIDE,
-# REV BASS); MAGIC MBC on the chain (MB OTT, gone in 0.229, was here); BUILD's TEMPO RISE; GLO MORE's CRT; a track playing: its progress and DROP IN.
-#   app/build/host/loaf-breaker_host tests/scenarios/loaftest.txt app/build/scenarios
+# LOAF BREAKER TEST: the test firmware's new things. The start-up glitch; ARP: the OVERLAY page (0.244; FILL gone); MAGIC
+# MBC on the chain (MB OTT, gone in 0.229, was here); BUILD's TEMPO RISE; GLO MORE's CRT; a track playing: its progress
+# and DROP IN. (AFFINE: the kick's BASS part, GLIDE and REV BASS, gone with the hardcore kick.)
+#   app/build/host/affine_host tests/scenarios/loaftest.txt app/build/scenarios
 wait 250
 shot x_glitch.png
 wait 4000
@@ -9,21 +10,6 @@ wait 400
 tap ARP
 wait 300
 expect page 9
-tap EDIT
-wait 300
-# (0.253: the KICK menu opens on ATTACK's PRESET; 0.264: SELECT, BODY)
-turn SELECT 1 10
-wait 150
-turn SELECT 1 10
-wait 200
-turn ALGO 2 10
-wait 300
-expect kpage 10
-turn K1 10 10
-turn K2 25 10
-wait 300
-expect kbass1 50
-shot x_bass.png
 tap FX
 wait 300
 turn PRESET 20 10

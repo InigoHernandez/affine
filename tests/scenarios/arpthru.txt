@@ -1,7 +1,7 @@
 # LOAF BREAKER (0.9.29; 0.9.31, FLEXOR: SENDS alone): LFO › SENDS K3 ARP, what the ARP's effects take: BREAK, KICK,
 # THRU (the whole mix, as to start); the ARP key's THRU. The kick sounds the same whatever (0.9.31: limited with the
 # rest, as ever): ARP_THRU.wav then ARP_BREAK.wav, nothing of the ARP's on, the same.
-#   app/build/host/loaf-breaker_host tests/scenarios/arpthru.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/arpthru.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 300

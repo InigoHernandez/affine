@@ -256,35 +256,20 @@ static void skin_apply(uint32_t s)
 #undef C_WHITE                           /* (the app's white is the skin's: put back after the UI, app.c's end) */
 #define C_WHITE skin_white
 
-enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_TRACK, PG_OVL, PG_KEQ, PG_HSET, NPAGES };
-/* (LOAF BREAKER, 0.9.2, FLEXOR: PG_HSET, HOME's SETTINGS after PERFORM and GENERATOR) */
-                                         /* (LOAF BREAKER: PG_KEQ, HOME's third part, the KICK EQ; PG_TRACK, ENV's
-                                          * TRACKS, PLAY, DROP where TAP TEMPO was) */
+enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_TRACK, PG_OVL, PG_HSET, NPAGES };
+/* (LOAF BREAKER, 0.9.2, FLEXOR: PG_HSET, HOME's SETTINGS after PERFORM and GENERATOR; PG_TRACK, ENV's TRACKS, PLAY, DROP
+ * where TAP TEMPO was. AFFINE: PG_KICK is BOOM's page; LOAF's KICK EQ page gone) */
 /* LOAF BREAKER (11 Nov 2026): the black keys' functions' names (app.c BKF_*), as the strip shows them */
 static const char *const BKF_NAME[BKF_N] = {"R8", "R16", "R32", "REV", "FRZ", "HLF", "VNL", "GAT", "RND", "FLT", "DUB",
-                                            "ARP", "KIL", "DST", "SUB", "DRV"};
+                                            "ARP", "KIL"};
 static const char *const BKF_LONG[BKF_N] = {"ROLL 1/8", "ROLL 1/16", "ROLL 1/32", "REVERSE", "FREEZE", "HALF SPEED",
                                             "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "ARP (OVERLAY)",
-                                            "KICKS OFF", "DISTO", "SUB FX", "DRIVE"};
-static const char *const BKP_NAME[BKP_N] = {"CHOPPAH", "FLEXOR LAYOUT", "CUSTOM"};
+                                            "BOOM OFF"};
+static const char *const BKP_NAME[BKP_N] = {"CHOPPAH", "CUSTOM"};
 static const uint8_t WK[16] = PLAT_WHITE_KEYS, BK[11] = PLAT_BLACK_KEYS;
 /* LOAF BREAKER: what the TUTORIAL (tutor.c) watches, counted where it happens: white keys pressed, black keys pressed
- * (a bit each), K1-K4 turned on the KICK menu, SEL + K4 turned, drum steps set on SEQ, SAVEs */
-/* LOAF BREAKER (0.216, FLEXOR): EDIT ZOOM, how much time EDIT's pictures show (SYSTEM › EFFECTS, PRESETS) */
-#define EZ_N 7u
-static const uint16_t EZ_MS[EZ_N] = {0u, 250u, 500u, 750u, 1000u, 1500u, 2000u};   /* (0.257, FLEXOR: 750 MS) */
-static const char *const EZ_NAME[EZ_N] = {"AUTO", "250 MS", "500 MS", "750 MS", "1 S", "1.5 S", "2 S"};
-#define EZ_TAG 0x40u                     /* (set.ezoom: EZ_TAG | the index since 0.257; an older save's 0..5, 750 MS not
-                                          * there yet: 3.. one further on) */
-static uint32_t ez_idx(void)
-{
-    uint32_t v = set.ezoom;
-    if (v & EZ_TAG)
-        return (v & 0x3Fu) % EZ_N;
-    v %= 6u;
-    return v >= 3u ? v + 1u : v;
-}
-static uint32_t tut_wk, tut_pads, tut_padn, tut_kturn, tut_sk4, tut_lane, tut_saves, tut_home, tut_kpre, tut_ovl;
+ * (a bit each), drum steps set on SEQ, SAVEs, HOME, the OVERLAY page's effects */
+static uint32_t tut_wk, tut_pads, tut_padn, tut_lane, tut_saves, tut_home, tut_ovl;
 static uint8_t tut_heard, tut_drs;   /* (LOAF BREAKER, 0.252: the drums played on keys 1-4 since the last knob turn; and
                                           * since the step's start) */
 /* LOAF BREAKER (11 Nov 2026): the keys of a function (BKF_*) in the layout in use (app.c bk_fn), a bit each (none:
@@ -311,15 +296,14 @@ static struct {
     uint32_t last_pads, last_keys, last_hdr;
     uint32_t kick_t;                     /* LOAF BREAKER TEST: when the kick last hit (the header's flash) */
     uint32_t kick_seen;
-    uint32_t kscope_drawn;
     uint32_t aud_t;                      /* LOAF BREAKER: a drum played on its key (the classic view, the drums' pages):
                                           * when, which */
     uint8_t aud_d;
     uint8_t opage, bk_sel;               /* LOAF BREAKER: the ARP page's tab (0 ARP EFFECTS, 1 BLACK KEYS, 2 MORE;
                                           * BEGINNER: the first only), the key BLACK KEYS edits (0..10) */
     uint8_t pad_more;                    /* LOAF BREAKER: the ARP key's knobs: 0 MAIN, 1 MORE (FX while it is held) */
-    uint8_t pbig;                        /* LOAF BREAKER: the drums' page in its big view (SELECT from the KICK menu's big
-                                          * view); 0: the classic one (SEL + EDIT) */
+    uint8_t pbig;                        /* LOAF BREAKER: the drums' page in its big view; 0: the classic one (EDIT held,
+                                          * after the WAVE view) */
     uint32_t intro_t0;                   /* the start screen: when it began (0: over) */
     uint8_t intro, intro_drawn;          /* showing it; blocks drawn so far */
     uint8_t touched;                     /* a key, button or encoder moved since app_frame last looked */
@@ -332,17 +316,15 @@ static struct {
     int16_t shown;                       /* the strip shows: -1 the blocks, 0..10 a pad, 100 + k white key k */
     uint8_t gpage;                       /* the GLOBAL page's part: 0 MIDI and Bluetooth, 1 pitch, 2 BT audio */
     uint8_t bta_sel, bta_booted;         /* BT AUDIO: the device chosen in its list; the boot's reconnect done */
-    uint8_t kpage, klayer, kpreset;      /* the KICK page: its sub-page (KP_*), the layer it edits, the preset */
+    uint8_t kpage;                       /* AFFINE: BOOM's page, its part (0 BOOM, 1 SHAPE) */
     uint8_t mpage;                       /* the MIXER's half: 0 LEVELS (break, kick, perc, FX), 1 GROOVE */
     uint8_t seq_lane, seq_step;          /* the SEQ page: the lane (SL_*) and the break step (0..31) it edits */
     uint8_t pvoice, ppage, ppreset[PERC_VOICES];   /* the SNARE / HAT page: its voice, sub-page, presets */
-    uint8_t einst;                       /* EDIT, the drums' design: DR_*: the kick (PG_KICK), the snare, the hat, the
-                                          * clap (PG_PERC) */
+    uint8_t einst;                       /* EDIT, the drums' design: DR_*: BOOM (PG_KICK), the snare, the hat, the clap
+                                          * (PG_PERC) */
     uint8_t rec;                         /* REC: white keys and MIDI notes write into the pattern as it plays */
     uint8_t help;                        /* SEL pressed alone: the SEL combinations on the strip, until the next press */
     uint32_t help_t;                     /* when the card opened */
-    uint32_t sel_t;                      /* LOAF BREAKER (0.258): when SEL went down (held a moment: the foot its knobs) */
-    uint8_t sel_foot;                    /* (the foot showing SEL + K1-K4's, drawn so) */
     uint8_t drawn_page;                  /* the page last drawn (TAP takes the whole screen: leaving it redraws all) */
     uint32_t idle_t;                     /* the last key, button or knob touched (the demo: demo.c) */
     uint32_t lobo_t;                     /* RESET ALL done: the lobotomy screen, since then (0: not showing) */
@@ -361,7 +343,6 @@ static struct {
     uint8_t drop_early, drop_asked;      /* (crossbreed) the drop asked early; its break asked for */
     uint8_t note_key, note_turned;
     uint8_t fx_open;
-    uint8_t keq_part;                    /* (the KICK EQ page: 0 its bands, 1 their shape) */                     /* (FX pressed off its page: the page at its release, if not held) */       /* (crossbreed) SEQ, a kick lane: the key held + 1 (0 none); K1 turned since */
     uint8_t tpage;                       /* LOAF BREAKER: ENV's part: 0 TRACKS, 1 PLAY, 2 DROP, 3 KNOB */
     float radio;                         /* LOAF BREAKER: ENV PLAY's dial: where its needle is (eased to the track) */
     uint8_t kil_focus;                   /* LOAF BREAKER: KIL held (its K1: LATCH) */
@@ -370,11 +351,11 @@ static struct {
     uint8_t seq_manual;                  /* LOAF BREAKER: SEQ's lane picked by hand while playing: the bar playing not
                                           * followed until the next stop */
     uint8_t meter_on;                    /* (TEST) SYSTEM › MIDI K3 METER (EXPERT): the load, once a second in the header */
-    uint8_t ksect, kpos[7], kks;         /* (kks: KNOBS' K SET, the knob 0..3; LOAF BREAKER: six sections, LAB) */
-    uint8_t kview;                       /* (LOAF BREAKER: the KICK menu's picture: 0 RGB, 1 WAVE; EDIT held, then CLASSIC) */
-    uint8_t kclassic, edit_hold;         /* (EDIT held on the KICK menu: the view as it was, the drums' shapes; EDIT
-                                          * down: when, and whether it has done its hold) */
-    uint32_t edit_t;              /* LOAF BREAKER: the KICK menu's section (SOUND SYNTH DIRT TONE), each one's part */
+    uint8_t kview;                       /* (LOAF BREAKER: the drums' big view's picture: 0 RGB, 1 WAVE; EDIT held, then
+                                          * CLASSIC) */
+    uint8_t kclassic, edit_hold;         /* (the drums' classic view, the shapes side by side; EDIT down, and whether it
+                                          * has done its hold) */
+    uint32_t edit_t;                     /* (when EDIT went down) */
     uint8_t env_hold;                    /* LOAF BREAKER: ENV down on TRACKS: 1 waiting (let go: the next part), 2 held
                                           * (a gap made) */
     uint32_t env_t;
@@ -388,9 +369,6 @@ static struct {
     uint8_t sfx_cur;                     /* LOAF BREAKER: GLO EFFECTS: the effect K1 points at (SFX_CRT..SFX_8BIT) */
     uint8_t sel_lock, sel_raw;           /* LOAF BREAKER: SEL locked down (SEL x2; pressed again: free); SEL's
                                           * own state last frame */
-    uint8_t knfn;                        /* KNOB's function: 0 DUCK (K1), 1 TERROR 2, 2 COMP, 3 TERROR (K4) */
-    uint8_t fx_main, kfx_last;           /* (KICK FX: the FX page on slot 4 or 5; the chain's slot kept meanwhile, and
-                                          * the kick's last) */
     uint8_t trk_cur, trk_from;           /* TRACKS' item edited; PLAY's first item */
     uint8_t trk_on;                      /* a track playing (2: starting, not yet heard) */
     uint8_t trk_pos, trk_loops, trk_cnt; /* its item, the loops it played, this loop counted */

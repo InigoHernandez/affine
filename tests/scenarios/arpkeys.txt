@@ -1,6 +1,7 @@
 # LOAF BREAKER (0.9.45, FLEXOR): every black key set to ARP is its own: its effect (ARP › BLACK KEYS K4, or K1 while
-# the key is held) and its LATCH (K4 held), several at once. Here key 1 made a second ARP beside FLEXOR LAYOUT's (key 7).
-#   app/build/host/loaf-breaker_host tests/scenarios/arpkeys.txt app/build/scenarios
+# the key is held) and its LATCH (K4 held), several at once. Here key 1 made a second ARP beside the simulator's (key 7:
+# AFFINE's simulator starts on a CUSTOM layout, LOAF BREAKER's FLEXOR LAYOUT's keys).
+#   app/build/host/affine_host tests/scenarios/arpkeys.txt app/build/scenarios
 wait 4200
 expect bk_pre 1
 tap ARP
@@ -15,7 +16,7 @@ wait 200
 expect bk_key 0
 turn K3 11 10
 wait 300
-expect bk_pre 2
+expect bk_pre 1
 expect bk_fn 11
 turn K4 3 10
 wait 300
@@ -69,13 +70,13 @@ wait 100
 key b0 up
 wait 300
 expect arp_bits 0
-# back to FLEXOR LAYOUT
+# back to a preset: CHOPPAH
 tap ARP
 wait 200
 turn SELECT 1 10
 wait 200
 turn K1 -1 10
 wait 200
-expect bk_pre 1
+expect bk_pre 0
 tap HOME
 wait 200

@@ -1,7 +1,7 @@
 # LOAF BREAKER 0.9.27: FREEZE latched while stopped (nothing sounding to hold) used to keep the break quiet for good,
 # PLAY or not (the 0.9.27 release's soak, seed 198). Now FREEZE owns the voice only once it holds a slice: the next
 # slice played is the one frozen. On the CHOPPAH layout (ARP › BLACK KEYS, K1) FREEZE is key b4; its K4 LATCH on.
-#   app/build/host/loaf-breaker_host tests/scenarios/frzlatch.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/frzlatch.txt app/build/scenarios
 wait 4200
 tap ARP
 wait 300

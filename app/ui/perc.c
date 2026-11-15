@@ -125,7 +125,7 @@ static void pp_apply(uint32_t v, uint32_t i, int fx)   /* the drum's memory play
     }
 }
 
-/* LOAF BREAKER: the snare's, the hat's and the clap's memories, as the kick's (kick_mem_turn): SNARE 1..10, the one
+/* LOAF BREAKER: the snare's, the hat's and the clap's memories: SNARE 1..10, the one
  * playing kept as it is, the next as it was left (PRESETS on EDIT, SELECT on the drum's SEQ lane) */
 static void perc_mem_turn(uint32_t v, int32_t d)
 {
@@ -287,15 +287,15 @@ static void perc_turn(int i, int32_t d)
     changed();
 }
 
-/* LOAF BREAKER: the drums' big view (SELECT turned on the KICK menu's big view: the kick, then the snare, the hat, the
- * clap, the hoover, each in it; SEL + EDIT: the classic view, as ever): as the
- * KICK menu, the drum's hit drawn large over its level (its window ~1.4 times its decay, the decay marked in amber), its
+/* LOAF BREAKER: the drums' big view (SELECT from BOOM: the snare, the hat, the clap, each in it; EDIT held: the WAVE, then
+ * the classic view, as ever): the drum's hit drawn large over its level (its window ~1.4 times its decay, the decay marked in amber), its
  * name, memory and tune; the five drums along the bottom, the one edited lit (stopped: their keys 1-5 play them); under
  * it the part's knobs as cards */
 #define PW_W 232u
 static uint8_t pw_px[PW_W];
 static int8_t pw_wave[PW_W];
 static uint32_t pw_sig = 1u, pw_ms = 300u;
+static uint8_t pw_rgb[PW_W][4];          /* (the RGB view: each column's lows, mids, highs and peak) */
 static float perc_knob_f(int i)          /* the part's knob i, 0..1 (its card's bar) */
 {
     float *p = perc_param(i);
@@ -320,13 +320,12 @@ static void perc_picture(const brk_status_t *st, int32_t top)
     char t[24], u[8];
     cv_oy = -top;
     cv_rect(4, 50, PW_W, 1, C_LINE);     /* (the middle) */
-    if (ui.kview == 0u) {                /* LOAF BREAKER (0.231): the RGB view, as the KICK menu's (kv_rgb, the kick's
-                                          * buffer: the two never on the screen together) */
+    if (ui.kview == 0u) {                /* LOAF BREAKER (0.231): the RGB view (rekordbox's colours, or SERATO's) */
         uint32_t pk = 1u;
         for (i = 0; i < PW_W; i++)
-            pk = kv_rgb[i][3] > pk ? kv_rgb[i][3] : pk;
+            pk = pw_rgb[i][3] > pk ? pw_rgb[i][3] : pk;
         for (i = 0; i < PW_W; i++) {
-            const uint8_t *c = kv_rgb[i];
+            const uint8_t *c = pw_rgb[i];
             uint32_t m = c[0] > c[1] ? c[0] : c[1], h = (uint32_t)c[3] * 34u / pk, br, r, g, b;
             m = c[2] > m ? c[2] : m;
             if (!m || !h)
@@ -405,20 +404,15 @@ static void perc_cards(void)             /* the part's knobs: its name, its valu
 static void draw_perc_big(const brk_status_t *st)
 {
     const perc_voice_t *v = perc_voice(ui.pvoice);
-    uint32_t sig = sig_of(v, sizeof *v) ^ (ui.pvoice * 2654435761u) ^ ez_idx() * 40503u ^ (ui.kview + 1u) * 97u ^
+    uint32_t sig = sig_of(v, sizeof *v) ^ (ui.pvoice * 2654435761u) ^ (ui.kview + 1u) * 97u ^
                    (uint32_t)perc_smp(ui.pvoice) * 7919u ^ kit_has * 131u, top;
-    if (ui.kview == 0u && kv_sig)        /* (the kick's picture in kv_rgb since: this one again) */
-        pw_sig = sig + 1u;
     if (sig != pw_sig) {                 /* (its hit again, only when it changed) */
         uint32_t pk = 0u;
         float d = perc_dms(ui.pvoice, v) * 1.4f;
         pw_sig = sig;
-        pw_ms = ez_idx() ? EZ_MS[ez_idx()] : (uint32_t)brk_clampf(d, 60.0f, 900.0f);   /* (EDIT ZOOM) */
-        if (ui.kview == 0u) {            /* (LOAF BREAKER: the RGB view into the kick's buffer, the kick's picture
-                                          * worked out again when it is back) */
-            perc_rgb(ui.pvoice, v, kv_rgb, PW_W, pw_ms);
-            kv_sig = 0u;
-        }
+        pw_ms = (uint32_t)brk_clampf(d, 60.0f, 900.0f);   /* (AFFINE: EDIT ZOOM gone with the KICK menu's TOOLS: AUTO) */
+        if (ui.kview == 0u)              /* (LOAF BREAKER: the RGB view) */
+            perc_rgb(ui.pvoice, v, pw_rgb, PW_W, pw_ms);
         perc_shape(ui.pvoice, v, pw_px, PW_W, pw_ms, 34u);
         perc_wave(ui.pvoice, v, pw_wave, PW_W, pw_ms, 34u);
         for (top = 0; top < PW_W; top++)

@@ -1,6 +1,6 @@
 # LOAF BREAKER (0.9.22, FLEXOR): BEGINNER's SONG whole, as EXPERT's: on TRACKS a white key puts its pattern in,
 # ALGORITHM moves along the items (no EXPERT MODE), K1 the item's kick and K4 its break answer.
-#   app/build/host/loaf-breaker_host tests/scenarios/trknovice.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/trknovice.txt app/build/scenarios
 wait 4200
 tap GLO
 wait 150

@@ -1,7 +1,7 @@
-# LOAF BREAKER: the drums' big view. SEL + EDIT from the KICK menu: the DRUMS (the SNARE); SELECT (0.264, FLEXOR: the
-# tabs at the top) the drums one by one, the HAT, the CLAP, the SNARE again, not the tempo; SEL + EDIT from the CLAP:
-# SOUNDS' BREAK, again: the KICK.
-#   app/build/host/loaf-breaker_host tests/scenarios/drumbig.txt app/build/scenarios
+# LOAF BREAKER: the drums' big view. SEL + EDIT from BOOM: the DRUMS (the SNARE); SELECT (0.264, FLEXOR: the tabs at
+# the top) the sounds one by one, the HAT, the CLAP, BOOM (AFFINE), the SNARE again, not the tempo; SEL + EDIT from the
+# CLAP: SOUNDS' BREAK, again: BOOM.
+#   app/build/host/affine_host tests/scenarios/drumbig.txt app/build/scenarios
 wait 4200
 tap EDIT
 wait 300
@@ -22,9 +22,13 @@ expect einst 3
 shot d_big_clap.png
 turn SELECT 1 10
 wait 300
+expect page 4
+expect einst 0
+turn SELECT 1 10
+wait 300
 expect page 7
 expect einst 1
-turn SELECT -1 10
+turn SELECT -2 10
 wait 300
 expect page 7
 expect einst 3

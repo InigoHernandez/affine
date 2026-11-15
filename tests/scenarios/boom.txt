@@ -1,0 +1,83 @@
+# AFFINE: BOOM, the light kick. Its steps on SEQ's BOOM lane (keys 1 and 9); EDIT: its page, the BOOM part: K1 PRESET
+# (808, JUNGLE, DUB, TIGHT), K2 TUNE (a semitone a detent), K3 DECAY, K4 LEVEL; PRESETS the preset too, the level kept;
+# ALGORITHM: SHAPE (K1 PUNCH, K2 CLICK, K3 DRIVE, K4 TONE), again: BOOM; EDIT: the snare; SELECT back to BOOM; SEQ's
+# K2 on the BOOM lane: the preset; MIDI note 36 plays it. The sound: boom.wav
+#   app/build/host/affine_host tests/scenarios/boom.txt app/build/scenarios
+wait 4200
+tap SEQ
+wait 100
+expect seq_lane 2
+tapkey w0
+tapkey w8
+wait 100
+expect lane_kick 257
+tap EDIT
+wait 300
+expect page 4
+expect kpage 0
+expect kpreset 0
+expect ktune 28
+expect kick_vol 80
+shot b_boom.png
+tap PLAY
+wav boom.wav
+wait 1500
+expect khits >1
+expect peak_db_min -24
+turn K1 1 10
+wait 300
+expect kpreset 1
+expect ktune 31
+turn K2 2 10
+wait 300
+expect ktune 33
+turn K2 -1 10
+wait 300
+expect ktune 32
+turn K3 5 10
+turn K4 -5 10
+wait 1500
+expect kick_vol 70
+turn PRESET 1 10
+wait 1500
+expect kpreset 2
+expect ktune 26
+expect kick_vol 70
+shot b_dub.png
+turn PRESET 1 10
+wait 1500
+expect kpreset 3
+turn PRESET 1 10
+wait 300
+expect kpreset 3
+turn ALGO 1 10
+wait 300
+expect kpage 1
+expect intensity 20
+turn K3 5 10
+wait 1500
+expect intensity 30
+shot b_shape.png
+turn ALGO 1 10
+wait 300
+expect kpage 0
+tap PLAY
+wavstop
+tap EDIT
+wait 300
+expect page 7
+expect einst 1
+turn SELECT -1 10
+wait 300
+expect page 4
+expect einst 0
+tap SEQ
+wait 300
+expect seq_lane 2
+turn K2 -3 10
+wait 300
+expect kpreset 0
+peakreset
+midi USB 99 24 64
+wait 300
+expect peak_db_min -30

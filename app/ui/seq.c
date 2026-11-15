@@ -5,8 +5,8 @@
 enum { SL_BREAK1, SL_BREAK2, SL_KICK, SL_KICK2, SL_KICK3, SL_KICK4, SL_SNARE, SL_SNARE2, SL_SNARE3, SL_SNARE4, SL_HAT,
        SL_HAT2, SL_HAT3, SL_HAT4, SL_CLAP, SL_CLAP2, SL_CLAP3, SL_CLAP4, NSEQL };   /* (0.9.30, FLEXOR: every drum four bars) */   /* (LOAF BREAKER, 0.209: the MELODY's two gone) */                /* GLOUPI BREAKS: the kick's four bars and the snare's two, a lane each;
                                           * LOAF BREAKER: the hat's two, the clap's two */
-static const char *const SEQ_LANE_NAME[NSEQL] = {"STEPS 1-16", "STEPS 17-32", "KICK 1-16", "KICK 17-32", "KICK 33-48",
-                                                 "KICK 49-64", "SNARE 1-16", "SNARE 17-32", "SNARE 33-48", "SNARE 49-64",
+static const char *const SEQ_LANE_NAME[NSEQL] = {"STEPS 1-16", "STEPS 17-32", "BOOM 1-16", "BOOM 17-32", "BOOM 33-48",
+                                                 "BOOM 49-64", "SNARE 1-16", "SNARE 17-32", "SNARE 33-48", "SNARE 49-64",
                                                  "HAT 1-16", "HAT 17-32", "HAT 33-48", "HAT 49-64", "CLAP 1-16",
                                                  "CLAP 17-32", "CLAP 33-48", "CLAP 49-64"};
 #define SQ_BRK_MIN 18                    /* LOAF BREAKER (0.242, FLEXOR): a break row's pitch, the rows' average (the grid's
@@ -15,8 +15,8 @@ static const char *const SEQ_LANE_NAME[NSEQL] = {"STEPS 1-16", "STEPS 17-32", "K
 #define SQ_H 148                         /* the picture's rows (screen 44..191) */
 #define SQ_X 30                          /* the steps begin (the names before) */
 static uint32_t text_n(const char *t) { uint32_t n = 0u; while (t[n]) n++; return n; }   /* (no libc's strlen on the FM-1) */
-static const char *const DRUM_NAME[NDRUMS] = {"KICK", "SNARE", "HAT", "CLAP"};
-static const char *const DRUM_TAG[NDRUMS] = {"KICK", "SN", "HH", "CP"};   /* (EDIT's tabs) */
+static const char *const DRUM_NAME[NDRUMS] = {"BOOM", "SNARE", "HAT", "CLAP"};   /* (AFFINE: the kick is BOOM) */
+static const char *const DRUM_TAG[NDRUMS] = {"BOOM", "SN", "HH", "CP"};   /* (EDIT's tabs) */
 static const uint8_t SL_DR[NSEQL] = {0u, 0u, DR_KICK, DR_KICK, DR_KICK, DR_KICK, DR_SNARE, DR_SNARE, DR_SNARE, DR_SNARE,
                                      DR_HAT, DR_HAT, DR_HAT, DR_HAT, DR_CLAP, DR_CLAP, DR_CLAP, DR_CLAP};   /* a drum
                                           * lane's drum, and its bar */
@@ -312,13 +312,14 @@ static void midi_drum(uint32_t d)        /* a drum note (DR_*): the hit now, and
  * place of ROTATE: the kick's DJ filter, HOME's K3's),
  * CLEAR (left) or four on the floor (right), LENGTH (GLOUPI BREAKS, in place of COPY: the kick 16, 32 or 64 steps, the
  * snare 16 or 32) */
-static void kick_mem_turn(int32_t d);    /* (kick.c, perc.c: further on) */
+static void boom_pre_turn(int32_t d);    /* (kick.c, perc.c: further on) */
+static const char *boom_pre_name(void);
 static void perc_mem_turn(uint32_t v, int32_t d);
-static void lane_sound_turn(int32_t d)   /* LOAF BREAKER: SEQ K2 on a drum lane: what it plays */
+static void lane_sound_turn(int32_t d)   /* LOAF BREAKER: SEQ K2 on a drum lane: what it plays (AFFINE: BOOM's preset) */
 {
     uint32_t dr = sl_drum(ui.seq_lane);
     if (dr == DR_KICK)
-        kick_mem_turn(d);
+        boom_pre_turn(d);
     else
         perc_mem_turn(dr - 1u, d);
 }
@@ -326,10 +327,12 @@ static void lane_sound_text(char *t)
 {
     uint32_t dr = sl_drum(ui.seq_lane);
     t[0] = 0;
-    text_cat(t, dr == DR_KICK ? "KICK " : DRUM_NAME[dr]);
-    if (dr != DR_KICK)
-        text_cat(t, " ");
-    int_text((int32_t)(dr == DR_KICK ? set.kslot % KICK_MEMS : *perc_slot(dr - 1u)) + 1, t + text_n(t));
+    text_cat(t, DRUM_NAME[dr]);
+    text_cat(t, " ");
+    if (dr == DR_KICK)
+        text_cat(t, boom_pre_name());
+    else
+        int_text((int32_t)*perc_slot(dr - 1u) + 1, t + text_n(t));
 }
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's drum lanes as EXPERT's (0.229: K1 FILL again, the BEAT presets of
  * 0.224-0.228 gone, FLEXOR: "a sequencer without them"), but no step menu (a step held: nothing) and K4 LENGTH the
@@ -383,14 +386,14 @@ static void lane_knob(int i, int32_t d)
             text_cat(t, "+");
         int_text(v, t + (v > 0 ? 1 : 0));
         text_cat(t, " ST");
-        say_int("KICK NOTE", (int32_t)ks + 1, "");
+        say_int("BOOM NOTE", (int32_t)ks + 1, "");
         app_say(ui.msg[0], t);
         ui.redraw |= RG_BLOCKS;
         return;
     }
     if (i == 1) {                        /* LOAF BREAKER: K2 what this lane plays (the drums' filter: HOME's K3 alone):
-                                          * the kick's lanes KICK 1-10, the snare's, the hat's, the clap's their
-                                          * memories, the MELODY's the pattern's instrument (a step held: its HITS) */
+                                          * BOOM's lanes its preset, the snare's, the hat's, the clap's their
+                                          * memories (a step held: its HITS) */
         lane_sound_turn(d);
         ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;
         return;
@@ -575,7 +578,7 @@ static void seq_clear(int mode)
     app_say("CLEARED", mode == 1 ? SEQ_LANE_NAME[ui.seq_lane] : mode ? "BREAK 1-32" : "PATTERN");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-/* a note's name: "C3", "F#4" (0: C3; kick.c's KICK LAB NOTE) */
+/* a note's name: "C3", "F#4" (0: C3; kick.c's TUNE too) */
 static void note_name(int32_t n, char *t)   /* "C3", "F#4" (0: C3) */
 {
     static const char *const NN[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
@@ -778,7 +781,7 @@ static uint32_t seq_rows(uint8_t *row)   /* the rows, top to bottom (SL_*); thei
 }
 static void seq_picture(const brk_status_t *st, int32_t top)
 {
-    static const char *const TAG[NDRUMS] = {"K", "SN", "HH", "CP"};
+    static const char *const TAG[NDRUMS] = {"BM", "SN", "HH", "CP"};
     const pat_t *p = pat_now();
     uint8_t row[NSEQL];
     uint32_t i, r, n = seq_rows(row), nb = 0u;

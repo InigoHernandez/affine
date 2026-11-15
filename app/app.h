@@ -55,18 +55,15 @@ int app_ble_at_boot(void);
 
 /* the store (PRD 8.4): settings in Felucca's settings pair, the panel calibration where every fm1-base firmware
  * keeps it. The break bank will take 0x97000..0xD9FFF and PLAT_XDATA1 (M5), patterns 0xDA000 (M2). */
+/* (OBJ_STEP: each drum step's HITS, CHANCE, NUDGE, 0xD8000; OBJ_BLE: Bluetooth's place, the drum samples' since LOAF
+ * BREAKER 0.9.45; OBJ_PAT: the patterns playing's group, the tracks.) LOAF BREAKER: 64 patterns, four groups of 16, each
+ * group's own three objects (OBJ_PG0 + g its patterns, OBJ_KG0 + g their kick notes and HITS, OBJ_SG0 + g their drum
+ * steps), 0xC0000..0xD7FFF; OBJ_DX the drums' bars 3 and 4, 0xBC000. AFFINE (15 Nov 2026): the hardcore kick's four
+ * objects neither written nor read any more, their places kept for what comes next (motion recording): OBJ_FREE0
+ * 0xB6000 (was the KICK LAB), OBJ_FREE1 0xB8000 (KICK 11-20), OBJ_FREE2 0xBA000 (each kick's FX), OBJ_FREE3 0xBE000
+ * (TOK and TAIL GATE). The custom breaks' zone 0 ends at 0xB6000; WIPE MEMORY erases from there */
 enum { OBJ_SETTINGS, OBJ_PANEL, OBJ_BLE, OBJ_PAT, OBJ_STEP, OBJ_PG0, OBJ_KG0 = OBJ_PG0 + 4, OBJ_SG0 = OBJ_KG0 + 4,
-       OBJ_NG0 = OBJ_SG0 + 4, OBJ_KLAB = OBJ_NG0 + 4, OBJ_NOBJ };
-#define OBJ_KFXM (OBJ_NG0 + 1)          /* (LOAF BREAKER, 0.9.26: each kick's FX section, EQ and FX1 FX2: 0xBA000) */
-#define OBJ_DX (OBJ_NG0 + 2)            /* (LOAF BREAKER, 0.9.30: the snare's, hat's, clap's bars 3 and 4, every group's: 0xBC000) */
-#define OBJ_KX2 (OBJ_NG0 + 3)           /* (LOAF BREAKER, 0.9.45: each kick's TOK and TAIL GATE, kick_x2_t: 0xBE000) */
-#define OBJ_KMEM2 OBJ_NG0                /* (LOAF BREAKER, 0.9.2: KICK 11..20, in the first of the hoover notes' old
-                                          * objects, unused since 0.209: 0xB8000) */   /* (LOAF BREAKER: OBJ_STEP, each drum step's
-                                                                 * HITS, CHANCE, NUDGE: 0xD8000, the old bank's room) */   /* OBJ_BLE: Bluetooth's address and pairing;
-                                                                 * OBJ_PAT: the 16 patterns */
-/* LOAF BREAKER: 64 patterns, four groups of 16, each group's own three objects (OBJ_PG0 + g its patterns, OBJ_KG0 + g
- * their kick notes and HITS, OBJ_SG0 + g their drum steps), 0xC0000..0xD7FFF (the old bank's room); OBJ_NG0 + g their
- * hoover notes past -8..+7 (HV KEYS), 0xB8000..0xBFFFF; OBJ_KLAB the KICK LAB (each kick's TAIL and STACK), 0xB6000 */
+       OBJ_FREE1 = OBJ_SG0 + 4, OBJ_FREE2, OBJ_DX, OBJ_FREE3, OBJ_FREE0, OBJ_NOBJ };
 #define APP_STORE_MAP {0xFC000u, 0xDC000u, 0xDE000u, 0xDA000u, 0xD8000u, \
                        0xC0000u, 0xC2000u, 0xC4000u, 0xC6000u, 0xC8000u, 0xCA000u, 0xCC000u, 0xCE000u, \
                        0xD0000u, 0xD2000u, 0xD4000u, 0xD6000u, 0xB8000u, 0xBA000u, 0xBC000u, 0xBE000u, 0xB6000u}
@@ -102,6 +99,6 @@ int app_sysex(const uint8_t *p, uint32_t n);
 int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, const char *d);
 #define APP_HOST_FAILS                   /* expect_bpm's failures, counted into the run's */
 int app_host_fails(void);
-#define APP_HOST_EXPECT                  /* expect page / gpage / kpage / seq_lane / fx_focus / fx_on / lane_kick /
-                                          * lane_hat / pattern / brk / brk_next / help / drums_chain / lobo */
+#define APP_HOST_EXPECT                  /* expect page / gpage / kpage (BOOM's part) / seq_lane / fx_focus / fx_on /
+                                          * lane_kick / lane_hat / pattern / brk / brk_next / help / drums_chain / lobo .. */
 int app_expect(const char *what, int *got);

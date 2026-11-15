@@ -1,7 +1,8 @@
 # LOAF BREAKER (11 Nov 2026): ARP's tabs, ARP EFFECTS, BLACK KEYS (EXPERT; MORE gone for now, 0.259). BLACK KEYS: K1 the preset (CHOPPAH,
-# FLEXOR LAYOUT, CUSTOM), K2 the key (or a black key pressed: it picks itself), K3 its effect (a preset: a CUSTOM copy
-# first). CHOPPAH's FREEZE and DUB back on its keys. (The simulator starts on FLEXOR LAYOUT; an FM-1 on CHOPPAH.)
-#   app/build/host/loaf-breaker_host tests/scenarios/blackkeys.txt app/build/scenarios
+# CUSTOM; AFFINE: FLEXOR LAYOUT gone), K2 the key (or a black key pressed: it picks itself), K3 its effect (a preset: a
+# CUSTOM copy first). CHOPPAH's FREEZE and DUB back on its keys. (The simulator starts on a CUSTOM layout, LOAF BREAKER's
+# FLEXOR LAYOUT's keys; an FM-1 on CHOPPAH.)
+#   app/build/host/affine_host tests/scenarios/blackkeys.txt app/build/scenarios
 wait 4200
 expect bk_pre 1
 tap ARP
@@ -24,7 +25,7 @@ expect bk_fn 4
 shot a_blackkeys_choppah.png
 turn K3 1 10
 wait 200
-expect bk_pre 2
+expect bk_pre 1
 expect bk_fn 5
 shot a_blackkeys_custom.png
 turn K3 -1 10
@@ -55,7 +56,7 @@ wait 600
 shot a_dub.png
 key b10 up
 wait 300
-# back to FLEXOR LAYOUT: the ARP key the eighth again
+# back to CHOPPAH: its seventh key VINYL BREAK
 tap ARP
 wait 200
 turn SELECT 1 10
@@ -63,11 +64,11 @@ wait 200
 expect opage 1
 turn K1 -1 10
 wait 200
-expect bk_pre 1
+expect bk_pre 0
 tap HOME
 wait 200
 key b6 down
 wait 300
-shot a_flexor_arp.png
+shot a_choppah_vinyl.png
 key b6 up
 wait 300

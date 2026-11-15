@@ -1,19 +1,72 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-/* CHOPPAH: the MIXER (LFO): the break, the kick, the snare and hat, FX; swing and the drums' route. (Part of
+/* CHOPPAH: the MIXER (LFO): the break, BOOM, the snare and hat, FX; swing and the drums' route. (Part of
  * app.c's unity: included there in order.) */
 
+/* LOAF BREAKER: DUCK and COMP, MIX › MASTER and DYNAMICS (SEL + K1 and K3 too until AFFINE): f 0 DUCK (its amount,
+ * attack, release, what it ducks), else COMP (its amount, ratio, attack, release) */
+static uint8_t *dyn_byte(uint32_t f, int i)
+{
+    static uint8_t *const DUCKB[4] = {&set.duck, &set.duck_att, &set.duck_rel, &set.duck_what};
+    static uint8_t *const COMPB[4] = {&set.comp, &set.comp_ratio, &set.comp_att, &set.comp_rel};
+    return f ? COMPB[i & 3] : DUCKB[i & 3];
+}
+static void dyn_value(uint32_t f, int i, char *t)
+{
+    uint8_t v = *dyn_byte(f, i);
+    t[0] = 0;
+    if (i == 0) {                        /* the amount (COMP: its threshold) */
+        if (!v)
+            text_cat(t, "OFF");
+        else if (f) {
+            tenths_text(-(int32_t)v * 36 / 10, t);
+            text_cat(t, " DB");
+        } else {
+            int_text(v, t);
+            text_cat(t, "%");
+        }
+    } else if (!f) {
+        if (i == 3)
+            text_cat(t, v == 1u ? "+ DRUMS" : "BREAK");
+        else
+            ms_text(i == 1 ? att_ms(v) : rel_ms(v), t);
+    } else if (i == 1) {
+        float r = COMP_RATIO[v & 7u];
+        if (r < 2.0f)
+            text_cat(t, "1.5");
+        else
+            int_text((int32_t)r, t);
+        text_cat(t, ":1");
+    } else
+        ms_text(i == 2 ? att_ms(v) : rel_ms(v), t);
+}
+static void dyn_turn(uint32_t f, int i, int32_t d)
+{
+    static const char *const N[2][4] = {{"DUCK", "DUCK ATTACK", "DUCK RELEASE", "DUCK DUCKS"},
+                                        {"COMP", "COMP RATIO", "COMP ATTACK", "COMP RELEASE"}};
+    uint8_t *b = dyn_byte(f, i);
+    char t[16];
+    if (!f && i == 3)
+        *b = (uint8_t)clamp((int32_t)*b + (d > 0 ? 1 : -1), 0, 1);
+    else if (f && i == 1)
+        *b = (uint8_t)clamp((int32_t)*b + (d > 0 ? 1 : -1), 0, 7);
+    else
+        *b = (uint8_t)clamp((int32_t)*b + d * 2, 0, 100);
+    dyn_value(f, i, t);
+    app_say(N[f != 0u][i & 3], t);
+    changed();
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
 /* the MIXER's knob i on half h, as the foot and the strip show it */
-static void selk_value(uint32_t f, int i, char *t);
 static void mix_value(uint32_t h, int i, char *t)
 {
     t[0] = 0;
     if (h == 3u) {                       /* LOAF BREAKER: DYNAMICS: COMP's attack, release; DUCK's release, what it ducks */
-        selk_value(i < 2 ? 2u : 0u, i == 0 ? 2 : i == 1 ? 3 : i == 2 ? 2 : 3, t);
+        dyn_value(i < 2 ? 2u : 0u, i == 0 ? 2 : i == 1 ? 3 : i == 2 ? 2 : 3, t);
         return;
     }
     if (h == 2u) {                       /* LOAF BREAKER: MASTER: COMP, its RATIO, DUCK, MAX OUT */
         if (i < 3)
-            selk_value(i == 2 ? 0u : 2u, i == 2 ? 0 : i, t);
+            dyn_value(i == 2 ? 0u : 2u, i == 2 ? 0 : i, t);
         else {
             uint32_t db = max_out_db();
             if (db)
@@ -79,7 +132,7 @@ static void mix_arp(int32_t x)            /* the ARP's route: BREAK, KICK, THRU,
 }
 static void mix_picture(int32_t top)
 {
-    static const char *const NAME[4][4] = {{"BREAK", "KICK", "PERC", ""}, {"FX", "DRUMS", "ARP", "ROLL"},
+    static const char *const NAME[4][4] = {{"BREAK", "BOOM", "PERC", ""}, {"FX", "DRUMS", "ARP", "ROLL"},
                                            {"COMP", "RATIO", "DUCK", "MAX OUT"},
                                            {"C ATTACK", "C RELEASE", "D RELEASE", "DUCKS"}};
     uint32_t c;

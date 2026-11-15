@@ -2,7 +2,7 @@
 # HALF SPEED's K3): ON, a press switches it on, the next off (turned on while held: it stays on); off again while
 # latched: let go, off. FILTER: no LATCH, its K4 THRU: BREAK (as ever), DRUMS (the kick and the drums), BOTH.
 # On the CHOPPAH layout (ARP › BLACK KEYS, K1): GATE is key b7, FILTER b9.
-#   app/build/host/loaf-breaker_host tests/scenarios/padlatch.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/padlatch.txt app/build/scenarios
 wait 4200
 tap ARP
 wait 300
