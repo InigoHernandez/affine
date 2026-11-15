@@ -2,7 +2,7 @@
 # DRUMS (the drums alone), SETTINGS (SWING, BREAK ROWS, FOLLOW); ALGORITHM every lane, top to bottom, round. On K1:
 # ALGORITHM up twice, the break's rows; SELECT: DRUMS, the break's rows gone, ALGORITHM up from K1 round to the clap;
 # SELECT: SETTINGS, K2 BREAK ROWS 16; SELECT: FULL with BRK1 alone; SELECT back from FULL: SETTINGS.
-#   app/build/host/loaf-breaker_host tests/scenarios/brkview.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/brkview.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 300

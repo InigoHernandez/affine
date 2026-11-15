@@ -1,6 +1,6 @@
 # LOAF BREAKER: SEL x2 (two quick clicks) locks it down (lit; it counts as held): SEL + SELECT then turns the drums' filter
 # without holding SEL; pressed again it is free (that press no click: no combinations card), SELECT the tempo again (the filter left as it is).
-#   app/build/host/loaf-breaker_host tests/scenarios/sellock.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/sellock.txt app/build/scenarios
 wait 4200
 expect kick_dj 0
 tap SEL

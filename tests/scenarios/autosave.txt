@@ -3,7 +3,7 @@
 # AUTO SAVE on (a change); PLAY a minute and more: not saved while playing; stopped: not yet at 19 s, saved by 20.5 s.
 # Then a change, stopped long since, a knob turned and the kick played by hand every few seconds: saved at its minute
 # all the same.
-#   app/build/host/loaf-breaker_host tests/scenarios/autosave.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/autosave.txt app/build/scenarios
 wait 4200
 tap GLO
 wait 100

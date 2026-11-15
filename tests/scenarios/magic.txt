@@ -1,7 +1,7 @@
 # LOAF BREAKER: FLEXOR's own presets at the end of the FX PRESETS list, past CLIP: MAGIC EQ (LOW -5.8 dB at 182 Hz,
 # MID -2.9 dB at 999 Hz Q 1.59, HIGH +1.9 dB at 8 kHz) and MAGIC MBC (LOW 0 dB 8:1 -6 dB, MID -34 dB 3:1, HIGH -48 dB
 # 2:1 +2 dB; amounts 4.5:1, 1.7:1, 1.5:1; 60 % wet). Slot 1 to the list's end (MAGIC MBC), back to MAGIC EQ, CLIP, on.
-#   app/build/host/loaf-breaker_host tests/scenarios/magic.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/magic.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 300

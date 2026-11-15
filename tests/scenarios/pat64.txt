@@ -2,7 +2,7 @@
 # change there, then P1 while stopped: the group saved first (its three objects), P1-16 in. Back to P64: the change
 # kept. Playing, a change, then PRESETS to P1: refused (SAVE OR STOP: a write would stop the sound); SAVE, then it
 # comes in at the loop's end. After a reboot: the group saved with SAVE in again.
-#   app/build/host/loaf-breaker_host tests/scenarios/pat64.txt app/build/scenarios
+#   app/build/host/affine_host tests/scenarios/pat64.txt app/build/scenarios
 wait 4200
 expect pattern 0
 expect pgrp 0
