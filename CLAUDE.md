@@ -40,7 +40,7 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
 - Settings (`settings_t`) only grow at the end; a store layout change needs a version and a conversion on load.
   A saved setting never changes at a restart.
 - The canvas is 240x60: draw in strips of 60 rows at most.
-- Budgets (FM-1, 574fac2): app slot 581,564 B (image 551,080); RAM .data+.bss 77,816 of 98,304; pool 328,252 of
+- Budgets (FM-1, 567ab94): app slot 581,564 B (image 548,064); RAM .data+.bss 77,832 of 98,304; pool 328,252 of
   344,064. `./build.sh` prints them: read the `ok image` line after every change.
 
 ## AFFINE's own parts (where to look)
@@ -48,8 +48,13 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
 - `app/dsp/psx.c`: the PSX effects and the PSX bus (run by `brk_fx_process` after the chain, before the limiter:
   CODEC, SPU VERB, CRUSH, REDUX, SKIP). Settings in `set.psx` (psx_bus_t), applied by `psx_apply` (app.c), which
   folds in the held keys VRB, SKP, CRS. LOAF's plate reverb is retired (a REVERB slot passes the sound on).
-- `app/ui/aff.c`: the POLYGON look (palette, pixel font `app/aff_font.h` CC BY-SA 4.0, HOME's picture); `home_draw`
-  in main.c feeds it. HOME's knobs: FILTER, CRUSH, REDUX, VERB; the gate is HOME's SETTINGS K2.
+- `app/ui/affont.c`: every page writes in AFFINE's pixel font (`app/aff_font.h`, CC BY-SA 4.0): macros route LOAF's
+  `cv_text` / `text_w` to it (FONT_B 2x; FONT_T, FONT_XS 1x). New text: use `aff_text` / `aff_knob_cell`.
+- `app/ui/aff.c`: the POLYGON look (palette and dither ramps from the skin, HOME's picture, `aff_knob_cell`, the title
+  screen `aff_title`); `home_draw` in main.c feeds HOME. HOME's knobs: FILTER, CRUSH, REDUX, VERB; the gate is HOME's
+  SETTINGS K2. The foot on every page is HOME's panel (main.c `draw_foot`).
+- Skins (common.c): AFFINE's five, POLYGON first; `C_BLACK` is the skin's ground inside the UI.
+- `tools/contact_sheet.py NAMES`: the simulator's screenshots side by side (after `sh tests/scenarios.sh`).
 - `app/ui/psxp.c`: the PSX page (EFFECTS, SELECT past the slots: `ui.fx_focus == BRK_FX_SLOTS`).
 - BOOM (LOAF's kick stripped): `app/dsp/kick.c` and `app/ui/kick.c`.
 - Tests: `./build.sh test` (engine + PSX checks), `sh tests/scenarios.sh` (every host scenario; 8 inherited

@@ -122,8 +122,10 @@ first AFFINE build, read while playing.
    BOOM in (808, JUNGLE, DUB, TIGHT; TUNE, DECAY, LEVEL; SHAPE in EXPERT), settings magic AFF1, OBJ_FREE0..3 kept.
 5. **Wire the effects** (done): the PSX bus (6a2a425); HOME's four gestures (1eeec85); the PSX page, EFFECTS'
    fifth tab (6488140); the black keys VRB, SKP, CRS and AFFINE's layout (574fac2). Still: PSX overlays on ARP.
-6. **The picked look:** HOME and the PSX page drawn in POLYGON on the device (1eeec85, 6488140); still: the other
-   pages (Barlow today), the splash, the update screen, the skins as palettes.
+6. **The picked look** (done, 567ab94): HOME and the PSX page drawn whole in POLYGON; every other page in the pixel
+   font (small labels 1x, names and values 2x), AFFINE's five skins (POLYGON first), the foot as HOME's panel,
+   AFFINE's title on the boot, the start screen and RESET ALL. Still: page bodies to 2x one by one, the update
+   screen (felucca-bsp's today).
 7. **Motion record and scenes.**
 8. **Device:** the owner's FM-1 test, the CPU meter read; then the site, the manual, the hub kit.
 
