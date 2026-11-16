@@ -1387,12 +1387,51 @@ static void knob_value(int i, char *t)  /* the page's knob i (0..3), as shown un
 /* the tab bar under the header: the button's name, then the page's parts as tabs (the one you are on lit: the
  * button again, or ALGORITHM, goes to the next); EDIT and FX also name the part edited, "< SUB FX >" */
 static const char *const OPAGE_NAME[3] = {"ARP EFFECTS", "BLACK KEYS", "MORE"};   /* (LOAF BREAKER: ARP's tabs) */
+/* AFFINE (the owner's FM-1, 0.1: "everything in the UI looks very small"): the tabs at 2x, as every text now. They
+ * are collected while draw_tabs goes through the page's, then laid out: all of them when they fit beside the part
+ * ("< PART >"), else the one open alone, after a square for each (the open one lit) */
+#define TAB_N 8
+static const char *tab_s[TAB_N];
+static uint8_t tab_on[TAB_N], tab_n;
 static int32_t tab(int32_t x, const char *s, int on)
 {
-    int32_t w = text_w(&FONT_T, s) + 8;
-    cv_rect(x, 0, w, 13, on ? C_HI : C_BLOCK);
-    cv_text(x + 4, 1, &FONT_T, s, on ? C_BLACK : C_GRAY);
-    return x + w + 3;
+    if (tab_n < TAB_N) {
+        tab_s[tab_n] = s;
+        tab_on[tab_n++] = (uint8_t)(on != 0);
+    }
+    return x;
+}
+static void tabs_lay(const char *part)
+{
+    int32_t i, w = 0, x = 2, pw = part && part[0] ? text_w(&FONT_T, part) + 6 : 0, cur = -1;
+    for (i = 0; i < tab_n; i++) {
+        w += text_w(&FONT_T, tab_s[i]) + 8 + 3;
+        if (tab_on[i])
+            cur = i;
+    }
+    if (x + w + pw <= 240) {             /* all of them */
+        for (i = 0; i < tab_n; i++) {
+            int32_t tw = text_w(&FONT_T, tab_s[i]) + 8;
+            cv_rect(x, 0, tw, 14, tab_on[i] ? C_HI : C_BLOCK);
+            cv_text(x + 4, 1, &FONT_T, tab_s[i], tab_on[i] ? C_BLACK : C_GRAY);
+            x += tw + 3;
+        }
+    } else {                             /* the open one, after a square for each */
+        for (i = 0; i < tab_n; i++) {
+            cv_rect(x, 4, 5, 5, i == cur ? C_HI : C_GRAY);
+            x += 7;
+        }
+        x += 3;
+        if (cur >= 0) {
+            int32_t tw = text_w(&FONT_T, tab_s[cur]) + 8;
+            if (x + tw + pw > 240)       /* (no room for the part beside it: the part goes) */
+                pw = 0;
+            cv_rect(x, 0, tw, 14, C_HI);
+            cv_text(x + 4, 1, &FONT_T, tab_s[cur], C_BLACK);
+        }
+    }
+    if (pw)
+        cv_text(238 - (pw - 6), 1, &FONT_T, part, C_HI);
 }
 /* the pages' buttons as printed, GLOBAL's parts, SEQ's lanes: for the tabs and the header (page_say) */
 static const char *const BTN[NPAGES] = {"HOME", "HOME", "FX", "GLO", "EDIT", "LFO", "SEQ", "EDIT", "ENV", "ARP",
@@ -1418,11 +1457,8 @@ static void draw_tabs(void)
     int sel_hint = 0;                    /* (LOAF BREAKER, 0.230: BEGINNER, "SELECT: ..." at the right) */
     part[0] = 0;
     cv_begin(240, 14, C_BLACK);
-    {                                    /* (LOAF BREAKER: the domain; SOUNDS: the source, BOOM and the DRUMS, BREAK) */
-        const char *lab = ui.page == PG_KICK || ui.page == PG_PERC ? "SOUNDS" : ui.page == PG_GLOBAL &&
-                          ui.gpage == GP_BREAK ? "BREAK" : dom_name();
-        x = ui.page == PG_TRACK ? 2 : cv_text(4, 1, &FONT_T, lab, C_WHITE) + 6;
-    }
+    tab_n = 0u;
+    x = 2;                               /* (AFFINE: the domain is the header's, not repeated here) */
     if (ui.page == PG_HOME || ui.page == PG_GEN || ui.page == PG_HSET) {   /* HOME: PERFORM, GENERATOR, SETTINGS */
         x = tab(x, "PERFORM", ui.page == PG_HOME);
         x = tab(x, "GENERATOR", ui.page == PG_GEN);
@@ -1475,13 +1511,14 @@ static void draw_tabs(void)
         else
             text_cat(part, ui.page == PG_KICK ? BOOM_PART[boom_part()] : PPAGE_NAME[perc_pg()]);
     }
-    if (sel_hint)                        /* (LOAF BREAKER, 0.230: BEGINNER's sounds, SELECT goes round them) */
-        cv_text(236 - text_w(&FONT_T, "SELECT: THE SOUNDS"), 1, &FONT_T, "SELECT: THE SOUNDS", C_DIM);
+    (void)sel_hint;                      /* (AFFINE: BEGINNER's "SELECT: THE SOUNDS" gone: no room at 2x) */
     if (part[0]) {                       /* "< PART >": ALGORITHM turns it */
         char t[24] = "< ";
         text_cat(t, part);
         text_cat(t, " >");
-        cv_text(236 - text_w(&FONT_T, t), 1, &FONT_T, t, C_HI);
+        tabs_lay(t);
+    } else {
+        tabs_lay(0);
     }
     cv_blit(0, 30);                      /* (right under the header, on every page) */
 }
@@ -1673,19 +1710,15 @@ static void draw_foot(const brk_status_t *st)
     draw_tabs();
     cv_begin(240, 48, C_BLACK);
     aff_check();
-    for (i = 0; i < 11u; i++) {          /* (each key's function, the layout's) */
-        uint32_t f = bk_fn(i);
-        int on = f == BKF_ARP ? arpk_on(i) : bkf_lit(f, st);
-        int32_t x = 2 + (int32_t)i * 21;
-        cv_rect(x, 0, 20, 10, on ? C_HI : C_BLOCK);
-        aff_text(x + 10, 2, BKF_NAME[f], 1, on ? C_BLACK : C_GRAY, 0, 2);
-    }
-    cv_rect(0, 11, 240, 1, C_LINE);
-    for (i = 14u; i < 48u; i += 2u)      /* (the two columns apart: a dotted rule) */
+    (void)st;
+    /* (AFFINE, 2x: the eleven keys' names at 1x over the foot gone; a held key names itself in the header. The foot is
+     * HOME's panel: a rule, the four knobs two by two) */
+    cv_rect(0, 0, 240, 1, C_LINE);
+    for (i = 4u; i < 48u; i += 2u)       /* (the two columns apart: a dotted rule) */
         cv_rect(120, (int32_t)i, 1, 1, C_LINE);
     for (i = 0; i < 4u; i++) {
         const char *name = knob_name((int)i);
-        int32_t x = 4 + (int32_t)(i & 1u) * 122, y = 15 + (int32_t)(i >> 1) * 17;
+        int32_t x = 6 + (int32_t)(i & 1u) * 120, y = 6 + (int32_t)(i >> 1) * 21;
         float nv = -1.0f;
         uint16_t nc = C_GRAY;
         t[0] = 0;
@@ -1716,7 +1749,7 @@ static void draw_foot(const brk_status_t *st)
             if (ui.page == PG_FX && !FX_PSX())
                 nc = fx_sl(fx_foc())->on ? C_GRAY : C_DIM;
         }
-        aff_knob_cell(x, y, 110, name, t, nv, 0, nc, 0);   /* (the canvas is the foot: its own rows) */
+        aff_knob_cell(x, y, 108, name, t, nv, 0, nc, 0);   /* (the canvas is the foot: its own rows) */
     }
     cv_blit(0, 192);
 }

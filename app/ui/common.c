@@ -79,6 +79,9 @@ static void rows_forget(uint32_t y, uint32_t h)
 static void rows_send(uint32_t x, uint32_t y)
 {
     uint32_t r, r0 = cv_h, r1 = 0u, i;
+#if defined(PLAT_HOST) && !defined(PLAT_WEB)
+    aff_aud_check(x, y);                 /* (AFFINE's text audit: affont.c) */
+#endif
     if (x || cv_w != 240u) {             /* (a narrow one: sent, its rows no longer known) */
         rows_forget(y, cv_h);
         ui_blits++;

@@ -628,13 +628,26 @@ static void aff_knob_cell(int32_t x, int32_t y, int32_t w, const char *name, con
     if (!name || !name[0])
         return;
     v = v ? v : "";
-    lw = aff_text_w(name, 2);
     vw = aff_text_w(v, 2);
-    lz = lw + vw + 6 <= w ? 2 : 1;
-    lw = aff_text_w(name, lz);
-    vz = lw + vw + 6 <= w ? 2 : 1;
-    aff_text(x, lz == 2 ? y : y + 3, name, lz, ncol, band, 0);
-    aff_text(x + w, vz == 2 ? y : y + 3, v, vz, A_INK, band, 1);
+    {                                    /* both at 2x, always (the owner, 0.1: "everything ... very small"): a name
+                                          * too long for the value beside it is cut, not shrunk */
+        char nm[16];
+        int32_t n = 0;
+        while (name[n] && n < 15) {
+            nm[n] = name[n];
+            n++;
+        }
+        nm[n] = 0;
+        while (n > 3 && aff_text_w(nm, 2) + vw + 6 > w)
+            nm[--n] = 0;
+        while (n > 0 && nm[n - 1] == ' ')
+            nm[--n] = 0;
+        lw = aff_text_w(nm, 2);
+        lz = vz = 2;
+        if (lw + vw + 6 <= w || vw + 6 <= w)
+            aff_text(x, y, nm, lz, ncol, band, 0);
+        aff_text(x + w, y, v, vz, A_INK, band, 1);
+    }
     if (norm >= 0.0f || (bip && norm >= -1.0f))
         home_bar(x, y + 13, w, norm, bip, band);
 }
