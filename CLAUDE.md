@@ -9,8 +9,10 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
 ## The owner's rules
 
 - **Never push to FLEXOR's or Laurens' repositories.** The `upstream` remote is fetch-only on purpose; leave it so.
-- AFFINE's repo is local until the owner says it goes to GitHub. Push every finished, checked change once it does,
-  with a changelog line. Ask before tags, releases, the installer, or the Firmware Hub.
+- AFFINE is public since 2026-11-16 at the owner's word: https://github.com/InigoHernandez/affine (`origin`), its
+  site on GitHub Pages from `web/` (`.github/workflows/pages.yml`, nothing built there). Push every finished, checked
+  change with a line in `CHANGELOG.md` (newest day first, a kind on every line). Ask before tags, releases, the
+  installer, or the Firmware Hub.
 - Downloads need the owner's yes each time.
 - English Markdown files. Little text on the site and the screen (a title and one line, then the thing).
 - Breaks: royalty free only (Cyberworm's Amens, `breaks/README.md`) plus the player's own through the import page.
@@ -71,6 +73,17 @@ PYTHON=../mono2k/.venv/bin/python PYTHONPATH=<shim dir> ./build.sh          # ap
 PYTHON=../mono2k/.venv/bin/python PYTHONPATH=<shim dir> ./build.sh --host   # app/build/host/affine_host
 ./build.sh test                                                             # the engine's tests, plain cc
 ```
+
+## The site (`web/`)
+
+MONO2K's structure (one 12-column grid with dotted rules, numbered sections, the playbar and drawers) in POLYGON.
+`sh web/build.sh` gathers what it takes from the build: `emu/` (`./build.sh --web`: the firmware in WebAssembly;
+`--copy` skips the build), `screens/` (the simulator's shots, `sh tests/scenarios.sh` first, as palette PNGs) and
+`sounds/` (psx_demo.c's renders, AAC). Serve it with `.claude/launch.json`'s affine-web (port 8781). `site.js` the
+skins (they recolour the page, the panel and the FM-1's screenshots), the dither patterns and the motion; `scene.js`
+the hero (aff.c's title screen in JS); `panel.js` and `play.js` the FM-1 (from fm1-base's emulator page, MPL-2.0);
+`chip.js` the PSX bus heard; `perform.js` the black keys (held on the emulator too). Bump `?v=` in index.html with
+every changed file. Little text: a title and one line a section.
 
 ## Layout
 

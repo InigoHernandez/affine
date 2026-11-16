@@ -10,3 +10,4 @@ app/bank_data.h
 /firmware.json
 /app/loaf_version.h
 .claude/worktrees/
+.claude/launch.json

@@ -1,0 +1,235 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- AFFINE's site: the firmware itself in the browser (emu/app.wasm, fm1-base's emulator), on MONO2K's grid (one
+     12-column grid, the dotted rules; numbered sections) in AFFINE's POLYGON look. style.css, site.js (skins, dither,
+     screens, motion), scene.js (the hero: the floor, the gem, the wordmark), panel.js and play.js (the FM-1),
+     chip.js (the PSX bus, heard), perform.js (the black keys). web/build.sh gathers emu/, screens/ and sounds/. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AFFINE</title>
+<meta name="description" content="AFFINE: a PS1-era jungle break chopper for the M-VAVE FM-1. Royalty-free Amens on the keys, eleven performance keys, a sound chip's reverbs, codec grit, bit crush and redux. Running in your browser.">
+<meta name="theme-color" content="#060814">
+<script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
+<link rel="icon" href="gem.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
+<link rel="stylesheet" href="style.css?v=5">
+</head>
+<body>
+<div class="rules" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<header class="bar">
+  <a class="brand" href="./" aria-label="AFFINE"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="var(--hot)" d="M16 1 4 13h12z"/><path fill="color-mix(in srgb, var(--hot) 60%, var(--ink))" d="M16 1 28 13H16z"/><path fill="color-mix(in srgb, var(--hot) 55%, var(--bg))" d="M4 13h12v18z"/><path fill="color-mix(in srgb, var(--hot) 25%, var(--bg))" d="M16 13h12L16 31z"/></svg><b>AFFINE</b></a>
+  <p class="dev label"><span>Runs on</span><b>FM-1</b></p>
+  <span class="acts"><button id="skin" class="skinbtn" type="button" aria-label="The skin: POLYGON. Next skin"><i aria-hidden="true"></i><span id="skin-n">POLYGON</span></button><a class="cta" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a></span>
+</header>
+<nav class="subnav" aria-label="Sections">
+  <a href="#play">Play</a>
+  <a href="#chip">The chip</a>
+  <a href="#perform">Perform</a>
+  <a href="#skins">Skins</a>
+  <a href="#made">How</a>
+  <span class="sp"></span>
+  <a href="#status" class="tag">Test build 0.1</a>
+</nav>
+
+<section class="hero">
+  <div class="scene" id="scene-box">
+    <canvas id="scene" role="img" aria-label="AFFINE: speed stripes into a chrome wordmark, over a floor of sixteen lanes and a turning gem"></canvas>
+    <span class="scene__hint" aria-hidden="true">Tap the floor</span>
+  </div>
+  <div class="hero__sub">
+    <p class="hero__line">Jungle breaks on the FM-1's keys, through a PS1-era sound chip.</p>
+    <p class="hero__acts"><a class="btn" href="#play">Play</a><a class="btn ghost" href="#chip">Hear the chip</a><a class="btn ghost" href="#status">Install</a></p>
+  </div>
+</section>
+
+<section class="play" id="play" aria-label="The emulator: AFFINE's firmware running in this page">
+  <div class="devwrap">
+    <div class="devbox" id="devbox">
+      <div class="device" id="device" tabindex="-1" aria-describedby="status">
+        <svg id="panel" viewBox="0 0 1000 640" aria-hidden="true" focusable="false"></svg>
+        <canvas id="lcd" width="240" height="240" role="img" aria-label="The screen"></canvas>
+        <div id="controls" role="group" aria-label="The FM-1's panel" inert></div>
+      </div>
+    </div>
+    <button id="start" class="start" type="button"><span>Start</span><small>Sound on · the real firmware</small></button>
+  </div>
+  <div class="playbar">
+    <p class="status" id="status" role="status" aria-live="polite">Press Start, then point at a control.</p>
+    <span class="cpu" id="cpu"></span>
+    <div class="playbar__acts">
+      <button class="pbtn" id="snd" type="button" aria-pressed="false">Mute</button>
+      <button class="pbtn" id="keys-tog" type="button" aria-expanded="false" aria-controls="keymap">Keys</button>
+      <button class="pbtn" id="reset" type="button" aria-expanded="false" aria-controls="reset-ask">Reset</button>
+    </div>
+  </div>
+  <div class="drawer" id="keymap" hidden>
+    <div class="drawer__in keymap">
+      <div class="keys">
+        <h3>Keys</h3>
+        <dl>
+          <dt><kbd>Q</kbd>–<kbd>I</kbd> <kbd>A</kbd>–<kbd>K</kbd></dt><dd>White keys: the break's 16 slices.</dd>
+          <dt><kbd>1</kbd>–<kbd>0</kbd> <kbd>-</kbd></dt><dd>Black keys: the eleven effects, while held.</dd>
+          <dt><kbd>Space</kbd> <kbd>O</kbd> <kbd>Esc</kbd></dt><dd>PLAY, REC, HOME.</dd>
+        </dl>
+      </div>
+      <div class="keys">
+        <h3>Knobs</h3>
+        <dl>
+          <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>SELECT: the tempo on HOME.</dd>
+          <dt><kbd>[</kbd> <kbd>]</kbd> · <kbd>;</kbd> <kbd>'</kbd></dt><dd>ALGORITHM: the break. PRESETS: the pattern.</dd>
+          <dt><kbd>Z</kbd> <kbd>X</kbd></dt><dd>OCT− and OCT+.</dd>
+        </dl>
+      </div>
+      <div class="keys">
+        <h3>Mouse and touch</h3>
+        <dl>
+          <dt>A knob</dt><dd>Drag it up or down, or scroll over it.</dd>
+          <dt>Shift-click</dt><dd>Holds a key or button down until clicked again.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="drawer" id="reset-ask" hidden>
+    <div class="drawer__in ask" role="group" aria-labelledby="reset-q">
+      <p id="reset-q">Erase what this browser's AFFINE saved and start from the factory?</p>
+      <p class="ask__acts"><button class="pbtn solid" id="reset-yes" type="button">Erase and restart</button><button class="pbtn" id="reset-no" type="button">Keep it</button></p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="howto">
+  <p class="sec__n" aria-hidden="true">01</p>
+  <div class="sec__body">
+    <h2 class="display stripes">How to play</h2>
+    <p class="lede">Space plays the Amen. The keys chop it.</p>
+  </div>
+  <ol class="todo" aria-label="Try">
+    <li class="rv-up"><h4>Play the Amen</h4><p class="where"><kbd>Space</kbd></p></li>
+    <li class="rv-up" style="--i:1"><h4>Chop it</h4><p class="where"><kbd>Q</kbd>…<kbd>I</kbd> <kbd>A</kbd>…<kbd>K</kbd></p></li>
+    <li class="rv-up" style="--i:2"><h4>Throw the verb</h4><p class="where"><kbd>9</kbd></p></li>
+    <li class="rv-up" style="--i:3"><h4>Skip the disc</h4><p class="where"><kbd>8</kbd></p></li>
+  </ol>
+</section>
+
+<section class="sec inv" id="chip">
+  <p class="sec__n" aria-hidden="true">02</p>
+  <div class="sec__body">
+    <h2 class="display stripes">The chip</h2>
+    <p class="lede">Five stages after the break. Tap one.</p>
+  </div>
+  <div class="chip">
+    <ol class="chain" id="chain" aria-label="The PSX bus, in its order"></ol>
+    <div class="chip__screen">
+      <figure class="scr scan"><canvas id="chip-scr" width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="The FM-1's PSX page"></canvas><figcaption id="chip-cap">EFFECTS › PSX</figcaption></figure>
+    </div>
+    <div class="chip__plate wipe">
+      <div class="chip__head"><h3 id="chip-name">VERB</h3><span class="label cool" id="chip-tag">9 presets</span></div>
+      <p class="chip__line" id="chip-line"></p>
+      <div class="scope"><canvas id="scope" aria-hidden="true"></canvas><span class="scope__t" id="scope-t">Silent</span><span class="scope__p" id="scope-p"></span></div>
+      <div class="chips" id="chip-opts" role="group" aria-label="Its settings, heard"></div>
+      <div class="chip__acts">
+        <span class="label" id="chip-hint">A break, dry, then the stage</span>
+        <button class="pbtn solid" id="chip-play" type="button">Play</button>
+      </div>
+    </div>
+    <ul class="chip__facts">
+      <li class="tile rv-up"><b data-count="22.05">22.05</b><span>kHz, as the chip ran</span></li>
+      <li class="tile rv-up" style="--i:1"><b data-count="39">39</b><span>resampler taps</span></li>
+      <li class="tile rv-up" style="--i:2"><b data-count="64">64</b><span>KB of reverb RAM</span></li>
+      <li class="tile rv-up" style="--i:3"><b data-count="9">9</b><span>reverb presets</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sec" id="perform">
+  <p class="sec__n" aria-hidden="true">03</p>
+  <div class="sec__body">
+    <h2 class="display stripes">Perform</h2>
+    <p class="lede">Eleven black keys. Hold one.</p>
+  </div>
+  <div class="perf">
+    <div class="perf__screen">
+      <figure class="scr scan"><canvas id="perf-scr" width="240" height="240" data-src="screens/home.png" role="img" aria-label="HOME on the FM-1"></canvas><figcaption id="perf-cap">HOME</figcaption></figure>
+    </div>
+    <div class="perf__plate">
+      <div class="perf__name"><h3 id="perf-name">HOME</h3><span class="label cool" id="perf-key">Hold a key</span></div>
+      <p class="perf__line" id="perf-line">The break's sixteen slices as a floor; the one playing lit.</p>
+      <div class="bks wipe" id="bks" role="group" aria-label="The black keys"></div>
+      <ul class="knobs4" aria-label="HOME's four knobs">
+        <li><b>K1 Filter</b><span>Low-pass left, high-pass right.</span><p class="gauge"><i></i></p></li>
+        <li><b>K2 Crush</b><span>Bits down to one.</span><p class="gauge"><i></i></p></li>
+        <li><b>K3 Redux</b><span>The rate down, held.</span><p class="gauge"><i></i></p></li>
+        <li><b>K4 Verb</b><span>The chip's reverb, sent.</span><p class="gauge"><i></i></p></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sec inv" id="skins">
+  <p class="sec__n" aria-hidden="true">04</p>
+  <div class="sec__body">
+    <h2 class="display stripes">Skins</h2>
+    <p class="lede">Five looks on the FM-1. This page wears them too.</p>
+  </div>
+  <ul class="skins" id="skin-list" aria-label="The skins"></ul>
+</section>
+
+<section class="sec" id="made">
+  <p class="sec__n" aria-hidden="true">05</p>
+  <div class="sec__body">
+    <h2 class="display stripes">How it was made</h2>
+    <p class="lede">A break chopper's fork, a sound chip rebuilt from its public documents.</p>
+  </div>
+  <ol class="strip" aria-label="How">
+    <li tabindex="0"><i aria-hidden="true">01</i><b>Forked</b><span class="tip" role="tooltip">From LOAF BREAKER by FLEXOR, itself CHOPPAH's fork by Laurens Profittlich: the slicer, the keys, the patterns.</span></li>
+    <li tabindex="0"><i aria-hidden="true">02</i><b>Clean room</b><span class="tip" role="tooltip">The chip's effects written from psx-spx's public description: only its documented numbers, each credited. No ROM, no SDK, no emulator code.</span></li>
+    <li tabindex="0"><i aria-hidden="true">03</i><b>Checked</b><span class="tip" role="tooltip">183 engine checks and 38 for the chip, every build; 100 scripted sessions in the simulator.</span></li>
+    <li tabindex="0"><i aria-hidden="true">04</i><b>Shaken</b><span class="tip" role="tooltip">Random hands on every control for 15 minutes, three times; memory checkers on every run. Three bugs found and fixed.</span></li>
+  </ol>
+  <ul class="nums">
+    <li class="tile hot rv-up"><b data-count="16">16</b><span>slices a break</span></li>
+    <li class="tile rv-up" style="--i:1"><b data-count="11">11</b><span>performance keys</span></li>
+    <li class="tile rv-up" style="--i:2"><b data-count="5">5</b><span>chip stages</span></li>
+    <li class="tile rv-up" style="--i:3"><b data-count="221">221</b><span>checks a build</span></li>
+    <li class="tile rv-up" style="--i:4"><b data-count="64">64</b><span>patterns</span></li>
+  </ul>
+  <ul class="facts">
+    <li class="tile rv-up"><b>Royalty free</b><span>Cyberworm's Amens, built in</span></li>
+    <li class="tile rv-up" style="--i:1"><b>Same code</b><span>the FM-1 and this page</span></li>
+    <li class="tile rv-up" style="--i:2"><b>MPL-2.0</b><span>open source</span></li>
+  </ul>
+</section>
+
+<section class="sec" id="status">
+  <p class="sec__n" aria-hidden="true">06</p>
+  <div class="sec__body">
+    <h2 class="display stripes">Status</h2>
+    <p class="lede">Test build 0.1. Its first run on an FM-1 comes next; then the installer.</p>
+    <p class="hero__acts status__acts"><a class="btn" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">Source on GitHub</a><a class="btn ghost" href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></p>
+    <p class="credits">Built on LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich, on fm1-base by Charles Vestal and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments). Breaks by Cyberworm, royalty free. Pixel font: Elektron Pixel Font by savingaurora, adapted (CC BY-SA 4.0).</p>
+  </div>
+</section>
+
+<nav class="bar links" aria-label="Sequencist, the author">
+  <span class="label">By Sequencist</span>
+  <a class="label" href="https://github.com/InigoHernandez" target="_blank" rel="noopener">GitHub</a>
+  <a class="label" href="https://sequencist.bandcamp.com/" target="_blank" rel="noopener">Bandcamp</a>
+  <a class="label" href="https://www.youtube.com/@sequencist" target="_blank" rel="noopener">YouTube</a>
+  <a class="label" href="https://www.instagram.com/sequencist.fm" target="_blank" rel="noopener">Instagram</a>
+  <a class="label" href="https://soundcloud.com/sequencist" target="_blank" rel="noopener">SoundCloud</a>
+</nav>
+<footer class="bar foot">
+  <a class="label kofi" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">AFFINE on GitHub</a><span class="label">Not affiliated with M-VAVE</span><a class="label kofi" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Support on Ko-fi</a><span class="label r">2026</span>
+</footer>
+
+<script src="site.js?v=1"></script>
+<script src="scene.js?v=1"></script>
+<script src="panel.js?v=1"></script>
+<script src="play.js?v=3"></script>
+<script src="chip.js?v=2"></script>
+<script src="perform.js?v=2"></script>
+</body>
+</html>

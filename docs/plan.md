@@ -127,7 +127,9 @@ first AFFINE build, read while playing.
    AFFINE's title on the boot, the start screen and RESET ALL. Still: page bodies to 2x one by one, the update
    screen (felucca-bsp's today).
 7. **Motion record and scenes.**
-8. **Device:** the owner's FM-1 test, the CPU meter read; then the site, the manual, the hub kit.
+8. **Device:** the owner's FM-1 test, the CPU meter read; then the manual, the hub kit.
+9. **The site** (begun 2026-11-16, `web/`, local): MONO2K's structure in POLYGON, the firmware in the page. Still:
+   the import page restyled (LOAF's `app/site/import.html`), the installer, a manual, GitHub Pages when the repo goes up.
 
 ## 7. Open, for the owner
 
