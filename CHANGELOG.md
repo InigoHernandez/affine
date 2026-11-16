@@ -4,8 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
-- **Site:** AFFINE's hover on everything you point at (cards, buttons, links): the rows tear as a disc skips, then
-  rest washed out over a faint dither and scanlines, the words readable; cards also tilt as polygons.
+- **Site:** AFFINE's hover on what you can act on (buttons, links, the keys): the rows tear as a disc skips, then
+  rest washed out over a faint dither and scanlines, the words readable; cards and tiles stay still.
 - **Screen:** every text on the FM-1 at 2x at least (the owner: "everything in the UI looks very small"), every
   page laid out again for it: pictures in place of help prose (EFFECTS, MIX, SYSTEM, LIVE SETTINGS, BOOM and the
   drums, OVERLAY, SONG, PATTERN, RESET, the tutorial, the SEL card), the tabs as the open one and a square for each,
