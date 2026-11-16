@@ -24,34 +24,35 @@ static const struct {
     uint16_t btn;                        /* (the buttons it blinks: bit B_*) */
     const char *say;
 } TUT[] = {                              /* (LOAF BREAKER, 0.235, FLEXOR: 23 steps (0.244: 25, the OVERLAY page; 0.246, FLEXOR: 24, the ARP key's step gone; 0.252: 26, THE PATTERN before THE KICK, the kick and the snare heard stopped on keys 1-4), BEGINNER as he chose it: its KICK's
-                                          * pages, the drums' PRESET and FX by SELECT, the FX page) */
-    {0u, TC_HOME, 0u, 0u, 1u << B_HOME, "PRESS HOME: THE PERFORM MENU"},
-    {0u, TC_PLAY, 0u, 1u, 1u << B_PLAY, "PRESS PLAY: THE BREAK PLAYS"},
-    {0u, TC_SLICES, TK_WHITE, 1u, 0u, "PLAY THE WHITE KEYS: ITS SLICES"},
-    {0u, TC_BRK, 0u, 1u, 0u, "TURN ALGORITHM: ANOTHER BREAK"},
-    {9u, TC_HGEN, 0u, 0u, 1u << B_HOME, "PRESS HOME AGAIN: GENERATOR"},   /* (0.9.2, FLEXOR: HOME's tabs) */
-    {9u, TC_HSET, 0u, 0u, 1u << B_HOME, "PRESS HOME AGAIN: SETTINGS"},
-    {9u, TC_HVIEW, 0u, 0u, 0u, "TURN KNOB 1 RIGHT: THE SLICES"},
-    {9u, TC_HBACK, 0u, 1u, 1u << B_HOME, "PRESS HOME: PERFORM, IN SLICES"},
-    {9u, TC_HHOLD, 0u, 1u, 1u << B_HOME, "HOLD HOME: THE WAVEFORM AGAIN"},
-    {1u, TC_PAD, TK_BLACK, 1u, 0u, "HOLD A BLACK KEY: AN EFFECT"},
-    {1u, TC_OVLPG, 0u, 0u, 1u << B_ARP, "PRESS ARP: ALL THE EFFECTS"},   /* (0.244: the OVERLAY page back) */
-    {1u, TC_OVLKEY, TK_WHITE, 1u, 0u, "HOLD WHITE KEYS: AN EFFECT EACH"},
+                                          * pages, the drums' PRESET and FX by SELECT, the FX page; AFFINE: every
+                                          * line fits the header's at 2x, 216 px, as tut_away's do) */
+    {0u, TC_HOME, 0u, 0u, 1u << B_HOME, "PRESS HOME: PERFORM"},
+    {0u, TC_PLAY, 0u, 1u, 1u << B_PLAY, "PRESS PLAY: THE BREAK"},
+    {0u, TC_SLICES, TK_WHITE, 1u, 0u, "PLAY THE WHITE KEYS"},
+    {0u, TC_BRK, 0u, 1u, 0u, "ALGORITHM: NEXT BREAK"},
+    {9u, TC_HGEN, 0u, 0u, 1u << B_HOME, "HOME AGAIN: GENERATOR"},   /* (0.9.2, FLEXOR: HOME's tabs) */
+    {9u, TC_HSET, 0u, 0u, 1u << B_HOME, "HOME AGAIN: SETTINGS"},
+    {9u, TC_HVIEW, 0u, 0u, 0u, "KNOB 1 RIGHT: SLICES"},
+    {9u, TC_HBACK, 0u, 1u, 1u << B_HOME, "HOME: PERFORM IN SLICES"},
+    {9u, TC_HHOLD, 0u, 1u, 1u << B_HOME, "HOLD HOME: WAVEFORM"},
+    {1u, TC_PAD, TK_BLACK, 1u, 0u, "HOLD A BLACK KEY"},
+    {1u, TC_OVLPG, 0u, 0u, 1u << B_ARP, "PRESS ARP: EFFECTS"},   /* (0.244: the OVERLAY page back) */
+    {1u, TC_OVLKEY, TK_WHITE, 1u, 0u, "HOLD TWO WHITE KEYS"},
     {4u, TC_SEQ, 0u, 0u, 1u << B_SEQ, "PRESS SEQ: THE PATTERN"},   /* (0.252, FLEXOR: THE PATTERN before THE
                                           * KICK: kicks in it first) */
-    {4u, TC_KICKS, TK_WHITE, 1u, 0u, "WHITE KEYS: PUT 2 BOOMS IN"},
-    {4u, TC_SNARE, TK_WHITE, 1u, 0u, "ALGORITHM TO SNARE, ADD ONE"},
+    {4u, TC_KICKS, TK_WHITE, 1u, 0u, "WHITE KEYS: ADD 2 BOOMS"},
+    {4u, TC_SNARE, TK_WHITE, 1u, 0u, "ALGORITHM: SNARE, ADD 1"},
     {2u, TC_EDIT, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: BOOM"},
-    {2u, TC_STOP, 0u, 0u, 1u << B_PLAY, "PRESS PLAY: STOP THE BREAK"},   /* (0.252, FLEXOR: heard stopped, keys 1-4) */
-    {2u, TC_KEYS4, TK_DRUMS, 1u, 0u, "KEYS 1-4: BOOM SNARE HAT CLAP"},
+    {2u, TC_STOP, 0u, 0u, 1u << B_PLAY, "PRESS PLAY: STOP"},   /* (0.252, FLEXOR: heard stopped, keys 1-4) */
+    {2u, TC_KEYS4, TK_DRUMS, 1u, 0u, "KEYS 1-4: THE DRUMS"},
     {3u, TC_SNPG, 0u, 0u, 0u, "TURN SELECT: THE SNARE"},
-    {3u, TC_PPRE, TK_KEY2, 1u, 0u, "TURN KNOB 1, KEY 2: ITS PRESETS"},
-    {3u, TC_PFX, TK_KEY2, 1u, 0u, "TURN KNOB 2, KEY 2: ITS FX"},
-    {5u, TC_FXPG, 0u, 0u, 1u << B_FX, "PLAY, THEN PRESS FX: EFFECTS"},   /* (0.252: playing again) */
+    {3u, TC_PPRE, TK_KEY2, 1u, 0u, "KNOB 1, KEY 2: PRESETS"},
+    {3u, TC_PFX, TK_KEY2, 1u, 0u, "KNOB 2, KEY 2: ITS FX"},
+    {5u, TC_FXPG, 0u, 0u, 1u << B_FX, "PLAY, THEN PRESS FX"},   /* (0.252: playing again) */
     {5u, TC_FXT, 0u, 1u, 0u, "TURN PRESETS: AN EFFECT"},
-    {6u, TC_DROP, 0u, 1u, 1u << B_SEL | 1u << B_ENV, "PLAYING: HOLD SEL, PRESS ENV"},
+    {6u, TC_DROP, 0u, 1u, 1u << B_SEL | 1u << B_ENV, "HOLD SEL, PRESS ENV"},
     {7u, TC_SAVE, 0u, 0u, 1u << B_SAVE, "PRESS SAVE: ALL KEPT"},
-    {8u, TC_END, 0u, 0u, 0u, "THE REST: THE MANUAL. ENJOY!"},
+    {8u, TC_END, 0u, 0u, 0u, "ENJOY! SEE THE MANUAL"},
 };
 #define TUT_N (sizeof TUT / sizeof TUT[0])
 #define TUT_DONE 0xFEu
@@ -101,7 +102,7 @@ static void tut_start(void)              /* SETUP K3 left of BEGINNER: from wher
 {
     set.auto_save = 0u;                  /* (0.250: off while it runs; on again at its end, or quit) */
     tut_go(set.tut >= 1u && set.tut <= TUT_N ? set.tut : 1u);
-    app_say("TUTORIAL", "GLO: QUIT, SEL+GLO: SKIP");
+    app_say("TUTORIAL", "GLO QUIT, SEL+GLO SKIP");
 }
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): a new FM-1 (or RESET ALL) asks first: TUTORIAL, BEGINNER or EXPERT. set.tut
  * TUT_ASK while it asks (after the start screen); a knob or ALGORITHM moves the choice, PLAY (or white key 1-3) takes
@@ -109,9 +110,9 @@ static void tut_start(void)              /* SETUP K3 left of BEGINNER: from wher
 #define TUT_ASK 0xFDu
 static uint8_t ask_sel = 1u, ask_drawn = 0xFFu;
 static const char *const ASK_NAME[3] = {"TUTORIAL", "BEGINNER", "EXPERT"};
-static const char *const ASK_TEXT[3][2] = {{"26 GUIDED STEPS", "THE BUTTONS TO PRESS BLINK"},   /* (TUT_N) */
-                                           {"THE ESSENTIALS", "PLAY RIGHT AWAY"},
-                                           {"EVERYTHING", "EVERY SETTING, EVERY PAGE"}};
+static const char *const ASK_TEXT[3] = {"26 GUIDED STEPS", "THE ESSENTIALS", "EVERYTHING"};   /* (TUT_N; AFFINE: a
+                                          * line each at 2x, LOAF's second lines gone: "THE BUTTONS TO PRESS BLINK",
+                                          * "PLAY RIGHT AWAY", "EVERY SETTING, EVERY PAGE") */
 static void tut_quit(void);
 static void ask_pick(uint32_t c)
 {
@@ -126,7 +127,7 @@ static void ask_pick(uint32_t c)
         set.auto_save = 0u;
         set.tut = 0u;
         tut_go(1u);
-        app_say("TUTORIAL", "GLO: QUIT, SEL+GLO: SKIP");
+        app_say("TUTORIAL", "GLO QUIT, SEL+GLO SKIP");
     } else
         app_say("MODE", ASK_NAME[c % 3u]);
     set_dirty = 1u;
@@ -142,22 +143,22 @@ static void ask_draw(void)
     if (ask_drawn == 0xFFu)
         lcd_fill(0, 0, 240, 240, C_BLACK);
     ask_drawn = ask_sel;
-    cv_begin(240, 60, C_BLACK);          /* the question */
+    cv_begin(240, 60, C_BLACK);          /* the question (AFFINE: its lines at 2x, rows 32-41 and 46-55) */
     cv_text2((240 - text2_w(&FONT_B, "YOUR MODE")) / 2, 1, &FONT_B, "YOUR MODE", C_WHITE);
-    cv_text((240 - text_w(&FONT_XS, "TURN A KNOB, PRESS PLAY")) / 2, 33, &FONT_XS, "TURN A KNOB, PRESS PLAY", C_AMB);
+    cv_text((240 - text_w(&FONT_XS, "TURN A KNOB, PRESS PLAY")) / 2, 30, &FONT_XS, "TURN A KNOB, PRESS PLAY", C_AMB);
     cv_text((240 - text_w(&FONT_XS, "LATER: GLO, SETUP, KNOB 3")) / 2, 44, &FONT_XS, "LATER: GLO, SETUP, KNOB 3", C_DIM);
     cv_blit(0, 0);
-    for (c = 0; c < 3u; c++) {           /* the three, one a strip */
+    for (c = 0; c < 3u; c++) {           /* the three, one a strip: the name, a line under it (AFFINE: 2x, centred in
+                                          * the card) */
         int on = c == ask_sel;
         char n[16];
         cv_begin(240, 60, C_BLACK);
         cv_rect(12, 3, 216, 50, on ? C_HI : C_BLOCK);
         n[0] = (char)('1' + c);
         n[1] = 0;
-        cv_text(22, 9, &FONT_B, n, on ? C_BLACK : C_DIM);
-        cv_text(42, 9, &FONT_B, ASK_NAME[c], on ? C_BLACK : C_WHITE);
-        cv_text(42, 28, &FONT_XS, ASK_TEXT[c][0], on ? C_BLACK : C_GRAY);
-        cv_text(42, 39, &FONT_XS, ASK_TEXT[c][1], on ? C_BLACK : C_GRAY);
+        cv_text(24, 12, &FONT_B, n, on ? C_BLACK : C_DIM);
+        cv_text(44, 12, &FONT_B, ASK_NAME[c], on ? C_BLACK : C_WHITE);
+        cv_text(44, 29, &FONT_XS, ASK_TEXT[c], on ? C_BLACK : C_GRAY);
         cv_blit(0, 60u + c * 60u);
     }
 }
@@ -249,26 +250,26 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
     case TC_HVIEW:                       /* (0.9.2: off HOME's SETTINGS) */
         if (ui.page != PG_HSET) {
             *btn = 1u << B_HOME;
-            return "PRESS HOME: BACK TO SETTINGS";
+            return "HOME: BACK TO SETTINGS";
         }
         return 0;
     case TC_HHOLD:
         if (ui.page != PG_HOME) {
             *btn = 1u << B_HOME;
-            return "PRESS HOME: BACK TO PERFORM";
+            return "HOME: BACK TO PERFORM";
         }
         return 0;
     case TC_SLICES:
     case TC_BRK:
         if (!home) {
             *btn = 1u << B_HOME;
-            return "PRESS HOME: BACK TO THE BREAK";
+            return "HOME: BACK TO THE BREAK";
         }
         return 0;
     case TC_OVLKEY:
         if (ui.page != PG_OVL || ui.opage) {
             *btn = 1u << B_ARP;
-            return "PRESS ARP: BACK TO THE EFFECTS";
+            return "ARP: BACK TO EFFECTS";
         }
         return 0;
     case TC_KEYS4:
@@ -288,14 +289,14 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
         if (ui.page == PG_PERC && ui.einst == DR_SNARE)
             return 0;
         if (kick || ui.page == PG_PERC)
-            return "TURN SELECT: BACK TO THE SNARE";
+            return "SELECT: BACK TO SNARE";
         *btn = 1u << B_EDIT;
-        return "EDIT, THEN SELECT: THE SNARE";
+        return "EDIT, THEN SELECT: SNARE";
     case TC_KICKS:
     case TC_SNARE:
         if (ui.page != PG_SEQ) {
             *btn = 1u << B_SEQ;
-            return "PRESS SEQ: BACK TO THE PATTERN";
+            return "SEQ: BACK TO PATTERN";
         }
         if (c == TC_KICKS && !sl_kick(ui.seq_lane))
             return "ALGORITHM: THE BOOM LANE";
@@ -303,7 +304,7 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
     case TC_FXT:
         if (ui.page != PG_FX) {
             *btn = 1u << B_FX;
-            return "PRESS FX: BACK TO THE EFFECTS";
+            return "FX: BACK TO EFFECTS";
         }
         return 0;
     default:
@@ -369,23 +370,21 @@ static void tut_skip(void)               /* SEL + GLO */
     app_say("TUTORIAL", "STEP SKIPPED");
     tut_go(set.tut + 1u);
 }
-static void tut_head(char *a, char *b)   /* the header's two lines: "TUTORIAL 3/18  THE BREAK", what to do */
+static void tut_head(char *a, char *n, char *b)   /* the header's: the lesson ("THE BREAK"), the step ("3/26"), what
+                                          * to do (AFFINE: three parts, the lines at 2x) */
 {
-    char n[8];
+    char k[8];
     uint32_t s = set.tut - 1u;
     a[0] = b[0] = 0;
-    text_cat(a, "TUTORIAL ");
     int_text((int32_t)set.tut, n);
-    text_cat(a, n);
-    text_cat(a, "/");
-    int_text((int32_t)TUT_N, n);
-    text_cat(a, n);
-    text_cat(a, "  ");
+    text_cat(n, "/");
+    int_text((int32_t)TUT_N, k);
+    text_cat(n, k);
     text_cat(a, TUT_LESSON[TUT[s].lesson % TUT_LESSONS]);
-    if (tut_ok) {                        /* (done: "OK!  NEXT IN 4 S") */
-        text_cat(b, set.tut + 1u < TUT_N ? "OK!  NEXT IN " : "OK! ALL DONE  ");
-        int_text((int32_t)tut_left(), n);
-        text_cat(b, n);
+    if (tut_ok) {                        /* (done: "OK! NEXT IN 4 S") */
+        text_cat(b, set.tut + 1u < TUT_N ? "OK! NEXT IN " : "OK! ALL DONE ");
+        int_text((int32_t)tut_left(), k);
+        text_cat(b, k);
         text_cat(b, " S");
         return;
     }

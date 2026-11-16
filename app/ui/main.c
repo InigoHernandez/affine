@@ -1573,44 +1573,53 @@ static void page_say(void)
 static void draw_help(void)
 {
     /* LOAF BREAKER TEST: above, SEL's combinations on any page; below, this page's own ("+": with SEL; on HOME and the
-     * pages with no shortcuts of their own: what PRESETS, ALGORITHM and SELECT do there) */
-    static const char *const G[8][2] = {{"+EDIT", "NEXT SOURCE"}, {"+SEQ", "COPY / PASTE"}, {"+ENV", "BUILD / DROP"},
-                                        {"+ARP", "GROOVE"}, {"+REC", "CLEAR"}, {"+SAVE", "UNDO"}, {"+ALGO", "BREAK"},
-                                        {"+SELECT", "DRUM FILTER"}};   /* (LOAF BREAKER 0.201: SEL + a button, one
-                                          * table: its domain's second function) */
-    static const char *const P[10][4][2] = {
-        {{"ALGO", "BOOM / SHAPE"}, {"EDIT", "NEXT SOUND"}, {"PRESETS", "808 JUNGLE DUB TIGHT"},
-         {"SELECT", "NEXT SOUND"}},     /* (AFFINE: BOOM) */
-        {{"EDIT HELD", "BIG / CLASSIC VIEW"}, {"EDIT", "NEXT SOUND"}, {"PRESETS", "MEMORY / INSTRUMENT"},
-         {"SELECT", "NEXT DRUM"}},
-        {{"SEQ + KEY 1-4", "COPY THE BAR THERE"}, {"SEQ + K1", "SHIFT THE LANE"}, {"SEQ + REC", "CLEAR THE DRUMS"},
-         {"+ SAVE", "UNDO"}},
-        {{"+ FX", "BYPASS SLOT"}, {"FX + ALGO", "MOVE SLOT"}, {"+ REC", "RESET EFFECT"}, {"PRESETS", "EFFECT TYPE"}},
-        {{"+ PLAY", "START ITEM (TRACKS)"}, {"PLAY", "PLAY THE TRACK"}, {"PRESETS", "THE TRACK"},
-         {"WHITE KEYS", "PATTERNS / TRACKS"}},
-        {{"LFO + K1", "BREAK LEVEL"}, {"LFO + K2", "BOOM LEVEL"}, {"LFO + K3", "DRUMS LEVEL"}, {"LFO + K", "LEVELS ANYWHERE"}},
-        {{"SETUP: K1", "BEGINNER / EXPERT"}, {"RESET", "ONE PART AT A TIME"}, {"RESET: ALL", "EVERYTHING, 15 TURNS"},
-         {"SEL x2", "SEL LOCKED, LIT"}},
-        {{"PRESETS", "THE PATTERN"}, {"ALGO", "THE BREAK"}, {"SELECT", "THE TEMPO"}, {"", ""}},
-        {{"ALGO", "THE BREAK"}, {"K1 - K3", "PITCH, GRAIN, SNAP"}, {"K4", "ITS LEVEL"}, {"+ EDIT", "BOOM"}},
-        {{"ARP", "FILL (LATCH: ON / OFF)"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}, {"K2 - K4", "THE FILL"}}};
-    uint32_t i, w = ui.page == PG_KICK ? 0u : ui.page == PG_PERC ? 1u : ui.page == PG_SEQ ? 2u : ui.page == PG_FX ? 3u
-                    : ui.page == PG_TRACK ? 4u : ui.page == PG_MIX ? 5u : ui.page == PG_GLOBAL && ui.gpage == GP_BREAK
-                    ? 8u : ui.page == PG_GLOBAL && ui.gpage == GP_FILL ? 9u : ui.page == PG_GLOBAL ? 6u : 7u;
+     * pages with no shortcuts of their own: what PRESETS, ALGORITHM and SELECT do there). AFFINE: all at 2x, rows of 13:
+     * SEL's eight in two columns, a word each; the page's three under a rule, its buttons in a column, what beside */
+    static const char *const G[8][2] = {{"+EDIT", "SOURCE"}, {"+SEQ", "COPY"}, {"+ARP", "GROOVE"}, {"+ENV", "DROP"},
+                                        {"+REC", "CLEAR"}, {"+SAVE", "UNDO"}, {"+ALGO", "BREAK"},
+                                        {"+SELECT", "FILTER"}};   /* (LOAF BREAKER 0.201: SEL + a button, one table: its
+                                          * domain's second function; AFFINE: LOAF's "NEXT SOURCE", "COPY / PASTE",
+                                          * "BUILD / DROP", "DRUM FILTER" in a word) */
+    static const char *const P[10][3][2] = {   /* (AFFINE: three a page; LOAF's fourth lines gone: a knob the foot names,
+                                          * SEL + SAVE's UNDO again, MIXER's "LFO + K: LEVELS ANYWHERE", ...) */
+        {{"ALGO", "BOOM / SHAPE"}, {"PRESETS", "808 JUNGLE DUB.."}, {"SELECT", "NEXT SOUND"}},   /* (AFFINE: BOOM) */
+        {{"EDIT HELD", "BIG / CLASSIC"}, {"PRESETS", "ITS MEMORIES"}, {"+ARP", "COPY DRUM"}},   /* (AFFINE: SEL + ARP's
+                                          * here, too long for a cell above) */
+        {{"SEQ+KEY 1-4", "COPY BAR"}, {"SEQ+K1", "SHIFT LANE"}, {"SEQ+REC", "CLEAR DRUMS"}},
+        {{"+FX", "BYPASS SLOT"}, {"FX+ALGO", "MOVE SLOT"}, {"+REC", "RESET EFFECT"}},
+        {{"+PLAY", "START ITEM"}, {"PRESETS", "THE TRACK"}, {"WHITE KEYS", "PATTERN, TRACK"}},
+        {{"LFO+K1", "BREAK LEVEL"}, {"LFO+K2", "BOOM LEVEL"}, {"LFO+K3", "DRUMS LEVEL"}},
+        {{"SETUP K3", "BEGINNER/EXPERT"}, {"RESET", "PART BY PART"}, {"SEL X2", "SEL LOCKED, LIT"}},
+        {{"PRESETS", "THE PATTERN"}, {"ALGO", "THE BREAK"}, {"SELECT", "THE TEMPO"}},
+        {{"ALGO", "THE BREAK"}, {"K1-K3", "PITCH GRAIN SNAP"}, {"+EDIT", "BOOM"}},
+        {{"ARP", "FILL (LATCH)"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}}};
+    uint32_t i, row[2] = {0u, 0u}, w = ui.page == PG_KICK ? 0u : ui.page == PG_PERC ? 1u : ui.page == PG_SEQ ? 2u
+                    : ui.page == PG_FX ? 3u : ui.page == PG_TRACK ? 4u : ui.page == PG_MIX ? 5u : ui.page == PG_GLOBAL &&
+                    ui.gpage == GP_BREAK ? 8u : ui.page == PG_GLOBAL && ui.gpage == GP_FILL ? 9u : ui.page == PG_GLOBAL
+                    ? 6u : 7u;
+    int32_t kw = 0;
     cv_begin(240, 52, C_BLACK);
-    for (i = 0; i < 4u; i++) {           /* (SEL + a button: two columns) */
-        cv_text(6, (int32_t)i * 13, &FONT_XS, G[i][0], C_HI);
-        cv_text(46, (int32_t)i * 13, &FONT_XS, i != 3u ? G[i][1] : ui.page == PG_PERC ? "COPY DRUM" : G[i][1], C_WHITE);
-        cv_text(124, (int32_t)i * 13, &FONT_XS, G[i + 4u][0], C_HI);
-        cv_text(170, (int32_t)i * 13, &FONT_XS, i == 2u && sel_bt_page() ? "BREAK TIME" : G[i + 4u][1], C_WHITE);
+    for (i = 0; i < 8u; i++) {           /* (SEL + a button: two columns, the capitals in rows 3, 16, 29, 42) */
+        uint32_t c = i >= 4u;
+        int32_t x = c ? 114 : 4, y = (int32_t)row[c] * 13 + 1;
+        const char *what = G[i][1];
+        if (i == 2u && ui.page == PG_PERC)
+            continue;                    /* (the drums' page: SEL + ARP copies the drum, in the page's list) */
+        if (i == 6u && sel_bt_page())
+            what = "HALF";               /* (BREAK TIME: right HALF, left NORMAL) */
+        row[c]++;
+        x = cv_text(x, y, &FONT_XS, G[i][0], C_HI);
+        cv_text(x + 4, y, &FONT_XS, what, C_WHITE);
     }
     cv_blit(0, 88u);
     cv_begin(240, 52, C_BLACK);
-    cv_rect(10, 0, 220, 1, C_LINE);      /* (this page's, under a line) */
-    for (i = 0; i < 4u; i++) {
-        const char *b = P[w][i][1];
-        cv_text(10, 3 + (int32_t)i * 12, &FONT_XS, P[w][i][0], C_HI);
-        cv_text(104, 3 + (int32_t)i * 12, &FONT_XS, b, C_WHITE);
+    cv_rect(8, 1, 224, 1, C_LINE);       /* (this page's, under a line: the capitals in rows 5, 18, 31) */
+    for (i = 0; i < 3u; i++)
+        if (text_w(&FONT_XS, P[w][i][0]) > kw)
+            kw = text_w(&FONT_XS, P[w][i][0]);
+    for (i = 0; i < 3u; i++) {
+        cv_text(8, 3 + (int32_t)i * 13, &FONT_XS, P[w][i][0], C_HI);
+        cv_text(16 + kw, 3 + (int32_t)i * 13, &FONT_XS, P[w][i][1], C_WHITE);
     }
     cv_blit(0, 140u);
 }
