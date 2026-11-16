@@ -6,7 +6,7 @@ What changed for whoever plays AFFINE, newest first.
 
 - **Release 0.2:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,
   a beta not yet run on an FM-1: PSX COLOR and its presets, the black-key rows; the site's FM-1 runs 0.2 and shows
-  today's screens. No GitHub release for it yet.
+  today's screens; the GitHub release v0.2 carries the same file.
 - **Sound:** PSX COLOR on the PSX page: COLOR (AMOUNT, RATE 44K..8K with RAW steps, CRUNCH, SMOOTH) and OUT
   (CONSOLE, MONO, SEND, INPUT); the SPU's ADPCM round trip with an encoder you can spoil, its gaussian playback, a
   console-out colour; PRESETS steps SUBTLE GLUE, POLY PAD, CRUNCHY TAIL, DUB SPACE. The reverb's INPUT can drive
