@@ -120,8 +120,8 @@ The PS1's sample sound as a stage of its own, in four phases (the owner's spec):
    CRUNCH, CONSOLE and the PSX's SEND into SPU VERB from neutral to their knobs: 0 is the dry bit for bit, 1 as the
    knobs say (the default). The PSX page grows COLOR (AMOUNT, RATE: GRIT's, 44K, 22K, 22K RAW, 11K, 11K RAW, 8K,
    8K RAW; CRUNCH, PCM below 0; SMOOTH) and OUT (CONSOLE, MONO, SEND, INPUT: VERB's four knobs were taken); SIZE steps
-   note values at the tempo on CHAOS and DELAY; PRESETS the four presets (SUBTLE GLUE, PS1 PAD, CRUNCHY TAIL,
-   DUB ECHO PSX), every stage at once, each within 0.7 dB of the dry. settings_t grows by psx_color_t (28 B, 2088 ->
+   note values at the tempo on CHAOS and DELAY; PRESETS the four presets (SUBTLE GLUE, POLY PAD, CRUNCHY TAIL,
+   DUB SPACE), every stage at once, each within 0.7 dB of the dry. settings_t grows by psx_color_t (28 B, 2088 ->
    2116): an older save loads it at its defaults (the bus bit for bit as at 0b455f5 but for SPU VERB's smoothing).
    Full chain, Mac instructions a sample: GLUE 421, PAD 654, TAIL 565, DUB 724 (a core ~1570). Renders:
    build/review/psx_color2/. Waiting: the owner's ear, the FM-1's CPU meter with a preset on.

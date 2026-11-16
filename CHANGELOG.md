@@ -6,7 +6,7 @@ What changed for whoever plays AFFINE, newest first.
 
 - **Sound:** PSX COLOR on the PSX page: COLOR (AMOUNT, RATE 44K..8K with RAW steps, CRUNCH, SMOOTH) and OUT
   (CONSOLE, MONO, SEND, INPUT); the SPU's ADPCM round trip with an encoder you can spoil, its gaussian playback, a
-  console-out colour; PRESETS steps SUBTLE GLUE, PS1 PAD, CRUNCHY TAIL, DUB ECHO PSX. The reverb's INPUT can drive
+  console-out colour; PRESETS steps SUBTLE GLUE, POLY PAD, CRUNCHY TAIL, DUB SPACE. The reverb's INPUT can drive
   it; CHAOS and DELAY's SIZE in note values; XA's clock steady.
 - **Perform:** three rows of black keys (hold FX + OCT- / OCT+): AFFINE, PUNCH (eleven signature combos), CUSTOM
   (hold FX and a key, turn a knob); REC records the black keys into the pattern.

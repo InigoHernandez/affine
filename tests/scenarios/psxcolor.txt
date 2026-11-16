@@ -77,6 +77,7 @@ expect px_amount 100
 expect cmix 100
 expect vtype 4
 expect px_send 30
+shot pp_preset_pad.png
 turn PRESET 1 80
 wait 300
 expect px_preset 3
@@ -93,6 +94,7 @@ expect px_crunch 25
 expect vtype 6
 expect px_send 45
 expect vtone 30
+shot pp_preset_dub.png
 turn PRESET 1 80
 wait 300
 expect px_preset 4

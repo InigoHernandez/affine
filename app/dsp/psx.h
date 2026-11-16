@@ -154,7 +154,7 @@ float psx_console_hz(float amount);      /* CONSOLE's low-pass at an amount (for
 float psx_console_clip(float x, float amount);   /* CONSOLE's clip curve (for the screen) */
 
 /* ---- the PSX presets (PRESETS on the PSX page): each sets the colour, SPU VERB and CONSOLE OUT at once (CODEC to
- * GRIT; HOME's gestures, LOFI and SKIP left as they are). bpm: DUB ECHO PSX's SIZE puts SPACE ECHO's repeats on an
+ * GRIT; HOME's gestures, LOFI and SKIP left as they are). bpm: DUB SPACE's SIZE puts SPACE ECHO's repeats on an
  * eighth (a dotted sixteenth or a sixteenth where the eighth is too long) */
 enum { PSXP_GLUE, PSXP_PAD, PSXP_TAIL, PSXP_DUB, PSXP_N };
 extern const char *const PSXP_NAME[PSXP_N];

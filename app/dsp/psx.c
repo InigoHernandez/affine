@@ -1335,7 +1335,7 @@ static void console_process(float *l, float *r, uint32_t n, float amount, uint32
 /* The owner's four (16 Nov 2026), from the colour's measurements (phases 1-2) and tuned by renders and levels
  * (tests/engine/psx_color2_demo.c, build/review/psx_color2/). Each sets CODEC (GRIT, its mix, 4 bits), the colour,
  * SPU VERB and CONSOLE OUT */
-const char *const PSXP_NAME[PSXP_N] = {"SUBTLE GLUE", "PS1 PAD", "CRUNCHY TAIL", "DUB ECHO PSX"};
+const char *const PSXP_NAME[PSXP_N] = {"SUBTLE GLUE", "POLY PAD", "CRUNCHY TAIL", "DUB SPACE"};
 BRK_COLD void psx_preset(uint32_t k, psx_bus_t *b, psx_color_t *c, float bpm)
 {
     /*                      rate          crunch smooth amount console send input  mix  verb             size  tone  depth */

@@ -8,7 +8,7 @@
  * Phase 4, through the bus as the firmware runs it (psx_bus_set, psx_bus_color, psx_bus_process at 170 BPM): AMOUNT 0
  * is the dry, bit for bit, whatever the preset; the presets' levels near the dry's; CONSOLE OUT's roll-off, clip, DC
  * blocker and MONO measured; AMOUNT, CONSOLE, MONO, CRUNCH (and PCM), RATE's steps and the presets moving without
- * steps. The renders: the break and the pad through the four presets, AMOUNT 0.25 / 0.5 / 1 on PS1 PAD, CONSOLE OUT
+ * steps. The renders: the break and the pad through the four presets, AMOUNT 0.25 / 0.5 / 1 on POLY PAD, CONSOLE OUT
  * alone (0.5, 1, 1 + MONO), SPU VERB HALL at INPUT 0.5 / 1 / 2; an A/B file a source.
  * Sources and measures: psx_color_demo.c's (included). */
 #define PSX_COLOR_DEMO_LIB
@@ -359,12 +359,12 @@ static void bus_run(const buf_t *in, buf_t *out, const scene_t *sc)
 static const scene_t SC[] = {
     {"dry", "the source", -1, -1.0f, 0.0f, 0, -1, 0.0f, 1.0f},
     {"glue", "SUBTLE GLUE", PSXP_GLUE, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
-    {"pad", "PS1 PAD", PSXP_PAD, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
+    {"pad", "POLY PAD", PSXP_PAD, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
     {"tail", "CRUNCHY TAIL", PSXP_TAIL, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
-    {"dub", "DUB ECHO PSX (SPACE ECHO's repeats on an eighth at 170 BPM)", PSXP_DUB, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
-    {"pad_amount25", "PS1 PAD, AMOUNT 0.25", PSXP_PAD, 0.25f, -1.0f, 0, -1, 0.0f, 1.0f},
-    {"pad_amount50", "PS1 PAD, AMOUNT 0.5", PSXP_PAD, 0.5f, -1.0f, 0, -1, 0.0f, 1.0f},
-    {"pad_amount100", "PS1 PAD, AMOUNT 1 (= pad)", PSXP_PAD, 1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
+    {"dub", "DUB SPACE (SPACE ECHO's repeats on an eighth at 170 BPM)", PSXP_DUB, -1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
+    {"pad_amount25", "POLY PAD, AMOUNT 0.25", PSXP_PAD, 0.25f, -1.0f, 0, -1, 0.0f, 1.0f},
+    {"pad_amount50", "POLY PAD, AMOUNT 0.5", PSXP_PAD, 0.5f, -1.0f, 0, -1, 0.0f, 1.0f},
+    {"pad_amount100", "POLY PAD, AMOUNT 1 (= pad)", PSXP_PAD, 1.0f, -1.0f, 0, -1, 0.0f, 1.0f},
     {"console50", "CONSOLE OUT alone, 0.5", -1, -1.0f, 0.5f, 0, -1, 0.0f, 1.0f},
     {"console100", "CONSOLE OUT alone, 1", -1, -1.0f, 1.0f, 0, -1, 0.0f, 1.0f},
     {"console100_mono", "CONSOLE OUT alone, 1, MONO", -1, -1.0f, 1.0f, 1, -1, 0.0f, 1.0f},
@@ -447,7 +447,7 @@ static void check_console(void)
     buf_free(&od); buf_free(&st); buf_free(&om);
 }
 
-/* the bus over a sine, the colour on (PS1 PAD's), one thing moved every quarter second: 0 AMOUNT, 1 CONSOLE, 2 MONO,
+/* the bus over a sine, the colour on (POLY PAD's), one thing moved every quarter second: 0 AMOUNT, 1 CONSOLE, 2 MONO,
  * 3 CRUNCH (PCM below 0), 4 RATE's steps (RAW among them), 5 the presets; against the same settings held */
 static float color_bus(const buf_t *in, uint32_t what, int held, float *steady)
 {

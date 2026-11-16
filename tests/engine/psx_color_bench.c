@@ -174,9 +174,9 @@ int main(void)
     brow("CONSOLE OUT 0.5 alone (the bus otherwise at rest)", -1, 0.5f, 0, 0.0f);
     brow("CONSOLE OUT 1 + MONO alone", -1, 1.0f, 1, 0.0f);
     brow("the full chain: SUBTLE GLUE", PSXP_GLUE, -1.0f, 0, 0.0f);
-    brow("the full chain: PS1 PAD", PSXP_PAD, -1.0f, 0, 0.0f);
+    brow("the full chain: POLY PAD", PSXP_PAD, -1.0f, 0, 0.0f);
     brow("the full chain: CRUNCHY TAIL", PSXP_TAIL, -1.0f, 0, 0.0f);
-    brow("the full chain: DUB ECHO PSX", PSXP_DUB, -1.0f, 0, 0.0f);
+    brow("the full chain: DUB SPACE", PSXP_DUB, -1.0f, 0, 0.0f);
     brow("SUBTLE GLUE + HOME's VERB 0.5 (ROOM sounding)", PSXP_GLUE, -1.0f, 0, 0.5f);
     row("RATE 44.1 kHz FILTERED, ADPCM off", r44f, 0, 1.0f);
     row("RATE 22.05 kHz FILTERED, ADPCM off", r22f, 0, 1.0f);
