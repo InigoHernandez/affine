@@ -131,7 +131,7 @@ static void aff_cv_begin(uint32_t w, uint32_t h, uint16_t bg)
 static int32_t aff_cv_textn(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c, uint32_t n)
 {
     int32_t z = aff_fz(f) * (int32_t)n, yc = y + aff_foff(f, z, (int32_t)n);
-    aff_aud_add(x, yc, z, s);
+    aff_aud_add(x, yc + cv_oy, z, s);    /* (the canvas's own row: a picture drawn in two strips moves by cv_oy) */
     return aff_text(x, yc, s, z, c, 0, 0) + z;   /* (an advance past the last, as fm1-base's) */
 }
 static int32_t aff_cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c)
