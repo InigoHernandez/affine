@@ -58,7 +58,7 @@
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 <link rel="icon" href="../gem.svg" type="image/svg+xml">
-<style>/* AFFINE (web/install_theme.py): the installer in POLYGON */
+<style>/* AFFINE (tools/install_theme.py): the installer in POLYGON */
 @font-face { font-family: "AFF Pixel"; src: url(../fonts/mono2k-font.otf) format("opentype"); font-display: block; }
 @font-face { font-family: "Inter Tight"; src: url(../fonts/InterTight-400.woff) format("woff"); font-weight: 400; }
 @font-face { font-family: "Inter Tight"; src: url(../fonts/InterTight-600.woff) format("woff"); font-weight: 600 900; }
@@ -1135,7 +1135,7 @@ const log = (t) => {
   if (atEnd) el.scrollTop = el.scrollHeight;
 };
 let image = null, boot = null, res = null;
-const meta = {"version": "0.1", "product": "FM-1_2815000100", "pkg": "../firmware/affine-0.1.fwsc", "backup": false, "res": null, "boot": {"pkg": "../firmware/m-bootloader-1.2.fwsc", "version": "1.2", "sha256": "0e89141f52d1f2d62198d4f69147a2c15c8360806e64d48002990a6fdab6d6dd"}};
+const meta = {"version": "0.2", "product": "FM-1_2815000200", "pkg": "../firmware/affine-0.2.fwsc", "backup": false, "res": null, "boot": {"pkg": "../firmware/m-bootloader-1.2.fwsc", "version": "1.2", "sha256": "0e89141f52d1f2d62198d4f69147a2c15c8360806e64d48002990a6fdab6d6dd"}};
 /* the firmware's own steps around an install (its site's install_app script, or none): before(midi, ui) runs before
    anything is written, may ask (ui.ask) and returns its state, or false to stop there; after(midi, ui, state) once
    the new firmware has started (it waits for it itself). A failure in after is said, the install stays done */
