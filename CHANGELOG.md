@@ -4,8 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
-- **Site:** the cards answer as polygons and degrade digitally, each its own way (TEAR, GRIT, SLICE, WASH: a
-  glitch burst, then washed out and scanned), the words always readable.
+- **Site:** AFFINE's hover on everything you point at (cards, buttons, links): the rows tear as a disc skips, then
+  rest washed out over a faint dither and scanlines, the words readable; cards also tilt as polygons.
 - **Screen:** every text on the FM-1 at 2x at least (the owner: "everything in the UI looks very small"), every
   page laid out again for it: pictures in place of help prose (EFFECTS, MIX, SYSTEM, LIVE SETTINGS, BOOM and the
   drums, OVERLAY, SONG, PATTERN, RESET, the tutorial, the SEL card), the tabs as the open one and a square for each,

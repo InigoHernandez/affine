@@ -106,12 +106,14 @@ header.bar > .acts { grid-column: span 6; display: flex; justify-content: flex-e
 .btn.ghost { color: var(--ink); background: transparent; border-color: var(--line); }
 .pbtn { justify-content: center; height: var(--s4); padding: 0 var(--s1); color: var(--ink); background: var(--bg); border: 1px solid var(--line); }
 .pbtn[aria-pressed="true"], .pbtn[aria-expanded="true"], .pbtn.solid { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-/* what you point at answers: the hot dither fills a button from its edge; a press sinks it */
-:is(.btn, .pbtn, .cta, .skinbtn)::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: var(--d-hot) 0 0 / 4px 4px; image-rendering: pixelated; clip-path: inset(0 100% 0 0); transition: clip-path 200ms steps(5);
+/* what you point at answers: AFFINE's tear (below), then the washed rest: a faint dither and scanlines behind the
+ * words; a press sinks it */
+:is(.btn, .pbtn, .cta, .skinbtn)::before, .chips button::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 9%, transparent) 0 1px, transparent 1px 3px),
+    var(--d-hot) 0 0 / 4px 4px; image-rendering: pixelated;
 }
-:is(.btn, .pbtn, .skinbtn):hover::before, :is(.btn, .pbtn, .skinbtn):focus-visible::before { clip-path: inset(0); }
+:is(.btn, .pbtn, .skinbtn, .cta, .chips button):is(:hover, :focus-visible)::before { opacity: 0.55; }
 .btn:hover { color: var(--ink); background: var(--bg); }
 :is(.btn, .pbtn, .cta, .skinbtn):active { transform: translateY(1px); }
 :is(.btn, .pbtn, .cta, .skinbtn, .bk, .stage__go, .chip, .skin):focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
@@ -235,8 +237,9 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
   color: var(--ink); background: var(--bg); border: 1px solid var(--line); margin-right: -1px; font: inherit; position: relative; isolation: isolate; }
 .stage__go b { font: var(--title); text-transform: uppercase; }
 .stage__go i { font: var(--label); font-style: normal; text-transform: uppercase; color: var(--gray); }
-.stage__go::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0; z-index: -1; background: var(--d-hot) 0 0 / 4px 4px; image-rendering: pixelated; transition: height 240ms steps(6); }
-.stage__go:hover::after { height: 6px; }
+.stage__go::after { content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0; pointer-events: none; image-rendering: pixelated;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 7%, transparent) 0 1px, transparent 1px 3px), var(--d-dots) 0 0 / 4px 4px; }
+.stage__go:hover::after { opacity: 1; }
 .chain li.on .stage__go { background: var(--hot); color: var(--bg); border-color: var(--hot); z-index: 2; }
 .chain li.on .stage__go i { color: var(--bg); }
 .chain li.on .stage__go::after { display: none; }
@@ -252,8 +255,7 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chips button { height: var(--s4); padding: 0 var(--s1); cursor: pointer; font: var(--label); text-transform: uppercase; color: var(--ink);
   background: var(--bg); border: 1px solid var(--line); position: relative; isolation: isolate; }
-.chips button::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--d-hot) 0 0 / 4px 4px; image-rendering: pixelated; clip-path: inset(0 100% 0 0); transition: clip-path 160ms steps(4); }
-.chips button:hover::before { clip-path: inset(0); }
+
 .chips button[aria-pressed="true"] { background: var(--hot); color: var(--bg); border-color: var(--hot); }
 .chips button[aria-pressed="true"]::before { display: none; }
 .chips button:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
@@ -273,36 +275,22 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
  * words) turns hot, and the logo's slanted speed stripes sweep across behind the words */
 :is(.todo li, .tile) { transition: transform 200ms steps(4), border-color 0s 100ms; }
 :is(.todo li, .tile):hover { transform: perspective(700px) rotateX(6deg) rotateY(-8deg) translateY(-2px); border-color: var(--hot); }
-/* ... and degrades, a different way a card (the owner: "more variado and washed out, digitally degraded"): a burst on
- * the way in, then it rests washed out, faded, scanned, its words whole. The four after the chip's own stages: TEAR
- * (SKIP's rows slipping), GRIT (the codec's posterised colours, the channels apart), SLICE (the card jumping in
- * slices), WASH (a flash, then the dither's fade) */
+/* AFFINE's hover, the same on everything you point at (the owner chose TEAR of the four: "apply it to everything and
+ * also the buttons"): the rows slip as a disc skips, in steps, then it rests washed out, faded and lifted, over a faint
+ * dither and scanlines behind the words, which stay whole. Cards also tilt and light their corner's facet */
 .dg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-:is(.todo li, .tile):hover { --washed: saturate(0.42) brightness(1.16) contrast(0.88); filter: var(--washed); }
-:is(.todo li, .tile):nth-child(4n + 1):hover { animation: dg-tear 420ms steps(1) both; }
-:is(.todo li, .tile):nth-child(4n + 2):hover { animation: dg-grit 440ms steps(1) both; }
-:is(.todo li, .tile):nth-child(4n + 2):hover :is(b, h4, span, .where) { text-shadow: -2px 0 color-mix(in srgb, var(--hot) 55%, transparent), 2px 0 color-mix(in srgb, var(--cool) 55%, transparent); }
-:is(.todo li, .tile):nth-child(4n + 3):hover { animation: dg-slice 400ms steps(1) both; }
-:is(.todo li, .tile):nth-child(4n + 4):hover { animation: dg-wash 520ms steps(1) both; }
+:is(.todo li, .tile, .btn, .pbtn, .cta, .skinbtn, .chips button, .stage__go, .bk, .subnav a, .links a, .kofi, .strip li,
+    .knobs4 li, .brand b):hover {
+  filter: saturate(0.42) brightness(1.16) contrast(0.88); animation: dg-tear 420ms steps(1) both;
+}
 @keyframes dg-tear { 0% { filter: url(#dg-tear) saturate(1.4); } 18% { filter: none; } 30% { filter: url(#dg-tear2); }
   52% { filter: url(#dg-tear) brightness(1.4); } 70% { filter: none; } 82% { filter: url(#dg-tear2) saturate(0.6); } 100% { filter: saturate(0.42) brightness(1.16) contrast(0.88); } }
-@keyframes dg-grit { 0% { filter: url(#dg-grit) contrast(1.6); } 25% { filter: url(#dg-grit) saturate(2) brightness(1.3); }
-  50% { filter: url(#dg-grit) hue-rotate(40deg); } 75% { filter: url(#dg-grit) contrast(1.3); } 100% { filter: url(#dg-grit) saturate(0.42) brightness(1.16) contrast(0.88); } }
-@keyframes dg-slice { 0% { clip-path: inset(0 0 62% 0); translate: 6px 0; } 14% { clip-path: inset(38% 0 0 0); translate: -8px 0; }
-  28% { clip-path: inset(0 0 0 0); translate: 3px 0; filter: brightness(1.5); } 42% { clip-path: inset(20% 0 30% 0); translate: -4px 0; }
-  56% { clip-path: inset(0); translate: 0; filter: saturate(0.42) brightness(1.16) contrast(0.88); } 70% { clip-path: inset(55% 0 5% 0); translate: 5px 0; }
-  84%, 100% { clip-path: inset(0); translate: 0; filter: saturate(0.42) brightness(1.16) contrast(0.88); } }
-@keyframes dg-wash { 0% { filter: brightness(2.2) saturate(0); } 20% { filter: brightness(1.7) saturate(0.2); } 45% { filter: brightness(1.4) saturate(0.3) contrast(0.8); }
-  70% { filter: brightness(1.25) saturate(0.35) contrast(0.85); } 100% { filter: saturate(0.42) brightness(1.16) contrast(0.88); } }
 :is(.todo li, .tile):hover::after {      /* (the washed rest: scanlines and a faint dither behind the words) */
   background-image: linear-gradient(110deg, transparent 0 38%, var(--stripe) 38% 42%, transparent 42% 45%, var(--stripe) 45% 49%,
       transparent 49% 52%, var(--stripe) 52% 56%, transparent 56%),
     repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 7%, transparent) 0 1px, transparent 1px 3px), var(--d-dots);
   background-size: 260% 100%, auto, 4px 4px; background-repeat: no-repeat, repeat, repeat; image-rendering: pixelated;
 }
-:is(.todo li, .tile):nth-child(4n + 4):hover::after { background-image: linear-gradient(color-mix(in srgb, var(--hot) 9%, transparent), color-mix(in srgb, var(--ink) 6%, transparent)),
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 8%, transparent) 0 1px, transparent 1px 2px), var(--d-dots);
-  background-size: 100% 100%, auto, 4px 4px; }
 .tile::before, .todo li > h4::after {     /* (the corner's facet: inside the padding) */
   content: ""; position: absolute; top: 0; right: 0; width: 14px; height: 14px; pointer-events: none;
   background: var(--line); clip-path: polygon(0 0, 100% 0, 100% 100%);
