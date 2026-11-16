@@ -3,6 +3,40 @@
  * included there in order.) */
 
 /* -------------------------------------------------- the pads' own settings --- */
+/* AFFINE (2x, the owner on 0.1: "everything in the UI looks very small"): the sounds' pages (BOOM, the drums, the
+ * OVERLAY, a black or white key held) write through these. A text at scale z (2; 3 for a page's one big value),
+ * (x, ycap) its capitals' top-left in the picture; align 0 left, 1 right, 2 centred on x. A picture drawn in strips
+ * of rows (cv_oy = -top, top its first row): drawn by the strip it is in, at that strip's own rows (the text audit
+ * counts a text's rows without cv_oy). Laid out whole inside one strip: one across a strip's edge is drawn cut, and
+ * the audit's "edge" says so. Returns its width */
+static int32_t snd_text(int32_t x, int32_t ycap, const char *s, int32_t z, uint16_t c, int align, int32_t top)
+{
+    int32_t w = aff_text_w(s, z), oy = cv_oy, h = (int32_t)AFF_CAP_H * z;
+    if (ycap < top + (int32_t)cv_h && ycap + h > top) {
+        x = align == 1 ? x - w : align == 2 ? x - w / 2 : x;
+        aff_aud_add(x, ycap - top, z, s);
+        cv_oy = 0;
+        aff_text(x, ycap - top, s, z, c, 0, 0);
+        cv_oy = oy;
+    }
+    return w;
+}
+/* the foot's cell (main.c draw_foot, HOME's panel) is 108 px: a knob's name and its value side by side at 2x. The
+ * names a usual value leaves no room for are short there (DECAY 903 MS: DEC); the header's messages say them whole */
+static const char *snd_long(const char *n)
+{
+    static const char *const KL[][2] = {{"DEC", "DECAY"}, {"PRE", "PRESET"}, {"NOISE", "METAL/NZ"}, {"BRK", "BRK FLT"},
+                                        {"DRM", "DRUM FLT"}, {"SPIN", "SPIN UP"}, {"TGT", "TARGET"}, {"FX", "EFFECT"},
+                                        {"SWP", "SWEEP"}, {"LEN", "LENGTH"}};
+    uint32_t i, j;
+    for (i = 0; n && i < sizeof KL / sizeof KL[0]; i++) {
+        for (j = 0; n[j] && n[j] == KL[i][0][j]; j++)
+            ;
+        if (n[j] == KL[i][0][j])
+            return KL[i][1];
+    }
+    return n;
+}
 static void ovl_push(void);              /* (ovl.c) */
 static const char *const THRU_NAME[4] = {"BOTH", "BREAK", "BOOM", "BOTH"};   /* VINYL's THRU */
 static const char *const ARP_THRU[4] = {"THRU", "BREAK", "BOOM", "THRU"};   /* (0.9.29, FLEXOR: what the ARP's effects take,
@@ -131,15 +165,16 @@ static int roll_lit(uint32_t pad) { return roll_held == pad && kroll; }   /* (it
 static uint8_t half_lat;                 /* LOAF BREAKER: HALF SPEED latched on (its LATCH: K3) */
 static uint16_t pad_latched;             /* (0.9.26: REVERSE, FREEZE, GATE, RANDOM latched on, bit by pad) */
 static const char *const FTHRU_NAME[3] = {"BREAK", "DRUMS", "BOTH"};
-/* what K1-K4 tune while a pad is held, by pad (brk.h PAD_*); 0: that knob does nothing for it */
+/* what K1-K4 tune while a pad is held, by pad (brk.h PAD_*); 0: that knob does nothing for it. (AFFINE, 2x: the foot's
+ * short forms, snd_long: BRK FLT, DRUM FLT, DECAY, SPIN UP, TARGET, EFFECT) */
 static const char *const PAD_KNOB[BKF_N][4] = {   /* (LOAF BREAKER: by function, app.c BKF_*) */
-    {"RATE", "BRK FLT", "DRUM FLT", "DECAY"}, {"RATE", "BRK FLT", "DRUM FLT", "DECAY"}, {"RATE", "BRK FLT", "DRUM FLT", "DECAY"},
+    {"RATE", "BRK", "DRM", "DEC"}, {"RATE", "BRK", "DRM", "DEC"}, {"RATE", "BRK", "DRM", "DEC"},
     {"SPEED", 0, 0, "LATCH"}, {"LENGTH", "PITCH", 0, "LATCH"}, {"SPEED", "M. TEMPO", "LATCH", 0},
-    {"THRU", "BRK FLT", "STOP", "SPIN UP"}, {"RATE", "LENGTH", 0, "LATCH"}, {"AMOUNT", "PITCH", 0, "LATCH"},
-    {"TARGET", "RESO", "SPEED", "THRU"},   /* (0.9.26, FLEXOR: K4 LATCH on the keys with a knob free; FILTER's K4
+    {"THRU", "BRK", "STOP", "SPIN"}, {"RATE", "LENGTH", 0, "LATCH"}, {"AMOUNT", "PITCH", 0, "LATCH"},
+    {"TGT", "RESO", "SPEED", "THRU"},    /* (0.9.26, FLEXOR: K4 LATCH on the keys with a knob free; FILTER's K4
                                           * THRU: BREAK, DRUMS, BOTH) */
     {"TIME", "FEEDBACK", "TONE", "MIX"},   /* (DUB: CHOPPAH's; a DELAY in the chain: its own, fx_param_name) */
-    {"EFFECT", "AMOUNT", "TIME", "LATCH"},   /* (the ARP key's; FX while held: MORE, pad_knob_name; K2 what goes
+    {"FX", "AMOUNT", "TIME", "LATCH"},   /* (the ARP key's; FX while held: MORE, pad_knob_name; K2 what goes
                                           * through the ARP effects: the kick, the break, or both) */
     {0, 0, 0, 0}};                       /* (KIL: its LATCH, main.c) */
 static const char *const PAD_TITLE[BKF_N] = {"ROLL", "ROLL", "ROLL", "REVERSE", "FREEZE", "HALF SPEED",
@@ -163,12 +198,12 @@ static const char *pad_knob_name(int pad, int k)
     if (pad == PAD_DUB && delay_slot() >= 0)   /* (a DELAY in the chain: the pad throws into it, its settings) */
         return fx_param_name((uint32_t)delay_slot(), k)[0] ? fx_param_name((uint32_t)delay_slot(), k) : 0;
     if (pad == BKF_ARP) {
-        static const char *const MORE[4] = {"THRU", "ON / OFF", "RATE", "SWEEP"};
+        static const char *const MORE[4] = {"THRU", "ON / OFF", "RATE", "SWP"};   /* (2x: SWEEP 1/4 BAR, SWP) */
         if (ui.pad_more)
             return MORE[k & 3];
         if (k == 2) {
             int tk = ovl_time_kind(arpk_fx(arpk_focus()));
-            return tk == 1 ? "RATE" : tk == 2 ? "SWEEP" : "TIME";
+            return tk == 1 ? "RATE" : tk == 2 ? "SWP" : "TIME";
         }
     }
     return PAD_KNOB[pad][k & 3];
@@ -486,7 +521,7 @@ lat:                                     /* (0.9.26: K4 LATCH, right on (held no
             pad_latched |= (uint16_t)(1u << pad);
     }
     pad_knob_value(pad, k, t);
-    app_say(pad_knob_name(pad, k), t);
+    app_say(snd_long(pad_knob_name(pad, k)), t);
     changed();
 }
 
@@ -565,7 +600,7 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
         text_cat(t, " ");
         text_cat(t, BRK_ROLL_DIV_NAME[p->roll_div[pad] % BRK_ROLL_DIVS]);
     }
-    cv_text(6, 0, &FONT_B, t, C_HI);
+    snd_text(6, 3, t, 2, C_HI, 0, top);  /* (2x: the title, its knobs' values in the foot; then the picture) */
     switch (pad <= PAD_ROLL32 ? 0 : pad) {
     case 0: {                            /* ROLL: the caught slice again and again at its level, fading or
                                           * swelling, the hit lit */
@@ -579,7 +614,7 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
         }
         int_text((int32_t)st->roll_n, t);
         text_cat(t, " HITS");
-        cv_text(234 - text_w(&FONT_XS, t), 2, &FONT_XS, t, C_GRAY);
+        snd_text(234, 3, t, 2, C_GRAY, 1, top);
         break;
     }
     case PAD_REVERSE: {                  /* REVERSE: the break running backwards past a fixed playhead, chevrons */
@@ -602,9 +637,7 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
             int32_t h = wave_px[(uint32_t)((i + off) / 2) % 240u] * 3 / 2;
             cv_rect(i, FX_MID - h, 1, 2 * h + 1, (i / 2) % 2 ? C_HI : C_AMB);
         }
-        times_text(p->half_speed, t);
-        cv_text(234 - text_w(&FONT_B, t), 0, &FONT_B, t, C_WHITE);
-        break;
+        break;                           /* (its SPEED: the foot's K1) */
     }
     case PAD_GATE: {                     /* GATE: the bar's gates, open part lit, the one playing bright */
         int32_t cells = 8 << (p->gate_div % BRK_GATE_DIVS), w = 236 / cells, curc;
@@ -624,10 +657,10 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
             uint32_t r = fx_hash(seed + (uint32_t)i);
             cv_rect(x, y, 13, 28, i == s ? C_HI : (r & 3u) == 0u ? C_GRAY : C_BLOCK);
         }
-        int_text(s + 1, t);
-        cv_text2(20, 30, &FONT_B, t, C_WHITE);
+        int_text(s + 1, t);              /* (the slice it landed on, 3x: the picture's one big value) */
+        snd_text(20, 30, t, 3, C_WHITE, 0, top);
         if (p->rnd_pitch > 0.0f)
-            cv_text(20, 72, &FONT_T, "+ PITCH", C_AMB);
+            snd_text(20, 70, "+ PITCH", 2, C_AMB, 0, top);
         break;
     }
     case PAD_FILTER: {                   /* FILTER: the response curve, its cutoff sliding to the target */
@@ -644,8 +677,8 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
             }
         }
         cv_rect((int32_t)xc, 22, 2, 72, C_WHITE);
-        dj_text(dj, t);
-        cv_text(234 - text_w(&FONT_XS, t), 2, &FONT_XS, t, C_WHITE);
+        dj_text(dj, t);                  /* (where the cutoff is now) */
+        snd_text(234, 3, t, 2, C_WHITE, 1, top);
         break;
     }
     case PAD_FREEZE: {                   /* FREEZE: the slice iced over, its loop bracketed, a cursor going round */
@@ -678,23 +711,23 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
         }
         break;
     }
-    case BKF_ARP: {                      /* GLOUPI BREAKS: the ARP key: its effect, big, lit while on */
+    case BKF_ARP: {                      /* GLOUPI BREAKS: the ARP key: its effect, big (3x), lit while on; its amount
+                                          * under it; which key (several ARP keys) and its knobs' layer at the right */
         uint32_t e = arpk_fx(arpk_focus());
         int on = arpk_on(arpk_focus());
-        const char *n = OVL_NAME[e];
-        cv_rect(6, 30, 228, 40, on ? C_HI : C_BLOCK);
-        cv_text((240 - text_w(&FONT_B, n)) / 2, 38, &FONT_B, n, on ? C_BLACK : C_GRAY);
-        cv_rect(6, 72, 228, 3, C_BLOCK); /* (LOAF BREAKER: its amount) */
-        cv_rect(6, 72, (int32_t)set.ovl_amt[e] * 228 / 100, 3, on ? C_HI : C_GRAY);
-        cv_text(6, 78, &FONT_XS, set.ovl_pad & 32u ? "OFF (FX: MORE, K2): K1 BROWSES, SILENT"
-                                 : arpk_latch(arpk_focus()) ? "LATCH: EACH PRESS ON OR OFF" : "ON WHILE HELD", C_DIM);
+        cv_rect(6, 20, 228, 26, on ? C_HI : C_BLOCK);
+        snd_text(120, 26, OVL_NAME[e], 3, on ? C_BLACK : C_GRAY, 2, top);
+        cv_rect(6, 52, 228, 3, C_BLOCK); /* (LOAF BREAKER: its amount) */
+        cv_rect(6, 52, (int32_t)set.ovl_amt[e] * 228 / 100, 3, on ? C_HI : C_GRAY);
+        t[0] = 0;
         if (arpk_count() > 1u) {         /* (0.9.45: several ARP keys: which one, each its own effect) */
-            char k[12] = "KEY ";
-            int_text((int32_t)arpk_focus() + 1, k + 4);
-            cv_text(234 - text_w(&FONT_XS, k), 16, &FONT_XS, k, C_HI);   /* (under FX: MORE, the title left) */
+            text_cat(t, "KEY ");
+            int_text((int32_t)arpk_focus() + 1, t + 4);
         }
-        cv_text(234 - text_w(&FONT_XS, ui.pad_more ? "MORE (FX: MAIN)" : "FX: MORE"), 4, &FONT_XS,
-                ui.pad_more ? "MORE (FX: MAIN)" : "FX: MORE", ui.pad_more ? C_HI : C_DIM);
+        snd_text(234, 3, t, 2, C_HI, 1, top);
+        snd_text(6, 66, ui.pad_more ? "MORE  FX: MAIN" : "FX: MORE", 2, ui.pad_more ? C_HI : C_DIM, 0, top);   /* (FX
+                                          * while held: K1-K4 MORE, THRU, ON / OFF, RATE, SWEEP; OFF: K1 browses them
+                                          * silent, the box unlit) */
         (void)held;
         break;
     }
@@ -761,19 +794,19 @@ static void vn_band(const brk_status_t *st, int32_t top)
     fx_disc(VN_CX, VN_CY, 2, C_BLACK);
     cv_rect(VN_CX + (int32_t)(68.0f * brk_sin_turns(0.25f + ui.reel * 3.0f)) - 1,
             VN_CY + (int32_t)(68.0f * brk_sin_turns(ui.reel * 3.0f)) - 1, 3, 3, C_WHITE);   /* a glint in the grooves */
-    cv_rect(178, 0, 62, VN_CY * 2, C_BLACK);   /* the column: the speed, its semitones, the record, THRU */
+    cv_rect(178, 0, 62, VN_CY * 2, C_BLACK);   /* the column: the speed (3x), its semitones, the record's (2x; THRU:
+                                          * the foot's K1) */
     cv_rect(178, 0, 1, VN_CY * 2, C_LINE);
     int_text((int32_t)(tape * 100.0f + 0.5f), t);
     text_cat(t, "%");
-    cv_text2(236 - text2_w(&FONT_B, t), 6, &FONT_B, t, tape < 0.02f ? C_HI : C_WHITE);
+    snd_text(236, 8, t, 3, tape < 0.02f ? C_HI : C_WHITE, 1, top);
     t[0] = 0;
     if (tape > 0.004f)
-        signed_tenths(12.0f * brk_log2f(tape), " ST", t);
+        signed_tenths(12.0f * brk_log2f(tape), "ST", t);   /* ("-12.0ST": the column's 56 px) */
     else
         text_cat(t, "STOP");
-    cv_text(236 - text_w(&FONT_B, t), 40, &FONT_B, t, C_HI);
-    cv_text(236 - text_w(&FONT_XS, "33 1/3 RPM"), 112, &FONT_XS, "33 1/3 RPM", C_GRAY);
-    cv_text(236 - text_w(&FONT_XS, THRU_NAME[set.vinyl & 3u]), 126, &FONT_XS, THRU_NAME[set.vinyl & 3u], C_GRAY);
+    snd_text(236, 32, t, 2, C_HI, 1, top);
+    snd_text(236, 116, "33 1/3", 2, C_GRAY, 1, top);
     cv_oy = 0;
     cv_blit(0, 44u + (uint32_t)top);
 }

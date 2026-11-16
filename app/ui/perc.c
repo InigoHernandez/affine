@@ -2,13 +2,14 @@
 /* CHOPPAH: the SNARE / HAT page (ENV). (Part of app.c's unity: included there in order.) */
 
 /* ---- the SNARE / HAT page (ENV): ALGORITHM the voice, ENV again SOUND or SHAPE, PRESETS its presets */
-static const char *const PERC_KNOB[PERC_VOICES][4][4] = {
-    {{"LEVEL", "TUNE", "DECAY", "TONE"}, {"SNAP", "DRIVE", "PRESET", "DIRT"}, {"DROP", "TIME", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DECAY"}},
-    {{"LEVEL", "TUNE", "DECAY", "METAL/NZ"}, {"CUT", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DECAY"}},
-    {{"LEVEL", "TUNE", "DECAY", "TONE"}, {"SPREAD", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DECAY"}},
+static const char *const PERC_KNOB[PERC_VOICES][4][4] = {   /* (AFFINE, 2x: the foot's, DECAY and METAL/NZ short
+                                          * there: snd_long) */
+    {{"LEVEL", "TUNE", "DEC", "TONE"}, {"SNAP", "DRIVE", "PRESET", "DIRT"}, {"DROP", "TIME", "LIFT", "ROOM"},
+     {"PRESET", "FX", "LEVEL", "DEC"}},
+    {{"LEVEL", "TUNE", "DEC", "NOISE"}, {"CUT", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
+     {"PRESET", "FX", "LEVEL", "DEC"}},
+    {{"LEVEL", "TUNE", "DEC", "TONE"}, {"SPREAD", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
+     {"PRESET", "FX", "LEVEL", "DEC"}},
     {{"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}}};   /* (LOAF BREAKER: the clap's; SHAPE's
                                           * K3 PRESET, the memory back to a built-in sound; the fourth, the MELODY's,
                                           * gone in 0.209; 0.225: SHAPE's K4 DIRT, MORE (DROP, TIME, LIFT, ROOM), and
@@ -161,8 +162,12 @@ static void perc_value(int i, char *t)
     uint8_t *x = perc_x(ui.pvoice), *xk = perc_xknob(i);
     uint32_t pg = perc_pg(), v = ui.pvoice % PERC_VOICES;
     t[0] = 0;
-    if ((pg == 1u && i == 2) || (pg == 3u && i == 0)) {   /* PRESET: the built-in sound it last put back */
-        text_cat(t, pp_name(v, x[PX_PRE]));
+    if ((pg == 1u && i == 2) || (pg == 3u && i == 0)) {   /* PRESET: the built-in sound it last put back (AFFINE, 2x:
+                                          * its place, 5/13: the foot's 108 px hold no SHRAPNEL beside its name; the
+                                          * page shows the name large, the header says it) */
+        int_text((int32_t)(x[PX_PRE] % pp_n(v)) + 1, t);
+        text_cat(t, "/");
+        int_text((int32_t)pp_n(v), t + text_n(t));
         return;
     }
     if (pg == 3u && i == 1) {
@@ -257,6 +262,10 @@ static void perc_turn(int i, int32_t d)
         }
         ui.ppreset[v] = x[PX_PRE];
         perc_value(i, t);
+        if (!(i == 1 && pg == 3u)) {     /* (the header: the preset's name) */
+            t[0] = 0;
+            text_cat(t, pp_name(v, x[PX_PRE]));
+        }
         app_say(i == 1 && pg == 3u ? "FX" : "PRESET", t);
         ui.redraw |= RG_BLOCKS | RG_FOOT;
         changed();
@@ -273,7 +282,7 @@ static void perc_turn(int i, int32_t d)
     if (xk) {
         *xk = (uint8_t)clamp((int32_t)*xk + d * 2, 0, 100);
         perc_value(i, t);
-        app_say(perc_kname(v, pg, i), t);
+        app_say(snd_long(perc_kname(v, pg, i)), t);
         ui.redraw |= RG_BLOCKS | RG_FOOT;
         changed();
         return;
@@ -282,15 +291,16 @@ static void perc_turn(int i, int32_t d)
         return;
     *p = knob_f(*p, d, 0.02f, 0.0f, 1.0f);
     perc_value(i, t);
-    app_say(perc_kname(v, pg, i), t);
+    app_say(snd_long(perc_kname(v, pg, i)), t);
     ui.redraw |= RG_BLOCKS;
     changed();
 }
 
 /* LOAF BREAKER: the drums' big view (SELECT from BOOM: the snare, the hat, the clap, each in it; EDIT held: the WAVE, then
- * the classic view, as ever): the drum's hit drawn large over its level (its window ~1.4 times its decay, the decay marked in amber), its
- * name, memory and tune; the five drums along the bottom, the one edited lit (stopped: their keys 1-5 play them); under
- * it the part's knobs as cards */
+ * the classic view, as ever): the drum's hit drawn large over its level (its window ~1.4 times its decay, the decay
+ * marked by an amber line), its name and memory, its preset (or its sample's name); the four sounds along the bottom,
+ * the one edited lit (stopped: their keys 1-4 play them). (AFFINE, 2x: its knobs' names and values: the foot's, LOAF's
+ * cards gone with them) */
 #define PW_W 232u
 static uint8_t pw_px[PW_W];
 static int8_t pw_wave[PW_W];
@@ -315,18 +325,15 @@ static void perc_picture(const brk_status_t *st, int32_t top)
 {
     const perc_voice_t *v = perc_voice(ui.pvoice);
     uint32_t i;
-    float dms = perc_dms(ui.pvoice, v);
-    int32_t dx = 4 + (int32_t)(dms / (float)pw_ms * (float)PW_W);
     char t[24], u[8];
     cv_oy = -top;
-    cv_rect(4, 50, PW_W, 1, C_LINE);     /* (the middle) */
     if (ui.kview == 0u) {                /* LOAF BREAKER (0.231): the RGB view (rekordbox's colours, or SERATO's) */
         uint32_t pk = 1u;
         for (i = 0; i < PW_W; i++)
             pk = pw_rgb[i][3] > pk ? pw_rgb[i][3] : pk;
         for (i = 0; i < PW_W; i++) {
             const uint8_t *c = pw_rgb[i];
-            uint32_t m = c[0] > c[1] ? c[0] : c[1], h = (uint32_t)c[3] * 34u / pk, br, r, g, b;
+            uint32_t m = c[0] > c[1] ? c[0] : c[1], h = (uint32_t)c[3] * KV_H / pk, br, r, g, b;
             m = c[2] > m ? c[2] : m;
             if (!m || !h)
                 continue;
@@ -337,69 +344,21 @@ static void perc_picture(const brk_status_t *st, int32_t top)
             r = r * r / 255u;
             g = g * g / 255u;
             b = b * b / 255u;
-            cv_rect(4 + (int32_t)i, 50 - (int32_t)h, 1, 2 * (int32_t)h + 1,
+            cv_rect(4 + (int32_t)i, KV_MID - (int32_t)h, 1, 2 * (int32_t)h + 1,
                     set.wstyle ? serato_col(c[0], c[1], c[2], br) : RGB(r * br / 255u, g * br / 255u, b * br / 255u));
         }
+        hit_picture(0, 0, PW_W, perc_dms(ui.pvoice, v), pw_ms);   /* (its decay's line over it) */
     } else
-    for (i = 0; i < PW_W; i++) {         /* the hit: its level (dim, mirrored), its wave over it */
-        int32_t h = pw_px[i], w = pw_wave[i];
-        if (h)
-            cv_rect(4 + (int32_t)i, 50 - h, 1, 2 * h + 1, C_BLOCK);
-        if (w > 0)
-            cv_rect(4 + (int32_t)i, 50 - w, 1, w, C_HI);
-        else if (w < 0)
-            cv_rect(4 + (int32_t)i, 51, 1, -w, C_HI);
-    }
-    if (dx < 4 + (int32_t)PW_W) {        /* its DECAY, where it has gone (-40 dB) */
-        int32_t y;
-        for (y = 18; y < 84; y += 4)
-            cv_rect(dx, y, 1, 2, C_AMB);
-        int_text((int32_t)(dms + 0.5f), t);
-        text_cat(t, " MS");
-        cv_text(dx + 3 < 200 ? dx + 3 : dx - 3 - text_w(&FONT_XS, t), 72, &FONT_XS, t, C_AMB);
-    }
-    t[0] = 0;                            /* SNARE 3, its tune */
+        hit_picture(pw_px, pw_wave, PW_W, perc_dms(ui.pvoice, v), pw_ms);
+    t[0] = 0;                            /* SNARE 3, its preset (a sample: its name) */
     text_cat(t, PERC_VOICE_NAME[ui.pvoice % PERC_VOICES]);
     int_text((int32_t)*perc_slot(ui.pvoice) + 1, u);
     text_cat(t, " ");
     text_cat(t, u);
-    cv_text(6, 2, &FONT_B, t, C_WHITE);
-    t[0] = 0;
-    if (perc_smp(ui.pvoice))             /* (0.9.45: a sample: its name) */
-        text_cat(t, pp_name(ui.pvoice, 99u));
-    else
-        hz_text(perc_tune_hz(ui.pvoice, v->tune), t);
-    cv_text(234 - text_w(&FONT_XS, t), 4, &FONT_XS, t, C_AMB);
-    for (i = 0; i < NDRUMS; i++) {       /* the four drums, the one edited lit (stopped: key i + 1 plays it) */
-        int32_t x = 4 + (int32_t)i * 59;
-        int sel = i == ui.einst, hit = ui.aud_d == i && plat_ms() - ui.aud_t < 150u;
-        cv_rect(x, 87, 55, 12, hit ? C_HI : sel ? C_BLOCK_HI : C_BLOCK);
-        cv_text(x + 3, 88, &FONT_T, DRUM_NAME[i], hit ? C_BLACK : sel ? C_WHITE : C_GRAY);
-        if (!st->playing) {
-            char kn[2] = {(char)('1' + i), 0};
-            cv_text(x + 52 - text_w(&FONT_T, kn), 88, &FONT_T, kn, hit ? C_BLACK : C_DIM);
-        }
-    }
+    snd_text(6, 4, t, 2, C_WHITE, 0, top);
+    snd_text(234, 4, pp_name(ui.pvoice, perc_x(ui.pvoice)[PX_PRE]), 2, C_AMB, 1, top);
+    drum_row(st, ui.einst, top);
     cv_oy = 0;
-}
-static void perc_cards(void)             /* the part's knobs: its name, its value large, its bar */
-{
-    uint32_t i;
-    char t[16];
-    cv_begin(240, 48, C_BLACK);
-    for (i = 0; i < 4u; i++) {
-        int32_t x = 2 + (int32_t)i * 60;
-        const char *n = perc_kname(ui.pvoice, perc_pg(), i);
-        cv_rect(x, 0, 56, 46, C_BLOCK);
-        if (!n[0])
-            continue;
-        cv_text(x + 4, 3, &FONT_XS, n, C_GRAY);
-        perc_value((int)i, t);
-        cv_text(x + 4, 16, text_w(&FONT_B, t) <= 50 ? &FONT_B : &FONT_XS, t, C_WHITE);
-        cv_rect(x + 4, 38, 48, 3, C_BLACK);
-        cv_rect(x + 4, 38, (int32_t)(48.0f * brk_clampf(perc_knob_f((int)i), 0.0f, 1.0f) + 0.5f), 3, C_HI);
-    }
-    cv_blit(0, 144);
 }
 static void draw_perc_big(const brk_status_t *st)
 {
@@ -413,26 +372,26 @@ static void draw_perc_big(const brk_status_t *st)
         pw_ms = (uint32_t)brk_clampf(d, 60.0f, 900.0f);   /* (AFFINE: EDIT ZOOM gone with the KICK menu's TOOLS: AUTO) */
         if (ui.kview == 0u)              /* (LOAF BREAKER: the RGB view) */
             perc_rgb(ui.pvoice, v, pw_rgb, PW_W, pw_ms);
-        perc_shape(ui.pvoice, v, pw_px, PW_W, pw_ms, 34u);
-        perc_wave(ui.pvoice, v, pw_wave, PW_W, pw_ms, 34u);
+        perc_shape(ui.pvoice, v, pw_px, PW_W, pw_ms, KV_H);
+        perc_wave(ui.pvoice, v, pw_wave, PW_W, pw_ms, KV_H);
         for (top = 0; top < PW_W; top++)
             pk = pw_px[top] > pk ? pw_px[top] : pk;
         for (top = 0; pk && top < PW_W; top++) {   /* (as tall as it goes) */
-            pw_px[top] = (uint8_t)((uint32_t)pw_px[top] * 34u / pk);
-            pw_wave[top] = (int8_t)((int32_t)pw_wave[top] * 34 / (int32_t)pk);
+            pw_px[top] = (uint8_t)((uint32_t)pw_px[top] * KV_H / pk);
+            pw_wave[top] = (int8_t)((int32_t)pw_wave[top] * (int32_t)KV_H / (int32_t)pk);
         }
     }
-    for (top = 0; top < 100u; top += 60u) {   /* (y 44..143, strips of 60 rows) */
-        uint32_t h = 100u - top < 60u ? 100u - top : 60u;
+    for (top = 0; top < 148u; top += 60u) {   /* (y 44..191, strips of 60 rows, as BOOM's) */
+        uint32_t h = 148u - top < 60u ? 148u - top : 60u;
         cv_begin(240, h, C_BLACK);
         perc_picture(st, (int32_t)top);
         cv_blit(0, 44u + top);
     }
-    perc_cards();
 }
 
 /* the SNARE / HAT page (EDIT): the voice's six settings as bars (the part's lit); then the three drums (LOAF BREAKER:
- * the classic view; the big one: draw_perc_big) */
+ * the classic view; the big one: draw_perc_big). AFFINE, 2x: three rows of two, each its name and its bar (the drum,
+ * its memory and the part: the header's and the tabs') */
 static void draw_perc(const brk_status_t *st)
 {
     if (ui.pbig) {
@@ -442,25 +401,13 @@ static void draw_perc(const brk_status_t *st)
     const perc_voice_t *v = perc_voice(ui.pvoice);
     const float P[6] = {v->level, v->tune, v->decay, v->tone, v->snap, v->drive};
     uint32_t i;
-    char t[24];
     cv_begin(240, 52, C_BLACK);
-    t[0] = 0;
-    text_cat(t, PERC_VOICE_NAME[ui.pvoice % PERC_VOICES]);
-    {                                    /* (LOAF BREAKER: its memory, "CLAP 3") */
-        char u[4];
-        int_text((int32_t)*perc_slot(ui.pvoice) + 1, u);
-        text_cat(t, " ");
-        text_cat(t, u);
-    }
-    text_cat(t, "  ");
-    text_cat(t, PPAGE_NAME[perc_pg()]);
-    cv_text(6, 0, &FONT_XS, t, C_GRAY);
-    for (i = 0; i < 6u; i++) {
-        int32_t x = 6 + (int32_t)(i % 4u) * 58, y = 16 + (int32_t)(i / 4u) * 18;
+    for (i = 0; i < 6u; i++) {           /* LEVEL TUNE, DECAY TONE (SOUND); SNAP DRIVE (SHAPE) */
+        int32_t x = 6 + (int32_t)(i % 2u) * 118, y = 4 + (int32_t)(i / 2u) * 17;
         int lit = (i >= 4u) == (perc_pg() == 1u);
-        cv_text(x, y, &FONT_XS, perc_kname(ui.pvoice, i / 4u, (int)(i % 4u)), lit ? C_GRAY : C_DIM);
-        cv_rect(x, y + 13, 52, 3, C_BLOCK);
-        cv_rect(x, y + 13, (int32_t)(52.0f * P[i] + 0.5f), 3, lit ? C_HI : C_DIM);
+        snd_text(x, y, perc_kname(ui.pvoice, i / 4u, (int)(i % 4u)), 2, lit ? C_GRAY : C_DIM, 0, 0);
+        cv_rect(x + 62, y + 3, 50, 4, C_BLOCK);
+        cv_rect(x + 62, y + 3, (int32_t)(50.0f * P[i] + 0.5f), 4, lit ? C_HI : C_DIM);
     }
     cv_blit(0, 88);
     draw_drums(st);
