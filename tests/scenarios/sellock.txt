@@ -1,23 +1,32 @@
-# LOAF BREAKER: SEL x2 (two quick clicks) locks it down (lit; it counts as held): SEL + SELECT then turns the drums' filter
-# without holding SEL; pressed again it is free (that press no click: no combinations card), SELECT the tempo again (the filter left as it is).
+# LOAF BREAKER: SEL x2 (two quick clicks) locks it down (lit; it counts as held): on BOOM's page SEL + PRESETS then picks
+# the pattern without holding SEL (PRESETS alone: BOOM's preset); pressed again it is free (that press no click: no
+# combinations card), PRESETS BOOM's preset again (the pattern left as it is). (AFFINE, 16 Nov 2026: SEL + SELECT's
+# drums' filter, this scenario's before, gone: SELECT as alone, the filter left at 0.)
 #   app/build/host/affine_host tests/scenarios/sellock.txt app/build/scenarios
 wait 4200
 expect kick_dj 0
+tap EDIT
+wait 300
+expect page 4
 tap SEL
 wait 100
 tap SEL
 wait 100
 expect sel_lock 1
-turn SELECT -1 10
+turn PRESET 1 10
 wait 100
-expect kick_dj -16
+expect pattern 1
+expect kpreset 0
+expect kick_dj 0
 shot sel_locked.png
 tap SEL
 wait 600
 expect sel_lock 0
-turn SELECT 1 10
+expect help 0
+turn PRESET 1 10
 wait 100
-expect kick_dj -16
+expect pattern 1
+expect kpreset 1
 tap SEL
 wait 600
 expect sel_lock 0

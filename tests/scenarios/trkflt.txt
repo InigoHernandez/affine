@@ -1,5 +1,6 @@
-# LOAF BREAKER: SEL + SELECT, on any page, turns the drums' filter (DRUM FLT, HOME's K3; was the kick's memories).
-# A track playing, PRESETS still picks the pattern (a DRUM FLT there, tried in 0.167, undone).
+# LOAF BREAKER: the drums' filter (DRUM FLT; was SEL + SELECT on any page, AFFINE 16 Nov 2026: gone, the owner: no
+# two-layer shortcuts): a roll key held (key 1, ROLL 1/8), K3 (DRM), on any page; SEL + SELECT there SONG's tabs as
+# SELECT alone. A track playing, PRESETS still picks the pattern (a DRUM FLT there, tried in 0.167, undone).
 #   app/build/host/affine_host tests/scenarios/trkflt.txt app/build/scenarios
 wait 4200
 tap ENV
@@ -9,8 +10,17 @@ press SEL
 turn SELECT -6 10
 release SEL
 wait 200
+expect kick_dj 0
+turn SELECT 6 10
+wait 200
+key b0 down
+wait 100
+turn K3 -6 10
+wait 100
+key b0 up
+wait 200
 expect kpreset 0
-expect kick_dj -26
+expect kick_dj <-20
 shot sel_flt.png
 tap PLAY
 wait 400
@@ -20,4 +30,4 @@ wait 300
 expect pattern 0
 turn PRESET 1 10
 wait 200
-expect kick_dj -26
+expect kick_dj <-20

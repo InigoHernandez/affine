@@ -1,6 +1,7 @@
 # LOAF BREAKER 0.9.27 (FLEXOR): the OVERLAY page and the ARP key share one effect: a white key touched on the page is
 # the ARP key's effect (and the effect K1 tunes); the ARP key's K1 turns it, the page follows. AMOUNT, RATE and SWEEP
-# were shared already. On the page, the white keys of the effects on are lit (held, latched, the ARP key's).
+# were shared already. On the page, the white keys of the effects on are lit (held, latched, the ARP key's). (AFFINE:
+# the ARP key from a recording, CUSTOM gone.)
 #   app/build/host/affine_host tests/scenarios/ovlsync.txt app/build/scenarios
 wait 4200
 tap ARP
@@ -25,12 +26,46 @@ wait 200
 expect arp_fx 5
 leds
 shot o_sync.png
-key b6 down
-wait 100
-turn K1 2 10
-wait 200
-key b6 up
-wait 200
+# (AFFINE, 16 Nov 2026: the ARP key no row's since CUSTOM went; a recorded ARP plays the page's effect, and follows it)
+fxr_put 1 11
+fxr_put 2 11
+fxr_put 3 11
+fxr_put 4 11
+fxr_put 5 11
+fxr_put 6 11
+fxr_put 7 11
+fxr_put 8 11
+fxr_put 9 11
+fxr_put 10 11
+fxr_put 11 11
+fxr_put 12 11
+fxr_put 13 11
+fxr_put 14 11
+fxr_put 15 11
+fxr_put 16 11
+fxr_put 17 11
+fxr_put 18 11
+fxr_put 19 11
+fxr_put 20 11
+fxr_put 21 11
+fxr_put 22 11
+fxr_put 23 11
+fxr_put 24 11
+fxr_put 25 11
+fxr_put 26 11
+fxr_put 27 11
+fxr_put 28 11
+fxr_put 29 11
+fxr_put 30 11
+fxr_put 31 11
+fxr_put 32 11
+wait 300
+expect arp_bits 32
+key w7 down
+wait 50
+key w7 up
+wait 300
 expect arp_fx 7
 expect ovl_last 7
+expect arp_bits 128
 tap PLAY

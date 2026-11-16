@@ -1,15 +1,18 @@
-# LOAF BREAKER 0.9.26 (FLEXOR's choices on the SEL combinations page): SEL + ALGORITHM, where ALGORITHM alone is the
-# break (HOME, SOUNDS' BREAK, SONG's PLAY DROP BUILD, MIX, OVERLAY), BREAK TIME (right HALF, left NORMAL); SEL + PRESETS
-# the pattern there too (AFFINE: LOAF BREAKER's kick memories there gone); SETUP's PRESETS the skin; SEQ's
-# ALGORITHM every lane top to bottom, BOOM's four bars then the snare's (0.9.31, FLEXOR; SELECT the views).
+# LOAF BREAKER 0.9.26 (FLEXOR's choices on the SEL combinations page): SEL + PRESETS the pattern everywhere (AFFINE:
+# LOAF BREAKER's kick memories there gone); SETUP's PRESETS the skin; SEQ's ALGORITHM every lane top to bottom, BOOM's
+# four bars then the snare's (0.9.31, FLEXOR; SELECT the views). AFFINE (16 Nov 2026, the owner): SEL + ALGORITHM's
+# BREAK TIME (where ALGORITHM alone is the break) and next break gone: with SEL held, ALGORITHM does what it does alone
+# (HOME, MIX, OVERLAY: the next break), BREAK TIME stays as it was (HOME › SETTINGS K4 turns it).
 #   app/build/host/affine_host tests/scenarios/selcombo.txt app/build/scenarios
 wait 4200
 expect bhalf 0
+expect brk 0
 press SEL
 turn ALGO 1 10
 release SEL
 wait 200
-expect bhalf 1
+expect bhalf 0
+expect brk 1
 shot sc_home_half.png
 tap LFO
 wait 200
@@ -19,6 +22,7 @@ turn ALGO -1 10
 release SEL
 wait 200
 expect bhalf 0
+expect brk 0
 expect pattern 0
 press SEL
 turn PRESET 1 10
@@ -33,7 +37,8 @@ turn ALGO 1 10
 turn PRESET 1 10
 release SEL
 wait 200
-expect bhalf 1
+expect bhalf 0
+expect brk 1
 expect pattern 2
 tap SEQ
 wait 200

@@ -1,8 +1,9 @@
 # LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): BEGINNER's FX page: two slots (the third and fourth muted and hidden),
 # PRESETS the short list (EMPTY, FILTER, CRUNCH, DRIVE, FLANGER, DELAY, TAPE, CLIP; AFFINE: REVERB retired), then
-# MAGIC EQ, MAGIC MBC.
-# In EXPERT the third slot gets a FILTER, focused; BEGINNER on: the focus back on the first, ALGORITHM goes round the
-# two, then the PSX page (AFFINE), then the first again. (AFFINE: the DST and SUB keys' part gone with the hardcore kick.)
+# MAGIC EQ, MAGIC MBC. AFFINE (16 Nov 2026, the owner: one mode for everyone): BEGINNER only inside the TUTORIAL, so
+# here the TUTORIAL's own FX step. The third slot gets a FILTER, focused; the TUTORIAL started (SETUP K3 right, SEL +
+# GLO skipping to its step 22, "PLAY, THEN PRESS FX"): the focus back on the first, SELECT round the two, then the PSX
+# page, then the first again; the short list. GLO quits it: the four slots again, the third's FILTER kept and heard.
 #   app/build/host/affine_host tests/scenarios/fxeasy.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -19,10 +20,38 @@ tap GLO
 wait 150
 turn SELECT 1 10
 wait 300
-turn K3 -1 80
+turn K3 1 80
 wait 300
+expect tut 1
+expect novice 1
+press SEL
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+tap GLO
+release SEL
+wait 300
+expect tut 22
 tap FX
 wait 300
+expect page 2
 expect fx_focus 0
 turn SELECT 1 80
 wait 200
@@ -44,3 +73,13 @@ wait 300
 expect fx_type 10
 wait 1200
 shot fe_chain.png
+tap GLO
+wait 300
+expect tut 254
+expect novice 0
+expect page 2
+turn SELECT 2 80
+wait 200
+expect fx_focus 2
+expect fx_type 6
+expect fx_on 1

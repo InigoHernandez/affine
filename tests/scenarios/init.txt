@@ -1,0 +1,241 @@
+# AFFINE (16 Nov 2026, the owner): INIT, "remove everything added". SEL + HOME asks ("INIT? PRESS HOME"); HOME within
+# 3 s does it, anything else or the time running out leaves all as it was. It clears the pattern as SEQ's clear does
+# and takes the sound back to the bare break: HOME's FILTER, CRUSH, REDUX, VERB 0, the gate full, the drums' filter 0,
+# every black key's latch and LATCH off (REVERSE latched, HALF SPEED latched), the OVERLAY's latched effects and LATCH
+# off, the FX chain's slots bypassed (their effects kept), the PSX bus clean (CODEC off, SKIP off, COLOR's AMOUNT 0,
+# CONSOLE 0, MONO off), the row AFFINE. It keeps the tempo, the break, BOOM and the drums' sounds, MIX, the songs, the
+# skin. SEL + SAVE (undo) brings all of it back; again, INIT again. The page stays (HOME's press used); HOME alone
+# after it: GENERATOR, as ever.
+#   app/build/host/affine_host tests/scenarios/init.txt app/build/scenarios
+wait 4200
+tap PLAY
+wait 300
+tap SEQ
+wait 300
+turn K3 1 10
+wait 200
+expect lane_kick 4369
+tap FX
+wait 300
+turn PRESET 1 80
+wait 300
+expect fx_ons 1
+turn SELECT 4 80
+wait 300
+expect fx_focus 4
+turn PRESET 1 80
+wait 400
+expect px_preset 1
+expect codec 1
+turn ALGO 4 80
+wait 300
+expect pp_part 4
+turn K2 10 30
+wait 200
+expect skchance >0
+tap ARP
+wait 300
+turn K4 1 10
+wait 200
+key w2 down
+wait 50
+key w2 up
+wait 300
+expect ovl_latch 1
+expect ovl_on 4
+tap HOME
+wait 300
+expect page 0
+turn K1 -10 30
+turn K2 20 30
+turn K3 20 30
+turn K4 20 30
+wait 300
+expect brk_dj <0
+expect crush >0
+expect redux >0
+expect send >0
+tap HOME
+wait 200
+tap HOME
+wait 300
+expect page 10
+turn K2 -10 30
+wait 200
+expect gate <100
+tap HOME
+wait 300
+expect page 0
+key b3 down
+wait 100
+turn K4 1 10
+wait 100
+key b3 up
+wait 300
+expect padlat 8
+expect plat 1
+key b4 down
+wait 100
+turn K3 1 10
+wait 100
+key b4 up
+wait 300
+expect hlat 1
+expect half_mt 2
+key b0 down
+wait 100
+turn K3 -6 10
+wait 100
+key b0 up
+wait 300
+expect kick_dj <0
+expect pads 40
+shot init_before.png
+# SEL + HOME: asked; nothing else, 3 s: nothing changes
+press SEL
+tap HOME
+release SEL
+wait 600
+expect init 1
+expect help 0
+expect page 0
+shot init_ask.png
+wait 2800
+expect init 0
+expect page 0
+expect lane_kick 4369
+expect crush >0
+expect padlat 8
+expect fx_ons 1
+# SEL + HOME, then a knob: cancelled
+press SEL
+tap HOME
+release SEL
+wait 200
+expect init 1
+turn K2 1 10
+wait 200
+expect init 0
+expect lane_kick 4369
+# SEL + HOME, then HOME: INIT
+press SEL
+tap HOME
+release SEL
+wait 300
+tap HOME
+wait 600
+expect init 0
+expect page 0
+expect lane_kick 0
+expect fx_ons 0
+expect brk_dj 0
+expect crush 0
+expect redux 0
+expect send 0
+expect gate 100
+expect kick_dj 0
+expect padlat 0
+expect plat 0
+expect hlat 0
+expect half_mt 0
+expect pads 0
+expect ovl_on 0
+expect ovl_latch 0
+expect codec 0
+expect skchance 0
+expect vfreeze 0
+expect px_amount 0
+expect px_console 0
+expect px_mono 0
+expect row 0
+expect undo_fx 1
+shot init_done.png
+# kept
+expect brk 0
+expect pattern 0
+expect brk_lvl 100
+expect skin 0
+expect playing 1
+expect_bpm 169 171
+wait 1500
+shot init_after.png
+# SEL + SAVE: all of it back
+press SEL
+tap SAVE
+release SEL
+wait 300
+expect lane_kick 4369
+expect fx_ons 1
+expect brk_dj <0
+expect crush >0
+expect redux >0
+expect send >0
+expect gate <100
+expect kick_dj <0
+expect padlat 8
+expect plat 1
+expect hlat 1
+expect half_mt 2
+expect pads 40
+expect ovl_latch 1
+expect ovl_on 4
+expect codec 1
+expect skchance >0
+expect px_preset 1
+shot init_undo.png
+# again: INIT again
+press SEL
+tap SAVE
+release SEL
+wait 300
+expect lane_kick 0
+expect fx_ons 0
+expect crush 0
+expect padlat 0
+expect ovl_on 0
+expect codec 0
+# the row PUNCH: INIT, AFFINE; undone: PUNCH
+press FX
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 300
+expect row 3
+press SEL
+tap HOME
+release SEL
+wait 200
+tap HOME
+wait 300
+expect row 0
+press SEL
+tap SAVE
+release SEL
+wait 300
+expect row 3
+# HOME alone: as ever (PERFORM, then GENERATOR)
+tap HOME
+wait 300
+expect page 1
+# SEL alone: the combinations card names it (+HOME INIT); on PATTERN, SEQ's confirmed clear (SEQ HELD, CLEAR? SEQ)
+tap HOME
+wait 300
+tap HOME
+wait 300
+expect page 0
+tap SEL
+wait 700
+expect help 1
+shot init_help.png
+tap SEL
+wait 700
+expect help 0
+tap SEQ
+wait 300
+tap SEL
+wait 700
+expect help 1
+shot help_seq.png
+tap SEL
+wait 700

@@ -1,8 +1,9 @@
-# LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER, the essentials. SEQ's lanes round, no GROOVE between (0.231). SEQ's drum lanes: K1 FILL as in EXPERT (0.229: the
-# BEAT presets gone; four hits: the kick four on the floor); a step held + a knob: nothing (no step menu), the key toggles the step as it
-# comes up; K4 LENGTH the kick's alone (0.227, FLEXOR: 16, 32, 64; BEGINNER turned on, every drum 32 steps (0.9.32, FLEXOR; the kick 16 in 0.246-0.9.31); a drum lane
-# stays as it is, EXPERT MODE said). ENV's DROP: K2 nothing, K1 the build's bars. The ARP key held: K1 its effect, all sixteen
-# (0.229: DIVE, RISE, RADIO ..); 0.232: the black keys' knobs as EXPERT's (K3 its TIME). GROOVE: SWING alone. A white key held: its knobs nothing.
+# AFFINE (16 Nov 2026, the owner: "one mode for everyone"): what LOAF BREAKER's BEGINNER held back is there for
+# everyone (SETUP K3 left, the TUTORIAL not running: nothing; it was BEGINNER). SEQ's lanes round. A drum lane: K1 FILL
+# (four hits: the kick four on the floor); a step held + K2: its HITS, the step menu (was: nothing, the key toggling
+# the step); K4 LENGTH on the snare too: 64 steps (was: the kick's alone, "EXPERT MODE"). ENV's DROP: K1 the build's
+# bars. SEL + ARP: the OVERLAY page as ARP alone (its GROOVE gone, 16 Nov 2026: swing kept). A white key held: K1 its
+# LENGTH (was: nothing).
 #   app/build/host/affine_host tests/scenarios/beginner.txt app/build/scenarios
 wait 4200
 tap GLO
@@ -11,6 +12,7 @@ turn SELECT 1 10
 wait 300
 turn K3 -1 80
 wait 300
+expect novice 0
 tap SEQ
 wait 300
 expect page 6
@@ -27,25 +29,21 @@ wait 300
 expect lane_mask 4369
 wait 1200
 shot bg_seq.png
+expect stepb_n 0
 key w1 down
 wait 200
 turn K2 2 60
 wait 100
 key w1 up
 wait 300
-expect lane_mask 4371
-turn K4 2 60
-wait 200
-expect lane_steps 64
-turn K4 -1 60
-wait 200
-expect lane_steps 32
+expect lane_mask 4369
+expect stepb_n 1
 turn ALGO 2 80
 wait 200
 expect lane_steps 32
 turn K4 2 60
 wait 200
-expect lane_steps 32
+expect lane_steps 64
 shot bg_len.png
 tap ENV
 wait 150
@@ -54,27 +52,24 @@ wait 150
 turn SELECT 1 10
 wait 300
 expect drop_bars 3
-turn K2 3 60
-wait 200
 turn K1 1 60
 wait 200
 expect drop_bars 4
-# (0.9.23, FLEXOR: BEGINNER keeps the black keys' layout EXPERT left: here FLEXOR LAYOUT, the simulator's)
-expect bk_pre 2
+expect bk_pre 0
 press SEL
 tap ARP
 release SEL
 wait 300
+expect page 9
 turn K1 4 60
 wait 200
-expect swing 54
-turn K2 3 60
-wait 200
+expect swing 50
 tap HOME
 wait 300
-key w5 down
+key w0 down
 wait 600
-turn K1 3 60
+turn K1 -1 60
 wait 200
-key w5 up
+expect klen0 10
+key w0 up
 wait 300

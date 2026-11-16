@@ -1,13 +1,8 @@
-# AFFINE: its black keys (ARP > BLACK KEYS, PRESET AFFINE: R8 R16 R32 REV HLF VNL FRZ SKP VRB CRS FLT): SKP the disc
+# AFFINE: its black keys (the row AFFINE, the simulator's too since 16 Nov 2026: R8 R16 R32 REV HLF VNL FRZ SKP VRB
+# CRS FLT): SKP the disc
 # slipping, VRB the mix thrown into SPU VERB, CRS 4 bits, each while held (heard: affkeys.wav).
 #   app/build/host/affine_host tests/scenarios/affkeys.txt app/build/scenarios
 wait 4200
-tap ARP
-wait 300
-turn SELECT 1 10
-wait 300
-turn K1 -2 10
-wait 200
 expect bk_pre 0
 tap HOME
 wait 300

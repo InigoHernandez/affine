@@ -1,63 +1,194 @@
-# LOAF BREAKER: the ARP black key (the tenth), its OVERLAY effect. Held: MAIN, K1 the effect, K2 its AMOUNT, K3 its
-# TIME (RATE for CHOP, GATE, WAH, PAN; SWEEP for DIVE, RISE), K4 LATCH; FX while held: MORE, K1 THRU (BREAK, KICK,
-# THRU), K2 ON / OFF, K3 RATE, K4 SWEEP; FX again: MAIN.
+# LOAF BREAKER: the ARP black key, its OVERLAY effect (held: MAIN, K1 the effect, K2 its AMOUNT, K3 its TIME, K4 LATCH;
+# FX while held: MORE). AFFINE (16 Nov 2026, the owner): no row has it since CUSTOM went (AFFINE and PUNCH); what a save
+# recorded still plays, ARP and GATE, RANDOM, DUB alone too (CUSTOM's, before): fxr_put writes them as such a save holds
+# them, here on every step. ARP plays the OVERLAY page's effect (its white key 9 touched: FILTER SWEEP's place, K1 its
+# AMOUNT), arp_bits; GATE the pads' bit 7, RANDOM 8, DUB 10; taken out: nothing held.
 #   app/build/host/affine_host tests/scenarios/arp.txt app/build/scenarios
 wait 4200
+tap ARP
+wait 300
 tap PLAY
 wait 600
-key b3 down
-wait 400
-shot a_flt.png
-key b3 up
-key b6 down
-turn K1 8 10
-wait 300
+key w8 down
+wait 100
+key w8 up
+wait 200
 expect arp_fx 8
-turn K2 -20 10
+turn K1 -20 10
 wait 200
 expect arp_amt 60
-turn K3 1 10
-wait 200
-expect ovl_rate 3
+fxr_put 1 11
+fxr_put 2 11
+fxr_put 3 11
+fxr_put 4 11
+fxr_put 5 11
+fxr_put 6 11
+fxr_put 7 11
+fxr_put 8 11
+fxr_put 9 11
+fxr_put 10 11
+fxr_put 11 11
+fxr_put 12 11
+fxr_put 13 11
+fxr_put 14 11
+fxr_put 15 11
+fxr_put 16 11
+fxr_put 17 11
+fxr_put 18 11
+fxr_put 19 11
+fxr_put 20 11
+fxr_put 21 11
+fxr_put 22 11
+fxr_put 23 11
+fxr_put 24 11
+fxr_put 25 11
+fxr_put 26 11
+fxr_put 27 11
+fxr_put 28 11
+fxr_put 29 11
+fxr_put 30 11
+fxr_put 31 11
+fxr_put 32 11
+wait 400
+expect arp_bits 256
+expect pads 0
 shot a_arp_held.png
-tap FX
-wait 300
-expect arp_more 1
-turn K1 -1 10
-wait 300
-expect arp_thru 2
-shot a_thru_kick.png
-turn K1 -1 10
-wait 300
-expect arp_thru 1
-shot a_thru_break.png
-turn K1 2 10
-turn K2 -1 10
-wait 300
-shot a_arp_off.png
-turn K2 1 10
-tap FX
-wait 200
-expect arp_more 0
-key b6 up
-wait 200
-key b6 down
-wait 100
-key b6 up
-wait 300
-shot a_latched.png
-key b6 down
-turn K4 1 10
-key b6 up
-wait 200
-key b6 down
-wait 100
-key b6 up
-wait 300
-shot a_latch_on.png
-key b6 down
-wait 100
-key b6 up
-wait 300
-shot a_after.png
-wait 1600
+fxr_put 1 7
+fxr_put 2 7
+fxr_put 3 7
+fxr_put 4 7
+fxr_put 5 7
+fxr_put 6 7
+fxr_put 7 7
+fxr_put 8 7
+fxr_put 9 7
+fxr_put 10 7
+fxr_put 11 7
+fxr_put 12 7
+fxr_put 13 7
+fxr_put 14 7
+fxr_put 15 7
+fxr_put 16 7
+fxr_put 17 7
+fxr_put 18 7
+fxr_put 19 7
+fxr_put 20 7
+fxr_put 21 7
+fxr_put 22 7
+fxr_put 23 7
+fxr_put 24 7
+fxr_put 25 7
+fxr_put 26 7
+fxr_put 27 7
+fxr_put 28 7
+fxr_put 29 7
+fxr_put 30 7
+fxr_put 31 7
+fxr_put 32 7
+wait 400
+expect arp_bits 0
+expect pads 128
+shot a_gate_rec.png
+fxr_put 1 8
+fxr_put 2 8
+fxr_put 3 8
+fxr_put 4 8
+fxr_put 5 8
+fxr_put 6 8
+fxr_put 7 8
+fxr_put 8 8
+fxr_put 9 8
+fxr_put 10 8
+fxr_put 11 8
+fxr_put 12 8
+fxr_put 13 8
+fxr_put 14 8
+fxr_put 15 8
+fxr_put 16 8
+fxr_put 17 8
+fxr_put 18 8
+fxr_put 19 8
+fxr_put 20 8
+fxr_put 21 8
+fxr_put 22 8
+fxr_put 23 8
+fxr_put 24 8
+fxr_put 25 8
+fxr_put 26 8
+fxr_put 27 8
+fxr_put 28 8
+fxr_put 29 8
+fxr_put 30 8
+fxr_put 31 8
+fxr_put 32 8
+wait 400
+expect pads 256
+fxr_put 1 10
+fxr_put 2 10
+fxr_put 3 10
+fxr_put 4 10
+fxr_put 5 10
+fxr_put 6 10
+fxr_put 7 10
+fxr_put 8 10
+fxr_put 9 10
+fxr_put 10 10
+fxr_put 11 10
+fxr_put 12 10
+fxr_put 13 10
+fxr_put 14 10
+fxr_put 15 10
+fxr_put 16 10
+fxr_put 17 10
+fxr_put 18 10
+fxr_put 19 10
+fxr_put 20 10
+fxr_put 21 10
+fxr_put 22 10
+fxr_put 23 10
+fxr_put 24 10
+fxr_put 25 10
+fxr_put 26 10
+fxr_put 27 10
+fxr_put 28 10
+fxr_put 29 10
+fxr_put 30 10
+fxr_put 31 10
+fxr_put 32 10
+wait 400
+expect pads 1024
+fxr_put 1 -1
+fxr_put 2 -1
+fxr_put 3 -1
+fxr_put 4 -1
+fxr_put 5 -1
+fxr_put 6 -1
+fxr_put 7 -1
+fxr_put 8 -1
+fxr_put 9 -1
+fxr_put 10 -1
+fxr_put 11 -1
+fxr_put 12 -1
+fxr_put 13 -1
+fxr_put 14 -1
+fxr_put 15 -1
+fxr_put 16 -1
+fxr_put 17 -1
+fxr_put 18 -1
+fxr_put 19 -1
+fxr_put 20 -1
+fxr_put 21 -1
+fxr_put 22 -1
+fxr_put 23 -1
+fxr_put 24 -1
+fxr_put 25 -1
+fxr_put 26 -1
+fxr_put 27 -1
+fxr_put 28 -1
+fxr_put 29 -1
+fxr_put 30 -1
+fxr_put 31 -1
+fxr_put 32 -1
+wait 400
+expect pads 0
+expect arp_bits 0

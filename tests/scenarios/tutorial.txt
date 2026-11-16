@@ -1,4 +1,5 @@
-# LOAF BREAKER: the TUTORIAL. SYSTEM › SETUP (GLO, SELECT), K3 left twice: BEGINNER, then TUTORIAL. Its 26 steps (0.235,
+# LOAF BREAKER: the TUTORIAL. SYSTEM › SETUP (GLO, SELECT), K3 right (AFFINE, 16 Nov 2026: K3 starts it, LOAF's
+# BEGINNER inside it alone, novice 1; K3 left twice before: BEGINNER, then TUTORIAL). Its 26 steps (0.235,
 # FLEXOR; 0.244 the OVERLAY page on ARP: two; 0.246 the ARP key's step gone; AFFINE: the kick's lessons gone, 26 again),
 # each done as it says, then the next: at once (nothing to hear: HOME, EDIT, SELECT, SEQ, FX, SAVE), or 5 s later. HOME
 # (PERFORM); PLAY, four slices, ALGORITHM (another break); HOME's tabs (0.9.2: GENERATOR, SETTINGS, KNOB 1 the slices,
@@ -12,11 +13,10 @@ wait 150
 turn SELECT 1 10
 wait 300
 expect gpage 2
-turn K3 -1 80
-wait 200
-turn K3 -1 80
+turn K3 1 80
 wait 300
 expect tut 1
+expect novice 1
 expect auto_save 0
 wait 1500
 shot tu_1.png
@@ -156,3 +156,5 @@ shot tu_16.png
 wait 6000
 expect tut 254
 expect auto_save 1
+# (AFFINE: finished, the full AFFINE: BEGINNER off, the chain's four slots heard)
+expect novice 0

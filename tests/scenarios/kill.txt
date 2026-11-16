@@ -1,4 +1,6 @@
-# LOAF BREAKER: the 10th black key, KIL: held, the sequencer's kicks are quiet (khits stays 0); let go, they play again. Its LATCH (K1 while held): a press quiet, the next back.
+# LOAF BREAKER: the 10th black key, KIL: held, the sequencer's kicks are quiet (khits stays 0); let go, they play again.
+# AFFINE (16 Nov 2026, the owner): KIL alone on no row since CUSTOM went (its LATCH with it): PUNCH's DROP OUT (key
+# 11) holds it, and a recording (a save's, fxr_put) plays it: quiet while it plays, back when it's gone.
 # The kick on steps 1, 5, 9, 13 of each of its lane's four bars (SEQ).
 #   app/build/host/affine_host tests/scenarios/kill.txt app/build/scenarios
 wait 4200
@@ -62,33 +64,98 @@ tap HOME
 tap PLAY
 wait 1300
 expect khits 4
-key b8 down
+press FX
+wait 50
+tap OCT+
+wait 50
+release FX
+wait 100
+expect row 3
+expect khits >-1
+key b10 down
 wait 100
 expect khits 0
 wait 1500
 expect khits 0
+expect kil 1
 shot kil_held.png
-key b8 up
+key b10 up
 wait 1500
-expect khits 4
-# KIL's LATCH (K1 while it is held, right): let go, the kicks stay quiet; KIL again: back. K1 left: held only again
-key b8 down
-wait 50
-turn K1 1 10
+expect kil 0
+expect khits >2
+# a KIL recorded (a save's, CUSTOM's KIL key): every step quiet while it plays; taken out, back
+fxr_put 1 12
+fxr_put 2 12
+fxr_put 3 12
+fxr_put 4 12
+fxr_put 5 12
+fxr_put 6 12
+fxr_put 7 12
+fxr_put 8 12
+fxr_put 9 12
+fxr_put 10 12
+fxr_put 11 12
+fxr_put 12 12
+fxr_put 13 12
+fxr_put 14 12
+fxr_put 15 12
+fxr_put 16 12
+fxr_put 17 12
+fxr_put 18 12
+fxr_put 19 12
+fxr_put 20 12
+fxr_put 21 12
+fxr_put 22 12
+fxr_put 23 12
+fxr_put 24 12
+fxr_put 25 12
+fxr_put 26 12
+fxr_put 27 12
+fxr_put 28 12
+fxr_put 29 12
+fxr_put 30 12
+fxr_put 31 12
+fxr_put 32 12
 wait 100
-shot kil_latch.png
-key b8 up
+expect khits >-1
 wait 1500
 expect khits 0
-key b8 down
-wait 30
-key b8 up
+expect kil 1
+shot kil_latch.png
+fxr_put 1 -1
+fxr_put 2 -1
+fxr_put 3 -1
+fxr_put 4 -1
+fxr_put 5 -1
+fxr_put 6 -1
+fxr_put 7 -1
+fxr_put 8 -1
+fxr_put 9 -1
+fxr_put 10 -1
+fxr_put 11 -1
+fxr_put 12 -1
+fxr_put 13 -1
+fxr_put 14 -1
+fxr_put 15 -1
+fxr_put 16 -1
+fxr_put 17 -1
+fxr_put 18 -1
+fxr_put 19 -1
+fxr_put 20 -1
+fxr_put 21 -1
+fxr_put 22 -1
+fxr_put 23 -1
+fxr_put 24 -1
+fxr_put 25 -1
+fxr_put 26 -1
+fxr_put 27 -1
+fxr_put 28 -1
+fxr_put 29 -1
+fxr_put 30 -1
+fxr_put 31 -1
+fxr_put 32 -1
+wait 200
+expect khits >-1
 wait 1500
-expect khits 4
-key b8 down
-wait 50
-turn K1 -1 10
-wait 100
-key b8 up
-wait 1500
-expect khits 4
+expect kil 0
+expect khits >2

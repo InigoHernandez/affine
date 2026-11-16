@@ -1,63 +1,34 @@
-# LOAF BREAKER (11 Nov 2026; AFFINE: the presets AFFINE 0, CHOPPAH 1, CUSTOM 2, PUNCH 3): ARP's tabs, ARP EFFECTS, BLACK KEYS (EXPERT; MORE gone for now, 0.259). BLACK KEYS: K1 the preset (CHOPPAH,
-# CUSTOM; AFFINE: FLEXOR LAYOUT gone), K2 the key (or a black key pressed: it picks itself), K3 its effect (a preset: a
-# CUSTOM copy first). CHOPPAH's FREEZE and DUB back on its keys. (The simulator starts on a CUSTOM layout, LOAF BREAKER's
-# FLEXOR LAYOUT's keys; an FM-1 on CHOPPAH.)
+# LOAF BREAKER (11 Nov 2026; AFFINE: the rows AFFINE 0, CHOPPAH 1, CUSTOM 2, PUNCH 3). AFFINE (16 Nov 2026, the owner):
+# two rows, AFFINE and PUNCH (FX + OCT- / OCT+: punchrow.txt, rows2.txt); ARP's BLACK KEYS tab (K1 the row, K2 the
+# key, K3 its function: CUSTOM) gone, ARP one tab. A save holding CHOPPAH's row (bk_row 1) still plays its layout:
+# FREEZE on the fifth key (its LENGTH on K1), DUB on the last, VINYL BREAK on the seventh; FX + OCT- from it: AFFINE.
 #   app/build/host/affine_host tests/scenarios/blackkeys.txt app/build/scenarios
 wait 4200
-expect bk_pre 2
+expect bk_pre 0
 tap ARP
 wait 300
 expect page 9
 expect opage 0
 turn SELECT 1 10
 wait 300
-expect opage 1
-shot a_blackkeys.png
-# AFFINE (16 Nov 2026): K1's rows AFFINE, PUNCH, CUSTOM (CHOPPAH out of them; a save holding it still plays it)
-turn K1 -1 10
-wait 200
-expect bk_pre 3
-turn K1 -1 10
-wait 200
-expect bk_pre 0
-turn K1 -1 10
-wait 200
-expect bk_pre 0
-turn K1 2 10
-wait 200
-expect bk_pre 2
-bk_row 1
-wait 200
-expect bk_pre 1
-key b4 down
-wait 100
-key b4 up
-wait 200
-expect bk_key 4
-expect bk_fn 4
-shot a_blackkeys_choppah.png
-turn K3 1 10
-wait 200
-expect bk_pre 2
-expect bk_fn 5
-shot a_blackkeys_custom.png
-turn K3 -1 10
-wait 200
-expect bk_fn 4
-turn K2 6 10
-wait 200
-expect bk_key 10
-expect bk_fn 10
-turn SELECT 1 10
-wait 300
 expect opage 0
-# CUSTOM is CHOPPAH's again: FREEZE on the fifth key, its LENGTH on K1; DUB on the last
 tap HOME
 wait 200
 tap PLAY
 wait 1200
+key b3 down
+wait 400
+expect pads 8
+shot a_blackkeys.png
+key b3 up
+wait 300
+# CHOPPAH's row, as a save holds it: FREEZE on the fifth key, its LENGTH on K1; DUB on the last
+bk_row 1
+wait 200
+expect bk_pre 1
 key b4 down
 wait 300
+expect pads 16
 turn K1 2 10
 wait 300
 expect frz_len 2
@@ -66,22 +37,25 @@ key b4 up
 wait 300
 key b10 down
 wait 600
+expect pads 1024
 shot a_dub.png
 key b10 up
 wait 300
-# back to CHOPPAH: its seventh key VINYL BREAK
-tap ARP
-wait 200
-turn SELECT 1 10
-wait 200
-expect opage 1
-bk_row 1
-wait 200
-expect bk_pre 1
-tap HOME
-wait 200
 key b6 down
 wait 300
+expect pads 64
 shot a_choppah_vinyl.png
 key b6 up
+wait 300
+press FX
+wait 100
+tap OCT-
+wait 100
+release FX
+wait 300
+expect bk_pre 0
+key b4 down
+wait 300
+expect pads 32
+key b4 up
 wait 300

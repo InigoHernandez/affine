@@ -2,15 +2,13 @@
 # REC on, playing, a black key held: each step it is held over takes its function or combo (the last pressed), from
 # the step its press lands on; steps with nothing held keep theirs (overdub). Played back, a step's code acts as its key
 # held over it (a run of one code one hold), merged with what is held. SEQ's grid marks the steps recorded. Kept with
-# SAVE (its own store object, OBJ_FREE0), carried by copy and paste, cleared with the pattern (SEL + REC); stopped,
+# SAVE (its own store object, OBJ_FREE0), carried by copy and paste, cleared with the pattern (SEQ held, SEQ again); stopped,
 # step by step, a black key writes the step shown. Another firmware's store: nothing recorded.
 # At 170 BPM a 16th is 88.2 ms, the pattern (OLDSKOO 160, two bars) 32 of them, 2823.5 ms. fxr_lo / fxr_hi: the steps
 # recorded (1-16, 17-32, a bit each), fxr_c the first one's code, rplay the code playing (-1 none).
 #   app/build/host/affine_host tests/scenarios/punchrec.txt app/build/scenarios
 wait 4200
 press FX
-wait 100
-tap OCT+
 wait 100
 tap OCT+
 wait 100
@@ -132,10 +130,12 @@ wait 100
 expect fxr_lo 3
 tap REC
 wait 100
-# cleared with the pattern (SEL + REC)
-press SEL
-tap REC
-release SEL
+# cleared with the pattern (AFFINE, 16 Nov 2026: SEQ held, then SEQ again; SEL + REC's clear gone)
+press SEQ
+wait 800
+release SEQ
+wait 100
+tap SEQ
 wait 200
 expect fxr_lo 0
 expect fxr_hi 0

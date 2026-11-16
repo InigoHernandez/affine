@@ -1,0 +1,73 @@
+# AFFINE (16 Nov 2026, the owner): two black-key rows, AFFINE and PUNCH (CUSTOM gone). FX held + OCT-: AFFINE, FX held
+# + OCT+: PUNCH, each directly (again: the same row, no round to a third), the header saying it, no pitch, no page, no
+# FX fader. Key 3 plays its row's: ROLL 1/32 on AFFINE (pads 4), the combo REV VERB on PUNCH (cmb 34: REVERSE and
+# SPU VERB's throw). SAVE and a reboot keep the row; a save holding CUSTOM (bk_row 2) plays AFFINE's.
+#   app/build/host/affine_host tests/scenarios/rows2.txt app/build/scenarios
+wait 4200
+expect row 0
+tap PLAY
+wait 600
+key b2 down
+wait 200
+expect pads 4
+expect cmb 0
+key b2 up
+wait 200
+press FX
+wait 100
+tap OCT+
+wait 100
+expect row 3
+shot rows2_punch.png
+tap OCT+
+wait 100
+expect row 3
+release FX
+wait 300
+expect page 0
+expect pitch 0
+expect fx_wet 100
+key b2 down
+wait 300
+expect cmb 34
+expect pads 8
+expect psx_held 1
+key b2 up
+wait 300
+expect cmb 0
+expect psx_held 0
+press FX
+wait 100
+tap OCT-
+wait 100
+expect row 0
+shot rows2_affine.png
+tap OCT-
+wait 100
+expect row 0
+release FX
+wait 300
+expect pitch 0
+key b2 down
+wait 300
+expect cmb 0
+expect pads 4
+expect psx_held 0
+key b2 up
+wait 200
+press FX
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 200
+tap PLAY
+wait 200
+tap SAVE
+wait 300
+reboot
+wait 4200
+expect row 3
+bk_row 2
+wait 100
+expect row 0

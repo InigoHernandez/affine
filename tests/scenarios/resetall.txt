@@ -1,0 +1,102 @@
+# AFFINE (16 Nov 2026): SYSTEM › RESET EVERYTHING leaves nothing of the patterns behind. Before: pat_defaults cleared
+# the patterns but not the drum steps' own settings (HITS, CHANCE, NUDGE: steps.b) nor the track items' breaks
+# (steps.tb), and the reset then wrote the group in RAM's into all four groups; the snare's, hat's, clap's bars 3 and 4
+# (dx) of the groups not in RAM stayed. Here: P1's kick step 1 HITS 2 (stepb_n 1), P64's snare 64 steps with a hit in
+# bar 3 (dx_n 1, saved with its group as P1 comes back), track 1's first item a break (tb_n 1); RESET EVERYTHING
+# (K4 to it, K2 five clicks, GLO): none of it, in RAM, in P64 read back from its group, after a reboot.
+#   app/build/host/affine_host tests/scenarios/resetall.txt app/build/scenarios
+wait 4200
+tap SEQ
+wait 300
+expect seq_lane 2
+turn K3 1 10
+wait 200
+expect lane_kick 4369
+key w0 down
+wait 100
+turn K2 1 10
+wait 100
+key w0 up
+wait 200
+expect stepb_n 1
+turn PRESET -1 10
+wait 300
+expect pattern 63
+expect pgrp 3
+expect stepb_n 0
+turn ALGO 2 80
+wait 150
+expect seq_lane 6
+turn K4 -3 10
+wait 150
+turn K4 1 10
+wait 150
+turn K4 1 10
+wait 150
+expect lane_steps 64
+turn ALGO 2 80
+wait 150
+expect seq_lane 8
+key w0 down
+wait 60
+key w0 up
+wait 150
+expect lane_mask 1
+expect dx_n 1
+turn PRESET 1 10
+wait 300
+expect pattern 0
+expect pgrp 0
+expect stepb_n 1
+expect dx_n 1
+tap ENV
+wait 300
+turn K4 1 10
+wait 200
+expect tb_n 1
+tap GLO
+wait 100
+turn SELECT 1 10
+wait 100
+turn SELECT 1 10
+wait 100
+turn SELECT 1 10
+wait 100
+turn SELECT 1 10
+wait 300
+expect gpage 5
+turn K4 20 10
+turn K2 5 10
+wait 200
+tap GLO
+wait 400
+expect lobo 1
+expect lane_kick 0
+expect stepb_n 0
+expect dx_n 0
+expect tb_n 0
+wait 4500
+tap SEQ
+wait 300
+turn PRESET -1 10
+wait 300
+expect pattern 63
+expect stepb_n 0
+expect dx_n 0
+reboot
+wait 4200
+expect stepb_n 0
+expect dx_n 0
+expect tb_n 0
+tap SEQ
+wait 300
+turn PRESET -1 10
+wait 300
+expect pattern 63
+expect stepb_n 0
+expect dx_n 0
+turn PRESET 1 10
+wait 300
+expect pattern 0
+expect stepb_n 0
+expect lane_kick 0

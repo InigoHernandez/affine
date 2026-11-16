@@ -1,11 +1,11 @@
-# AFFINE (16 Nov 2026, the owner): the black keys' rows AFFINE (0), PUNCH (3), CUSTOM (2). FX held, OCT+ the next row,
-# OCT- the one before, round; the header says it; no page, no FX fader, no pitch. FX held 0.7 s alone toggles the
-# fader at its release (no more while held). Then each PUNCH key held: its functions together (fheld, bit BKF_*), the
-# pads it holds (pads, bit PAD_*), the PSX bus's keys (psx_held: VRB 1, SKP 2, CRS 4), BOOM quiet (kil), its settings
-# in (cmb 32..42), its key lit (cmb_lit, bit CB_*), all let go with it. (The simulator starts on CUSTOM.)
+# AFFINE (16 Nov 2026, the owner): the black keys' rows AFFINE (0) and PUNCH (3). FX held, OCT- AFFINE, OCT+ PUNCH,
+# each its own (the CUSTOM row and the round gone, 16 Nov 2026: rows2.txt); the header says it; no page, no FX fader,
+# no pitch. FX held 0.7 s alone toggles the fader at its release (no more while held). Then each PUNCH key held: its
+# functions together (fheld, bit BKF_*), the pads it holds (pads, bit PAD_*), the PSX bus's keys (psx_held: VRB 1,
+# SKP 2, CRS 4), BOOM quiet (kil), its settings in (cmb 32..42), its key lit (cmb_lit, bit CB_*), all let go with it.
 #   app/build/host/affine_host tests/scenarios/punchrow.txt app/build/scenarios
 wait 4200
-expect row 2
+expect row 0
 expect page 0
 expect fx_wet 100
 expect pitch 0
@@ -13,21 +13,18 @@ press FX
 wait 100
 tap OCT+
 wait 100
-expect row 0
-tap OCT+
-wait 100
 expect row 3
 shot punch_row_b.png
 tap OCT+
 wait 100
-expect row 2
-tap OCT+
+expect row 3
+tap OCT-
 wait 100
 expect row 0
 tap OCT-
 wait 100
-expect row 2
-tap OCT-
+expect row 0
+tap OCT+
 wait 100
 expect row 3
 wait 900
