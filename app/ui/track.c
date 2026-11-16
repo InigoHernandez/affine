@@ -22,19 +22,14 @@ enum { RST_DROP, RST_BUILD, RST_KICK, RST_DRUMS, RST_MIX, RST_FX, RST_STEPS, RST
                                           * KICKS gone with the hardcore kick; KICK is BOOM) */
 static const char *const RST_NAME[NRST] = {"DROP", "BUILD", "BOOM", "DRUMS", "MIX", "FX CHAIN", "STEPS", "PADS", "KEYS",
                                            "TRACK", "SCREEN", "WIPE MEMORY", "EVERYTHING"};
-static const char *const RST_WHAT[NRST] = {"BUILD 4 BARS, NEXT PATTERN, SAME BREAK, CRASH 100%",
-                                          "SNARE ROLL, HIGH-PASS, RISER 100%, NO GAP",
-                                          "BOOM AS IT CAME: 808, ITS LEVEL KEPT",
-                                          "SNARE, HAT, CLAP: THE MEMORY PLAYING AS IT CAME",
-                                          "THE MIXER: LEVELS, SWING, COMP AND DUCK OFF, MAX OUT -3 DB",
-                                          "THE FOUR SLOTS AS THEY CAME, EACH EFFECT'S MEMORY FORGOTTEN",
-                                          "THIS PATTERN'S DRUM STEPS: 1 HIT, ALWAYS, ON TIME",
-                                          "THE BLACK KEYS: ROLLS, THRU, FILTER, GATE, LATCH, THE ARP KEY",
-                                          "THE WHITE KEYS' LOOPS AND SLICE EFFECTS",
-                                          "THIS TRACK: FROM ITEM 1, EVERY ITEM'S BREAK SAME",
-                                          "SKIN POLYGON, SCREEN EFFECTS OFF, THEIR SETTINGS 50%, WAVE ZOOM 1 BAR",
-                                          "ALL AFFINE SAVES ERASED, FOR ANOTHER FIRMWARE: INSTALL IT NEXT",
-                                          "EVERYTHING AS IT CAME, ALL 64 PATTERNS, SAVED AT ONCE: 15 TURNS"};
+static const char *const RST_WHAT[NRST] = {"4 BARS, NEXT, CRASH 100%", "SNARE ROLL, HIGH-PASS",
+                                          "808, ITS LEVEL KEPT", "SNARE, HAT, CLAP", "LEVELS, SWING, COMP",
+                                          "THE FOUR SLOTS", "1 HIT, ALWAYS, ON TIME", "THE BLACK KEYS",
+                                          "THE WHITE KEYS", "FROM ITEM 1, BREAKS SAME", "SKIN, EFFECTS, ZOOM",
+                                          "ALL SAVES ERASED", "ALL 64 PATTERNS TOO"};   /* (what each puts back: AFFINE,
+                                          * a line at 2x under the list) */
+static const char *const RST_SHORT[NRST] = {"DROP", "BUILD", "BOOM", "DRUMS", "MIX", "FX", "STEPS", "PADS", "KEYS",
+                                           "TRACK", "SCREEN", "WIPE", "ALL"};   /* (the foot's WHAT, beside it) */
 /* LOAF BREAKER (0.263, FLEXOR): WIPE MEMORY, before installing another firmware: every sector LOAF BREAKER saves in
  * (its objects: 0xB6000..0xDBFFF, 0xDE000..0xDFFFF; the panel's calibration, 0xDC000, every fm1-base firmware's, kept)
  * erased, one a frame (wipe_step, main.c), the settings left unreadable (a first start's, if it comes back); then no
@@ -207,6 +202,9 @@ static void reset_do(uint32_t w)
 }
 static const char *const DS_NAME[DS_N] = {"SNARE ROLL", "BOOM ROLL", "BOOM+SNARE", "STUTTER", "SWEEP ONLY", "RANDOM"};
 static const char *const SWEEP_NAME[4] = {"HIGH-PASS", "LOW-PASS", "NONE", "RANDOM"};
+static const char *const DS_SHORT[DS_N] = {"SNARE", "BOOM", "BOTH", "STUTTER", "SWEEP", "RAND"};   /* (AFFINE: the
+                                          * foot's, beside STYLE and SWEEP at 2x; the header says the long ones) */
+static const char *const SWEEP_SHORT[4] = {"HP", "LP", "OFF", "RAND"};
 static uint32_t drop_rng = 0x2545F491u;
 static uint32_t drop_rand(uint32_t n)    /* 0..n-1, by chance (the drops unlike each other) */
 {
@@ -519,23 +517,48 @@ static void trk_item_text(const track_t *t, uint32_t i, char *s, char *r)   /* "
         int_text((int32_t)t->rep[i], r + 1);
     }
 }
-static void track_value(int i, char *t)
+static void brk_word(uint32_t b, char *t)   /* AFFINE: a break's name, its tempo left out where it ends in one
+                                          * ("OLDSKOO 160": "OLDSKOO"; the foot's, beside its name at 2x) */
+{
+    const char *s = break_name(b);
+    uint32_t n = 0u, k;
+    while (s[n] && n < 12u)
+        n++;
+    for (k = n; k > 0u && s[k - 1u] >= '0' && s[k - 1u] <= '9'; k--)
+        ;
+    if (k + 1u < n && k >= 4u && s[k - 1u] == ' ')
+        n = k - 1u;                      /* (three letters at least, a space, two digits at least) */
+    for (k = 0; k < n; k++)
+        t[k] = s[k];
+    t[n] = 0;
+}
+static void track_text(int i, char *t, int foot);
+static void track_value(int i, char *t) { track_text(i, t, 1); }   /* (the foot's: main.c's knob_value) */
+/* the knobs' values. foot: as the foot shows them beside their names (AFFINE, 2x: short, "HP", "OLDSKOO", "2"); else
+ * as the header says them ("HIGH-PASS", "OLDSKOO 160", "TRACK 2") */
+static void track_text(int i, char *t, int foot)
 {
     const track_t *tr = trk_now();
     char r[6];
     t[0] = 0;
     if (RST_ON) {                        /* RESET (GLO): what, and K2-K4: the clicks */
         if (i == 3)                      /* (LOAF BREAKER, 0.239, FLEXOR: K4 what, K2 the clicks, then GLO) */
-            text_cat(t, RST_NAME[ui.rst_sel % NRST]);
-        else if (i == 1)
-            text_cat(t, rst_cool() ? "DONE" : rst_asking() ? "PRESS GLO" : rst_live() ? "MORE!" : "TURN x5");
+            text_cat(t, (foot ? RST_SHORT : RST_NAME)[ui.rst_sel % NRST]);
+        else if (i == 1) {               /* (AFFINE: the turns as a count; GLO when they are done) */
+            if (rst_cool() || rst_asking() || !rst_live())
+                text_cat(t, rst_cool() ? "DONE" : rst_asking() ? "GLO" : "x5");
+            else {
+                int_text((int32_t)ui.rst_n, t);
+                text_cat(t, "/5");
+            }
+        }
         return;
     }
     if (ui.tpage == 4u) {                /* BUILD: its style, its filter, its noise, the gap before the drop */
         if (i == 0)
-            text_cat(t, DS_NAME[set.drop_style % DS_N]);
+            text_cat(t, (foot ? DS_SHORT : DS_NAME)[set.drop_style % DS_N]);
         else if (i == 1)
-            text_cat(t, SWEEP_NAME[set.drop_sweep & 3u]);
+            text_cat(t, (foot ? SWEEP_SHORT : SWEEP_NAME)[set.drop_sweep & 3u]);
         else if (i == 2) {
             if (!set.drop_riser)
                 text_cat(t, "OFF");
@@ -568,6 +591,8 @@ static void track_value(int i, char *t)
         } else if (i == 2) {
             if (!set.drop_brk || set.drop_brk > n_breaks)
                 text_cat(t, "SAME");
+            else if (foot)
+                brk_word(set.drop_brk - 1u, t);
             else
                 text_cat(t, break_name(set.drop_brk - 1u));
         } else if (set.drop_crash) {
@@ -579,8 +604,9 @@ static void track_value(int i, char *t)
     }
     if (ui.tpage == 1u) {                /* PLAY */
         if (i == 0) {
-            text_cat(t, "TRACK ");
-            int_text((int32_t)set.trk + 1, t + 6);
+            if (!foot)                   /* (the foot: TRACK 2) */
+                text_cat(t, "TRACK ");
+            int_text((int32_t)set.trk + 1, t + text_n(t));
         } else if (i == 1)
             int_text((int32_t)TRK_FROM + 1, t);
         else if (i == 2)
@@ -602,11 +628,13 @@ static void track_value(int i, char *t)
         else
             text_cat(t, "-");
     } else if (tr->it[ui.trk_cur % TRK_ITEMS] == TI_DROP)
-        text_cat(t, GAPM_NAME[*trk_brk(ui.trk_cur) >> 1 & 3u]);
+        text_cat(t, foot && !(*trk_brk(ui.trk_cur) >> 1 & 3u) ? "NONE" : GAPM_NAME[*trk_brk(ui.trk_cur) >> 1 & 3u]);
     else if (!trk_is_pat(tr, ui.trk_cur))
         text_cat(t, "-");
     else if (!*trk_brk(ui.trk_cur) || *trk_brk(ui.trk_cur) > n_breaks)
         text_cat(t, "SAME");
+    else if (foot)
+        brk_word(*trk_brk(ui.trk_cur) - 1u, t);
     else
         text_cat(t, break_name(*trk_brk(ui.trk_cur) - 1u));
 }
@@ -616,7 +644,7 @@ static void track_say(int i)             /* the knob turned, on the strip */
                                         {"BUILD", "AFTER DROP", "DROP BREAK", "CRASH"}, {"", "", "", ""},
                                         {"BUILD STYLE", "SWEEP", "RISER", "GAP"}, {"RESET", "RESET", "RESET", "RESET"}};
     char t[20];
-    track_value(i, t);
+    track_text(i, t, 0);
     int drp = !ui.tpage && trk_now()->it[ui.trk_cur % TRK_ITEMS] == TI_DROP;
     app_say(drp && i == 2 ? "STUTTER" : drp && i == 3 ? "GAP KEEPS" : N[ui.tpage % NTPART][i & 3], t);
     ui.redraw |= RG_BLOCKS | RG_FOOT;
@@ -905,15 +933,15 @@ static uint32_t track_keys_lit(void)     /* TRACKS: the item's pattern; PLAY: th
     return 0u;
 }
 
-/* the picture, y 44..191 (148 rows, drawn in strips): TRACKS and PLAY the track's items in four rows of eight (a
- * pattern "P3" and its loops "X4", a DROP lit amber, the END), the item edited (TRACKS) or played from (PLAY)
- * outlined, the one playing lit; above them the track, its length and what it does at its end. DROP: its four
- * settings, large */
+/* the picture, y 44..191 (148 rows, drawn in strips no text crosses: seq.c's pic_draw; AFFINE: every text at 2x,
+ * pic_text): TRACKS the track's items in four rows of eight (a pattern's number "3" and its loops "X4", a DROP lit
+ * amber, the END), the item edited outlined, the one playing lit; above them the track, its length and what it does
+ * at its end. PLAY: a radio. DROP and BUILD: the drop drawn (drop_picture). GLO's RESET: its list */
 #define TK_GY 22                         /* the items' grid begins */
 #define TK_CH 31                         /* a row of items */
 /* LOAF BREAKER: ENV's PLAY, a radio: the stations (the tracks 1-8) on a lit dial, the needle gliding to the one K1
  * tunes, a big knob turned to it, the station's name and what it plays, PRESS PLAY blinking (ON AIR while it plays) and
- * the speaker's grille */
+ * the speaker's grille (AFFINE, 2x: the knob's TUNING and the track's FROM and END, the foot's, gone) */
 static void radio_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)   /* a filled circle */
 {
     int32_t y;
@@ -930,21 +958,20 @@ static void radio_picture(void)
     uint32_t i, n = trk_len(t), now = plat_ms();
     int32_t x, k;
     float a;
-    char s[24], u[8];
-    int on_air = ui.trk_on && 1;
+    char s[24];
     /* the dial: a lit window, a scale, the stations */
     cv_rect(6, 2, 228, 44, C_BLOCK);
     cv_rect(10, 6, 220, 36, RGB(40, 26, 12));
     for (x = 0; x <= 56; x++) {          /* (the scale's ticks, the long ones the stations) */
         int32_t px = 20 + x * 200 / 56, lng = !(x % 8);
-        cv_rect(px, lng ? 22 : 26, 1, lng ? 12 : 5, lng ? C_AMB : RGB(120, 80, 40));
+        cv_rect(px, lng ? 23 : 27, 1, lng ? 12 : 5, lng ? C_AMB : RGB(120, 80, 40));
     }
     for (i = 0; i < NTRACKS; i++) {
         int32_t px = 20 + (int32_t)i * 200 / 7;
         s[0] = (char)('1' + i);
         s[1] = 0;
-        cv_text(px - 2, 8, &FONT_XS, s, i == set.trk % NTRACKS ? C_WHITE : trk_len(&pats.trk[i]) ? C_AMB
-                : RGB(110, 70, 35));
+        pic_text(px - pic_tw(s) / 2, 10, s, i == set.trk % NTRACKS ? C_WHITE : trk_len(&pats.trk[i]) ? C_AMB
+                 : RGB(110, 70, 35));
     }
     x = 20 + (int32_t)(ui.radio * 200.0f / 7.0f + 0.5f);
     cv_rect(x - 1, 7, 3, 34, C_HI);      /* the needle */
@@ -962,33 +989,161 @@ static void radio_picture(void)
         cv_rect(42 + (int32_t)(34.0f * brk_sin_turns(b)), 100 - (int32_t)(34.0f * brk_sin_turns(b + 0.25f)), 2, 2,
                 C_GRAY);
     }
-    cv_text(26, 136, &FONT_XS, "TUNING", C_GRAY);
-    /* the station */
+    /* the station: its name, how long, and PRESS PLAY or ON AIR blinking */
     s[0] = 0;
     text_cat(s, "TRACK ");
     int_text((int32_t)set.trk + 1, s + 6);
-    cv_text(86, 56, &FONT_B, s, C_WHITE);
-    s[0] = 0;
+    pic_text(86, 64, s, C_WHITE);
+    s[0] = 0;                            /* (its length; its items: TRACKS') */
     int_text((int32_t)trk_bars(t), s);
-    text_cat(s, " BARS  ");
-    int_text((int32_t)n, u);
-    text_cat(s, u);
-    text_cat(s, n == 1u ? " ITEM" : " ITEMS");
-    cv_text(86, 78, &FONT_XS, n ? s : "EMPTY: MAKE IT ON TRACKS", C_GRAY);
-    s[0] = 0;
-    text_cat(s, "FROM ");
-    int_text((int32_t)TRK_FROM + 1, u);
-    text_cat(s, u);
-    text_cat(s, "  ");
-    text_cat(s, TRK_END_NAME[t->end % 3u]);
-    cv_text(86, 90, &FONT_XS, s, C_GRAY);
-    if (on_air)                          /* ON AIR, or PRESS PLAY blinking */
-        cv_text(86, 106, &FONT_T, (now / 400u) & 1u ? "ON AIR" : "", C_HI);
+    text_cat(s, trk_bars(t) == 1u ? " BAR" : " BARS");
+    pic_text(86, 82, n ? s : "EMPTY TRACK", C_GRAY);
+    if (ui.trk_on)                       /* ON AIR, or PRESS PLAY blinking */
+        pic_text(86, 100, (now / 400u) & 1u ? "ON AIR" : "", C_HI);
     else if (n)
-        cv_text(86, 106, &FONT_T, (now / 500u) & 1u ? "PRESS PLAY" : "", C_HI);
+        pic_text(86, 100, (now / 500u) & 1u ? "PRESS PLAY" : "", C_HI);
     for (k = 0; k < 4; k++)              /* the speaker's grille */
         for (x = 0; x < 24; x++)
             cv_rect(88 + x * 6, 124 + k * 6, 2, 2, RGB(60, 60, 66));
+}
+/* AFFINE, 2x: DROP and BUILD, one picture (the owner: little text, more picture): the build's bars (BUILD's roll in
+ * them, its sweep and its riser over them), its gap, the drop (its crash) and the pattern after it (the drop's break
+ * under it); over it one line: how to drop (DROP), the tempo's rise to it (BUILD, PRESETS). Each knob of both pages
+ * changes it */
+#define DP_XD 150                        /* the drop */
+#define DP_Y0 26                         /* the bars' top, */
+#define DP_YS 84                         /* where the sweep's zone ends, the roll's begins */
+#define DP_Y1 142                        /* their bottom */
+static void drop_roll(int32_t x0, int32_t x1, uint32_t bars, int32_t y, int32_t h, int32_t hw, uint16_t c)
+{                                        /* a roll over the build: 4 a bar, then 8, 16, 32 over its last quarters */
+    uint32_t u = 0u, all = bars * 128u;  /* (in 128ths of a bar) */
+    while (u < all) {
+        int32_t x = x0 + (int32_t)(u * (uint32_t)(x1 - x0) / all);
+        cv_rect(x, y, hw, h, c);
+        u += 32u >> (u * 4u / all);
+    }
+}
+static void drop_picture(int build)
+{
+    uint32_t bars = DROP_BARS[set.drop_bars % 5u], k;
+    int32_t gap = (int32_t)DROP_GAP[set.drop_gap % 5u] * 3, x0 = 6, xe = DP_XD - 4 - gap, x, y;
+    uint32_t riser = set.drop_riser > 100u ? 100u : set.drop_riser;
+    char s[16];
+    /* the line over it */
+    if (build) {
+        pic_text(6, 4, "PRESETS: TEMPO", C_GRAY);
+        s[0] = 0;
+        if (!set.drop_accel)
+            text_cat(s, "OFF");
+        else {
+            s[0] = '+';
+            int_text(set.drop_accel, s + 1);
+            text_cat(s, "%");
+        }
+        pic_text(6 + pic_tw("PRESETS: TEMPO") + 8, 4, s, set.drop_accel ? C_HI : C_DIM);
+    } else
+        pic_text(6, 4, "SEL + ENV: THE DROP", C_GRAY);
+    /* the build's bars (none: the bar playing ends into the drop, dim) */
+    for (k = 0; k < (bars ? bars : 1u); k++) {
+        int32_t bx = x0 + (int32_t)k * (xe - x0) / (int32_t)(bars ? bars : 1u);
+        int32_t bw = x0 + (int32_t)(k + 1u) * (xe - x0) / (int32_t)(bars ? bars : 1u) - bx - 2;
+        cv_rect(bx, DP_Y0, bw, DP_Y1 - DP_Y0, bars ? C_BLOCK : C_LINE);
+        if (bars && bw >= 24)            /* (its beats) */
+            for (x = 1; x < 4; x++)
+                cv_rect(bx + bw * x / 4, DP_YS + 2, 1, DP_Y1 - DP_YS - 4, C_LINE);
+    }
+    if (bars) {
+        /* the riser: a wedge growing to the drop, as high as its amount */
+        for (x = x0; x < xe; x++) {
+            int32_t h = (x - x0) * (DP_YS - DP_Y0 - 6) * (int32_t)riser / ((xe - x0) * 100);
+            if (h > 0)
+                cv_rect(x, DP_YS - 2 - h, 1, h, (x & 1) ? C_DIM : C_LINE);
+        }
+        /* the sweep: the filter's cutoff, up (HIGH-PASS) or down (LOW-PASS) */
+        if (set.drop_sweep < 2u)
+            for (x = x0; x < xe; x += 2) {
+                int32_t f = (x - x0) * 64 / (xe - x0), d = f * f * (DP_YS - DP_Y0 - 14) / 4096;
+                cv_rect(x, set.drop_sweep ? DP_Y0 + 6 + d : DP_YS - 8 - d, 2, 2, C_AMB);
+            }
+        else if (set.drop_sweep == 3u)   /* (RANDOM: one or the other, each build) */
+            pic_text(x0 + (xe - x0 - pic_tw("?")) / 2, (DP_Y0 + DP_YS - PIC_TH) / 2, "?", C_AMB);
+        /* the roll: the snare's, the boom's (each a lane), or the break stuttered */
+        y = DP_YS + 6;
+        if (set.drop_style == DS_SNARE || set.drop_style == DS_BOTH)
+            drop_roll(x0, xe, bars, y, 18, 2, C_HI);
+        if (set.drop_style == DS_KICK || set.drop_style == DS_BOTH)
+            drop_roll(x0, xe, bars, y + 26, 18, 3, C_WHITE);
+        if (set.drop_style == DS_STUTTER) {   /* (the break's pieces, shorter and shorter) */
+            uint32_t u = 0u, all = bars * 128u;
+            while (u < all) {
+                uint32_t len = 64u >> (u * 4u / all);
+                int32_t a = x0 + (int32_t)(u * (uint32_t)(xe - x0) / all);
+                int32_t b = x0 + (int32_t)((u + len) * (uint32_t)(xe - x0) / all);
+                cv_rect(a, y, b - a > 2 ? b - a - 1 : 1, 44, (u / len) & 1u ? C_AMB : C_HI);
+                u += len;
+            }
+        }
+        if (set.drop_style == DS_RANDOM)
+            pic_text(x0 + (xe - x0 - pic_tw("?")) / 2, (DP_YS + DP_Y1 - PIC_TH) / 2, "?", C_AMB);
+    }
+    if (gap > 0)                         /* the gap: silence before the drop */
+        for (x = xe + 2; x < DP_XD - 3; x += 3)
+            cv_rect(x, (DP_Y0 + DP_Y1) / 2, 1, 1, C_DIM);
+    /* the drop: a line, the crash bursting from it (as long as its amount; behind the pattern after it) */
+    cv_rect(DP_XD - 1, DP_Y0 - 4, 2, DP_Y1 - DP_Y0 + 8, C_HI);
+    if (set.drop_crash) {
+        static const int8_t RAY[8][2] = {{7, 0}, {5, 5}, {0, 7}, {-5, 5}, {-7, 0}, {-5, -5}, {0, -7}, {5, -5}};
+        int32_t len = 6 + (int32_t)(set.drop_crash > 100u ? 100u : set.drop_crash) * 20 / 100, r;   /* (in 7ths) */
+        for (k = 0; k < 8u; k++)
+            for (r = 4; r <= len; r += 3)
+                cv_rect(DP_XD - 1 + RAY[k][0] * r / 7, DP_YS + RAY[k][1] * r / 7, 2, 2, r > len - 3 ? C_HI : C_WHITE);
+    }
+    /* the pattern after it (NEXT: the one after the one playing), its break under it (none: the same); its first beat
+     * lit */
+    {
+        int32_t ax = DP_XD + 4, aw = 234 - ax;
+        cv_rect(ax, DP_Y0, aw, DP_Y1 - DP_Y0, C_BLOCK);
+        s[0] = 0;
+        if (!set.drop_after)
+            text_cat(s, "NEXT");
+        else {
+            s[0] = 'P';
+            int_text(set.drop_after, s + 1);
+        }
+        pic_text(ax + (aw - pic_tw(s)) / 2, 46, s, C_WHITE);
+        if (set.drop_brk && set.drop_brk <= n_breaks) {
+            brk_word(set.drop_brk - 1u, s);
+            pic_text(ax + (aw - pic_tw(s)) / 2, 64, s, C_AMB);
+        }
+        for (k = 0; k < 4u; k++)
+            cv_rect(ax + 6 + (int32_t)k * (aw - 12) / 4, DP_Y1 - 14, (aw - 12) / 4 - 3, 8, k ? C_LINE : C_HI);
+    }
+}
+/* AFFINE, 2x: GLO's RESET (drawn here, its code ENV's): the list (K4), five at a time; beside it the five turns of K2
+ * as a meter filling; under it what the one picked puts back, in a line, and what to do next */
+static void reset_picture(void)
+{
+    uint32_t w = ui.rst_sel % NRST, i;
+    uint32_t on = rst_live() ? ui.rst_n : 0u, done = rst_cool(), ask = rst_asking();
+    uint32_t first = w < 2u ? 0u : w + 3u > NRST ? NRST - 5u : w - 2u;   /* (the one picked kept in view) */
+    for (i = first; i < first + 5u && i < NRST; i++) {
+        int32_t y = 2 + (int32_t)(i - first) * 19;
+        cv_rect(6, y, 144, 17, i == w ? C_HI : C_BLOCK);
+        pic_text(12, y + 4, RST_NAME[i], i == w ? C_BLACK : C_GRAY);
+    }
+    if (first)                           /* (more above, more below) */
+        cv_rect(153, 2, 2, 6, C_DIM);
+    if (first + 5u < NRST)
+        cv_rect(153, 87, 2, 6, C_DIM);
+    for (i = 0; i < RST_TURNS; i++) {    /* (the turns so far: a meter, each bar taller) */
+        int32_t h = 18 + (int32_t)i * 18;
+        cv_rect(162 + (int32_t)i * 15, 93 - h, 12, h, done || ask || i < on ? C_HI : C_BLOCK);
+    }
+    pic_text(6, 104, w == RST_WIPE && wiped ? "WIPED: NOW INSTALL" : RST_WHAT[w],
+             w == RST_WIPE && wiped ? C_HI : C_GRAY);
+    cv_rect(6, 120, 228, 26, on || done || ask ? C_HI : C_BLOCK);
+    pic_text(12, 128, done ? "DONE (WAIT 3 S)" : ask ? "PRESS GLO TO RESET" : on ? "KEEP TURNING K2"
+             : "TURN K2 x5, THEN GLO", on || done || ask ? C_BLACK : C_GRAY);
 }
 static void track_picture(int32_t top)
 {
@@ -996,126 +1151,28 @@ static void track_picture(int32_t top)
     uint32_t i, n = trk_len(t);
     char s[20], r[8];
     cv_oy = -top;
-    if (RST_ON) {                        /* RESET (GLO): the list (K4), what it puts back, the clicks */
-        uint32_t w = ui.rst_sel % NRST;
-        uint32_t on = rst_live() ? ui.rst_n : 0u;
-        {                                /* (five at a time, the one picked kept in view) */
-            uint32_t first = w < 2u ? 0u : w + 3u > NRST ? NRST - 5u : w - 2u;
-            for (i = first; i < first + 5u && i < NRST; i++) {
-                int32_t y = 6 + (int32_t)(i - first) * 20;
-                cv_rect(6, y, 108, 17, i == w ? C_HI : C_BLOCK);
-                cv_text(12, y + 2, &FONT_T, RST_NAME[i], i == w ? C_BLACK : C_GRAY);
-            }
-            if (first)                   /* (more above, more below) */
-                cv_rect(116, 6, 2, 6, C_DIM);
-            if (first + 5u < NRST)
-                cv_rect(116, 92, 2, 6, C_DIM);
-        }
-        cv_text(124, 8, &FONT_XS, w == RST_WIPE ? (wiped ? "DONE: NOW INSTALL" : "ERASED FOR GOOD:")
-                                                : "BACK TO THE START:", wiped && w == RST_WIPE ? C_HI : C_GRAY);
-        {                                /* (what it puts back, in lines of ~18) */
-            const char *p = RST_WHAT[w];
-            int32_t y = 22;
-            while (*p && y < 100) {
-                char line[20];
-                uint32_t n = 0u, cut = 0u;
-                while (p[n] && n < 18u) {
-                    if (p[n] == ' ')
-                        cut = n;
-                    n++;
-                }
-                if (p[n] && cut)
-                    n = cut;
-                memcpy(line, p, n);
-                line[n] = 0;
-                cv_text(124, y, &FONT_XS, line, C_WHITE);
-                p += n;
-                while (*p == ' ' || *p == ',')
-                    p++;
-                y += 12;
-            }
-        }
-        {                                /* (LOAF BREAKER, 0.239: K2 five clicks, then GLO; just reset: DONE, the five
-                                          * lit, the knobs at rest 3 s) */
-            uint32_t done = rst_cool(), ask = rst_asking();
-            cv_rect(6, 104, 148, 24, on || done || ask ? C_HI : C_BLOCK);
-            cv_text(12, 110, &FONT_T, done ? "DONE  (WAIT 3 S)" : ask ? "PRESS GLO TO RESET" : on ? "KEEP TURNING K2"
-                    : "TURN K2 x5, THEN GLO", on || done || ask ? C_BLACK : C_GRAY);
-            for (i = 0; i < RST_TURNS; i++)  /* (the clicks so far: five boxes) */
-                cv_rect(160 + (int32_t)i * 15, 106, 12, 20, done || ask || i < on ? C_HI : C_BLOCK);
-        }
-        cv_oy = 0;
-        return;
-    }
-    if (ui.tpage == 4u) {                /* BUILD: its four settings, large */
-        static const char *const N[4] = {"BUILD STYLE", "SWEEP", "RISER", "GAP BEFORE THE DROP"};
-        for (i = 0; i < 4u; i++) {
-            int32_t y = 6 + (int32_t)i * 34;
-            cv_text(10, y, &FONT_XS, N[i], C_GRAY);
-            track_value((int)i, s);
-            cv_text(10, y + 11, &FONT_B, s, C_WHITE);
-        }
-        cv_text(134, 12, &FONT_XS, "RANDOM: EACH", C_HI);
-        cv_text(134, 24, &FONT_XS, "BUILD PICKS ITS", C_HI);
-        cv_text(134, 36, &FONT_XS, "OWN STYLE, SWEEP", C_HI);
-        cv_text(134, 60, &FONT_XS, "STUTTER: THE", C_GRAY);
-        cv_text(134, 72, &FONT_XS, "BREAK ROLLS INTO", C_GRAY);
-        cv_text(134, 84, &FONT_XS, "THE DROP", C_GRAY);
-        cv_text(134, 104, &FONT_XS, "PRESETS: TEMPO RISE", C_GRAY);   /* (TEST) */
-        s[0] = 0;
-        if (!set.drop_accel)
-            text_cat(s, "OFF");
-        else {
-            s[0] = '+';
-            int_text(set.drop_accel, s + 1);
-            text_cat(s, "% TO THE DROP");
-        }
-        cv_text(134, 116, &FONT_XS, s, set.drop_accel ? C_HI : C_DIM);
-        cv_oy = 0;
-        return;
-    }
-    if (ui.tpage == 2u) {
-        static const char *const N[4] = {"BUILD", "AFTER DROP", "DROP BREAK", "CRASH"};
-        for (i = 0; i < 4u; i++) {
-            int32_t y = 6 + (int32_t)i * 34;
-            cv_text(10, y, &FONT_XS, N[i], C_GRAY);
-            track_value((int)i, s);
-            cv_text(10, y + 11, &FONT_B, s, C_WHITE);
-            cv_rect(120, y + 6, 1, 20, C_LINE);
-        }
-        cv_text(132, 12, &FONT_XS, "SEL + ENV: THE DROP", C_HI);
-        cv_text(132, 26, &FONT_XS, "FROM THE NEXT BAR", C_GRAY);
-        cv_text(132, 46, &FONT_XS, "NONE: THE BAR", C_GRAY);
-        cv_text(132, 58, &FONT_XS, "PLAYING ENDS IN IT", C_GRAY);
-        cv_text(132, 78, &FONT_XS, "SEL + ENV BUILDING:", C_GRAY);
-        cv_text(132, 90, &FONT_XS, "THE DROP NEXT BAR", C_GRAY);
-        cv_oy = 0;
-        return;
-    }
-    if (ui.tpage == 1u) {                /* PLAY: the radio */
+    if (RST_ON)                          /* RESET (GLO): the list (K4), what it puts back, the clicks */
+        reset_picture();
+    else if (ui.tpage == 4u || ui.tpage == 2u)   /* BUILD, DROP: the drop */
+        drop_picture(ui.tpage == 4u);
+    else if (ui.tpage == 1u)             /* PLAY: the radio */
         radio_picture();
+    if (RST_ON || ui.tpage) {
         cv_oy = 0;
         return;
     }
     s[0] = 0;
     text_cat(s, "TRACK ");
     int_text((int32_t)set.trk + 1, s + 6);
-    cv_text(6, 2, &FONT_B, s, C_WHITE);
-    s[0] = 0;
+    pic_text(6, 4, s, C_WHITE);
+    s[0] = 0;                            /* (where PLAY starts it: the flag on its item) */
     int_text((int32_t)trk_bars(t), s);
     text_cat(s, " BARS  ");
     text_cat(s, TRK_END_NAME[t->end % 3u]);
-    cv_text(234 - text_w(&FONT_XS, s), 6, &FONT_XS, s, C_GRAY);
-    if (ui.trk_on && ui.tpage == 1u)
-        cv_text(100, 6, &FONT_XS, "PLAYING", C_HI);
-    if (!ui.tpage && TRK_FROM && TRK_FROM < n) {   /* (LOAF BREAKER: where PLAY starts it) */
-        char f[12] = "FROM ";
-        int_text((int32_t)TRK_FROM + 1, f + 5);
-        cv_text(100, 6, &FONT_XS, f, C_WHITE);
-    }
+    pic_text(234 - pic_tw(s), 4, s, C_GRAY);
     for (i = 0; i < TRK_ITEMS; i++) {
         int32_t x = 1 + (int32_t)(i % 8u) * 30, y = TK_GY + (int32_t)(i / 8u) * TK_CH;
-        int mark = ui.tpage ? i == TRK_FROM : i == ui.trk_cur;
+        int mark = i == ui.trk_cur;
         int now = ui.trk_on && i == ui.trk_pos;
         uint16_t bg = now ? C_HI : i < n ? (t->it[i] == TI_DROP ? C_AMB : C_BLOCK) : C_BLACK;
         if (i > n)
@@ -1135,7 +1192,7 @@ static void track_picture(int32_t top)
             cv_rect(x - 1, y - 1, 1, TK_CH - 1, C_WHITE);
             cv_rect(x + 28, y - 1, 1, TK_CH - 1, C_WHITE);
         }
-        if (i == TRK_FROM && i < n && !ui.tpage) {   /* (LOAF BREAKER: the first item PLAY plays: a flag at its corner) */
+        if (i == TRK_FROM && i < n) {    /* (LOAF BREAKER: the first item PLAY plays: a flag at its corner) */
             uint16_t fc = now ? C_BLACK : C_WHITE;
             cv_rect(x + 1, y + 1, 1, 7, fc);
             cv_rect(x + 2, y + 2, 1, 5, fc);
@@ -1145,7 +1202,7 @@ static void track_picture(int32_t top)
         if (i > n || (i < n && t->it[i] == TI_GAP))
             continue;
         trk_item_text(t, i, s, r);
-        {
+        {                                /* (AFFINE, 2x: two lines in its 28 rows, 4 above, 2 between, 2 under) */
             uint16_t c = now || t->it[i] == TI_DROP ? C_BLACK : i == n ? C_DIM : C_WHITE;
             char kk[6] = "";
             if (t->it[i] == TI_DROP && *trk_brk(i) & 1u)
@@ -1156,16 +1213,14 @@ static void track_picture(int32_t top)
                 kk[kn + 1u] = 0;
             }
             if (t->it[i] == TI_DROP && kk[0]) {   /* (LOAF BREAKER: S its STUTTER under it, what its GAP keeps) */
-                cv_text(x + (28 - text_w(&FONT_XS, "DRP")) / 2, y + 3, &FONT_XS, "DRP", c);
-                {                        /* (too wide: the smaller face) */
-                    const felucca_font_t *kf = text_w(&FONT_XS, kk) > 27 ? &FONT_T : &FONT_XS;
-                    cv_text(x + (28 - text_w(kf, kk)) / 2, y + 16, kf, kk, c);
-                }
+                pic_text(x + (28 - pic_tw("DRP")) / 2, y + 4, "DRP", c);
+                pic_text(x + (28 - pic_tw(kk)) / 2, y + 16, kk, c);
             } else if (t->it[i] == TI_DROP)
-                cv_text(x + (28 - text_w(&FONT_XS, "DRP")) / 2, y + 9, &FONT_XS, "DRP", c);
-            else {
-                cv_text(x + (28 - text_w(&FONT_T, s)) / 2, y + 3, &FONT_T, s, c);
-                if (r[0]) {                  /* (its loops, its own break: "X4 B3", the first ones left out where they
+                pic_text(x + (28 - pic_tw("DRP")) / 2, y + 9, "DRP", c);
+            else {                       /* (the pattern's number alone: "12", its P left off, two apart in a row) */
+                const char *pn = s[0] == 'P' ? s + 1 : s;
+                pic_text(x + (28 - pic_tw(pn)) / 2, y + 4, pn, c);
+                if (r[0]) {              /* (its loops, its own break: "X4 B3", the first ones left out where they
                                           * don't fit) */
                     char b[4] = "B";
                     const char *part[3];
@@ -1179,18 +1234,18 @@ static void track_picture(int32_t top)
                         part[np] = b;
                         col[np++] = now ? C_BLACK : C_AMB;
                     }
-                    for (;;) {                   /* (from the first that fits on) */
+                    for (;;) {           /* (from the first that fits on) */
                         w = 0;
                         for (q = a; q < np; q++)
-                            w += text_w(&FONT_XS, part[q]) + (q > a ? 3 : 0);
-                        if (w <= 27 || a + 1u >= np)
+                            w += pic_tw(part[q]) + (q > a ? 4 : 0);
+                        if (w <= 28 || a + 1u >= np)
                             break;
                         a++;
                     }
                     x0 = x + (28 - w) / 2;
                     for (q = a; q < np; q++) {
-                        cv_text(x0, y + 16, &FONT_XS, part[q], col[q]);
-                        x0 += text_w(&FONT_XS, part[q]) + 3;
+                        pic_text(x0, y + 16, part[q], col[q]);
+                        x0 += pic_tw(part[q]) + 4;
                     }
                 }
             }
@@ -1200,13 +1255,7 @@ static void track_picture(int32_t top)
 }
 static void draw_track(void)
 {
-    int32_t top;
-    for (top = 0; top < 148; top += 60) {   /* (the canvas holds 60 rows) */
-        int32_t h = 148 - top < 60 ? 148 - top : 60;
-        cv_begin(240, (uint32_t)h, C_BLACK);
-        track_picture(top);
-        cv_blit(0, (uint32_t)(44 + top));
-    }
+    pic_draw(track_picture);             /* (in strips: no text cut between two) */
 }
 /* ENV: TRACKS; again, PLAY, DROP, BUILD, and back */
 static void track_tab_turn(int32_t d)    /* (LOAF BREAKER, 0.9.2, FLEXOR: SELECT, ENV's tabs, both ways) */
