@@ -169,7 +169,7 @@ static void intro_draw(uint32_t now)      /* AFFINE: the start screen, its title
     drawn_t = now;
     ui.intro_drawn = 1u;
     version_text(t);
-    aff_title(now, now - ui.intro_t0, t, b ? b->name : "", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+    aff_title(now, now - ui.intro_t0, t, b ? b->name : "", "PRESS PLAY", "LOAF BREAKER + CHOPPAH");
     ui.redraw = 0u;
 }
 

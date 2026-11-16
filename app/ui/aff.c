@@ -621,33 +621,64 @@ static void home_bar(int32_t x, int32_t y, int32_t w, float amt, int bipolar, in
 
 /* a knob's cell: its name left, its value right, both 2x if they fit the width, else the name at 1x, then the value;
  * its gauge under them (norm -1: none; bip: from the middle, -1..1). y: the capitals' top on the screen */
+/* a knob cell's words when name and value don't fit its width at 2x (the foot's cells are 108 px: ~10 characters for
+ * both): the name's short form first, then the value's (its unit dropped), then the name cut; a name that would still
+ * touch the value is left out (the knob's place says which it is). The agents' list of cut names, 0.1 -> 2x */
+static const char *const AFF_SHORT_N[][2] = {
+    {"CLOCK IN", "CLK IN"}, {"CLOCK OUT", "CLK OUT"}, {"AUTO SAVE", "SAVE"}, {"BREAK TIME", "TIME"},
+    {"WAVE ZOOM", "ZOOM"}, {"BREAK ROWS", "ROWS"}, {"MAX OUT", "MAX"}, {"C ATTACK", "C ATT"}, {"C RELEASE", "C REL"},
+    {"D RELEASE", "D REL"}, {"DUCKS", "DUCK"}, {"DRUMS", "DRUM"}, {"EFFECT", "FX"}, {"REVERSE", "REV"},
+    {"GAP KEEPS", "KEEP"}, {"STUTTER", "STUT"}, {"CLR / 4X4", "CLR"}, {"LENGTH", "LEN"}, {"PRESET", "PRE"},
+    {"ON / OFF", "ON"}, {"SWEEP", "SWP"}, {"TONE", "TN"}};
+static const char *const AFF_SHORT_V[][2] = {
+    {"WAVEFORM", "WAVE"}, {"KEEP LEN", "KEEP"}, {"BEGINNER", "BEGIN"}, {"TUTORIAL", "TUTOR"}};
+static int aff_streq(const char *a, const char *b)
+{
+    while (*a && *a == *b) { a++; b++; }
+    return *a == *b;
+}
+static void aff_copyn(char *d, const char *s, int32_t n)
+{
+    int32_t i = 0;
+    while (s[i] && i < n - 1) { d[i] = s[i]; i++; }
+    d[i] = 0;
+}
 static void aff_knob_cell(int32_t x, int32_t y, int32_t w, const char *name, const char *v, float norm, int bip,
                           uint16_t ncol, int32_t band)
 {
-    int32_t lw, vw, lz, vz;
+    char nm[16], vv[16];
+    int32_t n, vw, k;
     if (!name || !name[0])
         return;
-    v = v ? v : "";
-    vw = aff_text_w(v, 2);
-    {                                    /* both at 2x, always (the owner, 0.1: "everything ... very small"): a name
-                                          * too long for the value beside it is cut, not shrunk */
-        char nm[16];
-        int32_t n = 0;
-        while (name[n] && n < 15) {
-            nm[n] = name[n];
-            n++;
+    aff_copyn(nm, name, 16);
+    aff_copyn(vv, v ? v : "", 16);
+    vw = aff_text_w(vv, 2);
+    for (k = 0; k < (int32_t)(sizeof AFF_SHORT_N / sizeof AFF_SHORT_N[0]) && aff_text_w(nm, 2) + vw + 6 > w; k++)
+        if (aff_streq(nm, AFF_SHORT_N[k][0]))
+            aff_copyn(nm, AFF_SHORT_N[k][1], 16);
+    for (k = 0; k < (int32_t)(sizeof AFF_SHORT_V / sizeof AFF_SHORT_V[0]) && aff_text_w(nm, 2) + vw + 6 > w; k++)
+        if (aff_streq(vv, AFF_SHORT_V[k][0])) {
+            aff_copyn(vv, AFF_SHORT_V[k][1], 16);
+            vw = aff_text_w(vv, 2);
         }
-        nm[n] = 0;
-        while (n > 3 && aff_text_w(nm, 2) + vw + 6 > w)
-            nm[--n] = 0;
-        while (n > 0 && nm[n - 1] == ' ')
-            nm[--n] = 0;
-        lw = aff_text_w(nm, 2);
-        lz = vz = 2;
-        if (lw + vw + 6 <= w || vw + 6 <= w)
-            aff_text(x, y, nm, lz, ncol, band, 0);
-        aff_text(x + w, y, v, vz, A_INK, band, 1);
+    if (aff_text_w(nm, 2) + vw + 6 > w) {   /* (a unit after the number: "32 STEPS", "1 1/4 BARS") */
+        for (k = 0; vv[k] && vv[k] != ' '; k++)
+            ;
+        if (vv[k] && k > 0 && vv[0] >= '0' && vv[0] <= '9' && vv[k + 1] >= 'A') {
+            vv[k] = 0;
+            vw = aff_text_w(vv, 2);
+        }
     }
+    n = 0;
+    while (nm[n])
+        n++;
+    while (n > 3 && aff_text_w(nm, 2) + vw + 6 > w)
+        nm[--n] = 0;
+    while (n > 0 && nm[n - 1] == ' ')
+        nm[--n] = 0;
+    if (aff_text_w(nm, 2) + vw + 6 <= w)
+        aff_text(x, y, nm, 2, ncol, band, 0);
+    aff_text(x + w, y, vv, 2, A_INK, band, 1);
     if (norm >= 0.0f || (bip && norm >= -1.0f))
         home_bar(x, y + 13, w, norm, bip, band);
 }
@@ -922,15 +953,16 @@ static void aff_title_band(int32_t band, uint32_t now, uint32_t el, const char *
     home_floor(&h, band);
     home_gem(&h, band);
     aff_logo(band, 8.0f, 14.0f, 1.76f, reveal, slide, lit, glint);
+    /* (every line at 2x, the owner's 0.1: "everything ... very small"; a line too wide for the screen left out) */
     if (top && top[0])
-        aff_text(120, 4, top, 1, A_DIM, band, 2);
+        aff_text(120, 2, top, 2, A_DIM, band, 2);
     if (e > 1400.0f) {
-        if (l1 && l1[0])
-            aff_text(120, 198, l1, 2, A_INK, band, 2);
-        if (l2 && l2[0] && (el / 100u) % 10u < 7u)
-            aff_text(120, 215, l2, 1, A_HOT, band, 2);
-        if (l3 && l3[0])
-            aff_text(120, 228, l3, 1, A_DIM, band, 2);
+        if (l1 && l1[0] && aff_text_w(l1, 2) <= 236)
+            aff_text(120, 194, l1, 2, A_INK, band, 2);
+        if (l2 && l2[0] && (el / 100u) % 10u < 7u && aff_text_w(l2, 2) <= 236)
+            aff_text(120, 210, l2, 2, A_HOT, band, 2);
+        if (l3 && l3[0] && aff_text_w(l3, 2) <= 236)
+            aff_text(120, 226, l3, 2, A_DIM, band, 2);
     }
 }
 static void aff_title(uint32_t now, uint32_t el, const char *top, const char *l1, const char *l2, const char *l3)

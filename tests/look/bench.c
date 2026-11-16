@@ -86,7 +86,7 @@ static uint64_t title_cost(uint32_t el)
     uint64_t a = instr(), b;
     int n;
     for (n = 0; n < 20; n++) {
-        aff_title(4000u + el, el, "0.1", "OLDSKOO 160", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+        aff_title(4000u + el, el, "0.1", "OLDSKOO 160", "PRESS PLAY", "LOAF BREAKER + CHOPPAH");
         sink += cv_px[n * 31];
     }
     b = instr();

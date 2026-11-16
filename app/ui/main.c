@@ -2207,7 +2207,9 @@ void app_frame(void)
         static uint8_t was_aff;
         uint8_t is_aff = aff_pg;
         if (was_aff && !is_aff) {
-            ui.redraw |= RG_ALL;
+            ui.redraw |= ui.shown != -1 ? (uint8_t)(RG_ALL & ~RG_BLOCKS) : RG_ALL;   /* (the SEL card or a held
+                                          * pad's view has the blocks' place: not the blocks over it, the screens
+                                          * agent's find: HOME's card never showed) */
             rows_forget(0u, 240u);
         }
         was_aff = is_aff;

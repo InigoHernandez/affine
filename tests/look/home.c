@@ -78,7 +78,7 @@ static void splash_frame(uint32_t el, const char *path)
     memset(fb, 0xAA, sizeof fb);
     for (g_band = 0; g_band < 240; g_band += 60) {
         cv_begin(240, 60, A_BG0);
-        aff_title_band(g_band, 50000u + el, el, "DEV", "JUNGLE 175", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+        aff_title_band(g_band, 50000u + el, el, "DEV", "JUNGLE 175", "PRESS PLAY", "LOAF BREAKER + CHOPPAH");
         cv_blit(0, (uint32_t)g_band);
     }
     f = fopen(path, "wb");
