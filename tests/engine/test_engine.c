@@ -1019,8 +1019,9 @@ static float rv_energy(uint32_t type, uint32_t from, uint32_t to, int slot, floa
     psx_bus_t b;
     uint32_t i, n = BRK_SR * 4u;
     float e = 0.0f, lr = 0.0f, ll = 0.0f, rr = 0.0f;
-    for (i = 0; i < n; i++)
-        buf[i] = i == 100u ? 1.0f : 0.0f;
+    for (i = 0; i < n; i++)              /* (AFFINE: the impulse once the send has eased up, 60 ms in: the send glides
+                                          * within each block now) */
+        buf[i] = i == 2660u ? 1.0f : 0.0f;
     brk_fx_defaults(&p);
     if (slot) {
         brk_fx_slot_defaults(&p.slot[0], FXT_REVERB);

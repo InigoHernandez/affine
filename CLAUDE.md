@@ -50,6 +50,11 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
 - `app/dsp/psx.c`: the PSX effects and the PSX bus (run by `brk_fx_process` after the chain, before the limiter:
   CODEC, SPU VERB, CRUSH, REDUX, SKIP). Settings in `set.psx` (psx_bus_t), applied by `psx_apply` (app.c), which
   folds in the held keys VRB, SKP, CRS. LOAF's plate reverb is retired (a REVERB slot passes the sound on).
+  GRIT is the colour stage (`psx_color_set`: rate, RAW/FILTERED, ADPCM, CRUNCH, SMOOTH) and XA runs on its Q16 clock
+  (no drift); SPU VERB has INPUT (`psx_verb_input`: drives its 16-bit maths), a send that glides in each block, a type
+  or a SIZE leap faded out and in, and SIZE knob moves gliding tick by tick (`verb_tick_glide`: fractional reads, write
+  heads that fill what they pass). Checks: `tests/engine/psx_color_demo.c`, `psx_color2_demo.c`; costs:
+  `psx_color_bench.c` (Mac instructions a sample with the FM-1's flags).
 - `app/ui/affont.c`: every page writes in AFFINE's pixel font (`app/aff_font.h`, CC BY-SA 4.0): macros route LOAF's
   `cv_text` / `text_w` to it (FONT_B 2x; FONT_T, FONT_XS 1x). New text: use `aff_text` / `aff_knob_cell`.
 - `app/ui/aff.c`: the POLYGON look (palette and dither ramps from the skin, HOME's picture, `aff_knob_cell`, the title

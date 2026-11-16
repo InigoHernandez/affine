@@ -35,6 +35,39 @@ static void fill(void)
 }
 static double fill_cost;
 typedef void (*setup_fn)(void);
+#ifndef PSX_OLD
+static int16_t spu[PSXV_WORDS];
+static float wl[N], wr[N];
+static uint32_t verb_glide;              /* 1: SIZE moved on every 64 blocks (a knob step: the glide's ticks) */
+static double verb_cost(setup_fn setup)  /* SPU VERB alone (the wet), its own row */
+{
+    uint32_t b;
+    uint64_t a;
+    psx_verb_init(spu, PSXV_WORDS);
+    psx_init();
+    setup();
+    for (b = 0; b < 40u; b++) { fill(); psx_verb_process(l, r, wl, wr, N); }
+    a = instr();
+    for (b = 0; b < BLOCKS; b++) {
+        fill();
+        if (verb_glide && b % 64u == 0u)
+            psx_verb_set(PSXV_HALL, 0.8f, (b / 64u) & 1u ? 0.6f : 0.62f, 0.0f, 0.0f);
+        psx_verb_process(l, r, wl, wr, N);
+    }
+    return (double)(instr() - a) / (BLOCKS * N) - fill_cost;
+}
+static void vrow(const char *name, setup_fn s)
+{
+    double c = verb_cost(s);
+    printf("  %-44s %6.0f   %4.1f %% of a core\n", name, c, 100.0 * c / 1570.0);
+}
+static void vhall(void) { psx_verb_set(PSXV_HALL, 0.8f, 0.6f, 0.0f, 0.0f); verb_glide = 0u; }
+static void vhall2(void) { vhall(); psx_verb_input(2.0f); }
+static void vglide(void) { vhall(); verb_glide = 1u; }
+static void vspace(void) { psx_verb_set(PSXV_SPACE_ECHO, 0.8f, 1.0f, 0.3f, 0.0f); verb_glide = 0u; }
+static void xa18(void) { psx_xa_set(1u, 0u, 1u); }
+static void xa37m(void) { psx_xa_set(0u, 0u, 0u); }
+#endif
 static double per_sample(setup_fn setup, int xa, float mix)
 {
     uint32_t b;
@@ -90,8 +123,17 @@ int main(void)
     row("GRIT 11.025 kHz", g11, 0, 1.0f);
     row("GRIT 44.1 kHz (its heaviest)", g44, 0, 1.0f);
     row("GRIT 32 kHz", g32, 0, 1.0f);
-    row("XA 37.8 kHz stereo (unchanged)", xa37, 1, 1.0f);
-#ifndef PSX_OLD
+#ifdef PSX_OLD
+    row("XA 37.8 kHz stereo", xa37, 1, 1.0f);
+#else
+    row("XA 37.8 kHz stereo (the Q16 clock)", xa37, 1, 1.0f);
+    row("XA 37.8 kHz stereo, mix 50 % (the dry delayed)", xa37, 1, 0.5f);
+    row("XA 18.9 kHz stereo", xa18, 1, 1.0f);
+    row("XA 37.8 kHz mono", xa37m, 1, 1.0f);
+    vrow("SPU VERB HALL (SIZE still)", vhall);
+    vrow("SPU VERB HALL, INPUT 2", vhall2);
+    vrow("SPU VERB HALL, SIZE gliding all along", vglide);
+    vrow("SPU VERB SPACE ECHO, TONE .3", vspace);
     row("RATE 44.1 kHz FILTERED, ADPCM off", r44f, 0, 1.0f);
     row("RATE 22.05 kHz FILTERED, ADPCM off", r22f, 0, 1.0f);
     row("RATE 11.025 kHz FILTERED, ADPCM off", r11f, 0, 1.0f);

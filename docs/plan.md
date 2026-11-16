@@ -100,6 +100,22 @@ CODEC (GRIT or XA) -> SPU VERB -> CRUSH -> REDUX -> SKIP. SPU VERB is one reverb
 SEND (HOME's K4), the slices' reverb throws and the VERB pad all go into it. CRUSH, REDUX and SKIP come after it, so
 they take its tail with them. LOAF's plate is retired (a REVERB slot passes the sound on).
 
+### The PSX colour (2026-11-16, branches `psxcolor`, `psxcolor2`)
+
+The PS1's sample sound as a stage of its own, in four phases (the owner's spec):
+1. GRIT's path grown into the colour stage: RATE (GRIT's, 44.1, 22.05, 11.025, 8 kHz), RAW or FILTERED, the SPU-ADPCM
+   round trip with CRUNCH, the dry delayed to its latency; one Q16 clock (41553c9).
+2. psx-spx's gaussian table and SMOOTH (nearest .. linear .. gaussian) (f286cb5).
+3. SPU VERB's INPUT (the gain into its 16-bit model, 0.25..4: above 1 it saturates as loud games did; twice in is
+   +4 dB out on a break, a tone gains products 50 dB up at 4); the send glides within a block; a new type (or a leap
+   of SIZE) fades out, clears, fades in; a knob's SIZE moves glide a tick at a time (fractional reads, write heads
+   that write every cell they pass, three semitones of bend at most; they jumped once a block before). The echo
+   presets as dub delays, measured: DELAY one repeat (186..743 ms by SIZE, no feedback), CHAOS a repeat on the same
+   period at -0.07 dB each (near forever, inverted), SPACE ECHO a diffuse cloud from ~80 ms (4.2 s tail), HALF ECHO a
+   dense 16 ms flutter. XA on the colour stage's Q16 clock: its latency 38.9 samples at 37.8 kHz and 77.6 at 18.9,
+   the same over 5 minutes (it wandered 14..181 before); its dry aligned; on and off faded. XA 558 -> 440 Mac
+   instructions a sample; SPU VERB 330, 505 while SIZE glides.
+
 ## 4. The look
 
 **The owner picked A, POLYGON (2026-11-15).** HOME is built (1cc85ac, `app/ui/aff.c`, off the device in

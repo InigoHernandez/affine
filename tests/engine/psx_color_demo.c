@@ -613,6 +613,7 @@ static void render(const char *dir, const char *brk)
     printf("  renders: %s (index.txt)\n", dir);
 }
 
+#ifndef PSX_COLOR_DEMO_LIB               /* (psx_color2_demo.c includes this file for its sources and measures) */
 int main(int argc, char **argv)
 {
     const char *brk = argc > 1 ? argv[1] : "breaks/huge/cw_amen_jungle.wav";
@@ -648,3 +649,4 @@ int main(int argc, char **argv)
     buf_free(&pad); buf_free(&drums); buf_free(&sweep);
     return fails ? 1 : 0;
 }
+#endif

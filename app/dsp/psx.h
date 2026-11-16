@@ -21,7 +21,12 @@ void psx_verb_init(int16_t *work, uint32_t words);   /* words: a power of two, P
  * hardware, past 1 only where the work area allows); tone: 0 bright .. 1 dark (a low-pass into it: AFFINE's);
  * freeze: 0..1, the input closed and the reflections held (1: almost forever) */
 void psx_verb_set(uint32_t type, float depth, float size, float tone, float freeze);
-/* in: what is sent into it; out: the reverb alone (wet), written. Delay through the resamplers: 38 samples */
+/* INPUT: the gain into the reverb's 16-bit model (AFFINE's), as the console's reverb input volume and the voices'
+ * levels before it: above 1 it drives the saturating maths (each stage clips at 16 bits), as loud games drove them;
+ * 0.25..4, 1 as before; eased over a block. The wet is not made up for it: twice in, twice out until it clips */
+void psx_verb_input(float gain);
+/* in: what is sent into it; out: the reverb alone (wet), written. Delay through the resamplers: 38 samples. A new type
+ * fades the wet out over a block, then the area is cleared and the new one fades in (no click on a change) */
 void psx_verb_process(const float *inl, const float *inr, float *outl, float *outr, uint32_t n);
 
 /* ---- SPU GRIT and XA: the sound encoded and decoded through the console's ADPCM in real time, 28-sample units.
@@ -32,8 +37,11 @@ typedef struct { float rate; uint32_t bits, filter, xa, stereo; } psx_codec_p;  
 void psx_grit_set(float rate, uint32_t bits, uint32_t filter);   /* rate 2000..44100 Hz (the PSX page: 11025..) */
 /* mix 0..1: the dry under it is delayed by the stage's latency (psx_color_latency), so a part mix never combs */
 void psx_grit_process(float *l, float *r, uint32_t n, float mix);
+/* XA runs on the colour stage's kind of clock (Q16: the playback XA_LEAD codec samples behind the newest, so it never
+ * drifts), its dry delayed to its latency for a part mix; a rate change glides */
 void psx_xa_set(uint32_t half_rate, uint32_t bits8, uint32_t stereo);   /* half_rate: 18.9 kHz, else 37.8 */
 void psx_xa_process(float *l, float *r, uint32_t n, float mix);
+float psx_xa_latency(void);              /* 44.1 kHz samples: 37.8 kHz ~40, 18.9 kHz ~78 */
 
 /* ---- the colour stage: GRIT's path grown into the PS1's sample sound (AFFINE's). The input taken down to a rate
  * (FILTERED: band-limited first, as the console's samples were prepared; RAW: no anti-alias filter, the aliases kept as

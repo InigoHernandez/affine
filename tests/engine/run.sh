@@ -28,4 +28,13 @@ if [ -n "$PSX_COLOR_RENDERS" ]; then
 else
     "$OUT/psx_color_demo" breaks/huge/cw_amen_jungle.wav
 fi
+# AFFINE: the PSX colour, phases 3 and 4 (SPU VERB's INPUT, XA's clock, ...): checks; PSX_COLOR2_RENDERS=1 also writes
+# the owner's renders to build/review/psx_color2/
+"$CC" -std=c99 -O2 -Wall -Iapp/dsp -Itests/engine tests/engine/psx_color2_demo.c "$OUT"/psx.o -lm -o "$OUT/psx_color2_demo"
+if [ -n "$PSX_COLOR2_RENDERS" ]; then
+    mkdir -p build/review/psx_color2
+    "$OUT/psx_color2_demo" breaks/huge/cw_amen_jungle.wav build/review/psx_color2
+else
+    "$OUT/psx_color2_demo" breaks/huge/cw_amen_jungle.wav
+fi
 "$CC" -std=c99 -O2 -Wall -Iapp/dsp tests/engine/psx_bench.c "$OUT"/psx.o "$OUT"/brk_fx.o "$OUT"/brk.o "$OUT"/brk_synth.o "$OUT"/adpcm.o "$OUT"/brk_math.o -lm -o "$OUT/psx_bench"
