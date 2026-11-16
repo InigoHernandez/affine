@@ -1,7 +1,8 @@
-# LOAF BREAKER (0.9.31, FLEXOR): SEQ's SELECT, its three views: FULL (the break's rows and the drums, as to start),
-# DRUMS (the drums alone), SETTINGS (SWING, BREAK ROWS, FOLLOW); ALGORITHM every lane, top to bottom, round. On K1:
-# ALGORITHM up twice, the break's rows; SELECT: DRUMS, the break's rows gone, ALGORITHM up from K1 round to the clap;
-# SELECT: SETTINGS, K2 BREAK ROWS 16; SELECT: FULL with BRK1 alone; SELECT back from FULL: SETTINGS.
+# LOAF BREAKER (0.9.31, FLEXOR): SEQ's three views, AFFINE's parts (controls phase 2: SEQ again the next, round): STEPS
+# (the break's rows and the drums, as to start), DRUMS (the drums alone), SETTINGS (SWING, BREAK ROWS, FOLLOW); OCT- /
+# OCT+ every lane shown, top to bottom, stopping at the ends. On K1: OCT- twice, the break's rows; OCT+ down to the
+# clap's bar 2, the last; SEQ: DRUMS, the break's rows gone, K1 the top; SEQ: SETTINGS, K2 BREAK ROWS 16; SEQ: STEPS
+# with BRK1 alone; SEQ: DRUMS, SETTINGS (K2: 32 rows), STEPS with both.
 #   app/build/host/affine_host tests/scenarios/brkview.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -9,59 +10,82 @@ wait 300
 expect page 6
 expect seq_lane 2
 expect brkview 2
-turn ALGO -1 80
+expect items 10
+tap OCT-
 wait 150
 expect seq_lane 1
-turn ALGO -1 80
+tap OCT-
 wait 150
 expect seq_lane 0
 wait 800
 shot bv_32.png
-turn ALGO -1 80
+tap OCT-
+wait 150
+expect seq_lane 0
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
 wait 150
 expect seq_lane 15
-turn ALGO 3 80
+tap OCT+
+wait 150
+expect seq_lane 15
+tap OCT-
+tap OCT-
+tap OCT-
+tap OCT-
+tap OCT-
+tap OCT-
+tap OCT-
 wait 150
 expect seq_lane 2
-turn SELECT 1 80
+tap SEQ
 wait 200
 expect brkview 0
 expect page 6
+expect items 8
 wait 800
 shot bv_hidden.png
-turn ALGO -1 80
-wait 150
-expect seq_lane 15
-turn ALGO 1 80
+tap OCT-
 wait 150
 expect seq_lane 2
-turn SELECT 1 80
+expect item 0
+tap SEQ
 wait 300
 expect page 3
 shot bv_settings.png
 turn K2 -1 80
 wait 200
-turn SELECT 1 80
+tap SEQ
 wait 300
 expect page 6
 expect brkview 1
+expect items 9
 wait 800
 shot bv_16.png
-turn ALGO -1 80
+tap OCT-
 wait 150
 expect seq_lane 0
-turn ALGO -1 80
+tap OCT-
 wait 150
-expect seq_lane 15
-turn SELECT -1 80
+expect seq_lane 0
+tap SEQ
+wait 300
+expect page 6
+expect brkview 0
+expect seq_lane 2
+tap SEQ
 wait 300
 expect page 3
 turn K2 1 80
 wait 200
-turn SELECT -1 80
+tap SEQ
 wait 300
 expect page 6
-expect brkview 0
-turn SELECT -1 80
-wait 300
 expect brkview 2

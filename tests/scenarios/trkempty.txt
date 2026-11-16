@@ -1,5 +1,5 @@
 # LOAF BREAKER: TRACKS, K2 PUT left of P1: DROP, then EMPTY (the case emptied, its place kept); ENV held on it: gone, the items
-# after it close up. On the END, K2 right: P1 at once. Track 1 as it starts: P1 x4, P2 x4, DROP, P3.
+# after it close up. OCT+ three times to the END; K2 right there: P1 at once. Track 1 as it starts: P1 x4, P2 x4, DROP, P3.
 #   app/build/host/affine_host tests/scenarios/trkempty.txt app/build/scenarios
 wait 4200
 tap ENV
@@ -17,7 +17,9 @@ release ENV
 wait 200
 expect trk_cur 0
 expect trk_it 2
-turn ALGO 3 10
+tap OCT+
+tap OCT+
+tap OCT+
 wait 100
 expect trk_cur 3
 expect trk_it 0

@@ -111,6 +111,7 @@ typedef struct {
     uint32_t bpm_x10;
     int32_t slice;                       /* sounding, -1 none */
     uint32_t pat;                        /* the pattern, 0..63 */
+    int32_t pat_next;                    /* (AFFINE, controls phase 2: the one PRESETS queued, -1 none: "NEXT B03") */
     uint32_t bar, beat;                  /* for the position: bar (1..), beat (1..4) */
     uint32_t steps;                      /* steps played (the floor scrolls a row a step) */
     float phase;                         /* how far into the step, 0..1 */
@@ -754,6 +755,15 @@ static void aff_home_band(const aff_home_t *h, int32_t band)
         aff_text(8, 24, t, 2, A_DIM, band, 0);
         if (h->pad) {
             aff_text(120, 24, h->pad, 2, A_HOT, band, 2);
+        } else if (h->pat_next >= 0) {   /* (AFFINE, controls phase 2: PRESETS playing, the pattern to come, until it
+                                          * lands) */
+            uint32_t q = (uint32_t)h->pat_next;
+            t[0] = 'N'; t[1] = 'E'; t[2] = 'X'; t[3] = 'T'; t[4] = ' ';
+            t[5] = (char)('A' + q / 16u % 4u);
+            t[6] = (char)('0' + (q % 16u + 1u) / 10u);
+            t[7] = (char)('0' + (q % 16u + 1u) % 10u);
+            t[8] = 0;
+            aff_text(120, 24, t, 2, A_HOT, band, 2);
         } else if (h->slice >= 0) {
             t[0] = 'S'; t[1] = 'L'; t[2] = 'I'; t[3] = 'C'; t[4] = 'E'; t[5] = ' ';
             t[6] = (char)('0' + (h->slice + 1) / 10);
@@ -891,6 +901,7 @@ static void aff_title_band(int32_t band, uint32_t now, uint32_t el, const char *
         z[i] = 0u;
     aff_check();
     h.slice = -1;
+    h.pat_next = -1;
     h.t_ms = now;
     h.tape = 1.0f;
     h.gate = 1.0f;

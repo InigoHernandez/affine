@@ -1,11 +1,12 @@
 # AFFINE (16 Nov 2026, the owner): INIT, "remove everything added". SEL + HOME asks ("INIT? PRESS HOME"); HOME within
 # 3 s does it, anything else or the time running out leaves all as it was. It clears the pattern as SEQ's clear does
 # and takes the sound back to the bare break: HOME's FILTER, CRUSH, REDUX, VERB 0, the gate full, the drums' filter 0,
-# every black key's latch and LATCH off (REVERSE latched, HALF SPEED latched), the OVERLAY's latched effects and LATCH
+# every black key's latch and LATCH off (REVERSE latched, HALF SPEED latched), FX PLAY's latched effects and LATCH
 # off, the FX chain's slots bypassed (their effects kept), the PSX bus clean (CODEC off, SKIP off, COLOR's AMOUNT 0,
 # CONSOLE 0, MONO off), the row AFFINE. It keeps the tempo, the break, BOOM and the drums' sounds, MIX, the songs, the
 # skin. SEL + SAVE (undo) brings all of it back; again, INIT again. The page stays (HOME's press used); HOME alone
-# after it: GENERATOR, as ever.
+# after it: SETTINGS, HOME's next part. (Controls phase 2: FX x2 CHAIN, K1 slot 1's effect; FX again x2 PSX, its
+# PRESET item K1, OCT+ to SKIP; FX x2 round to PLAY, the OVERLAY's effects; HOME on PERFORM: SETTINGS.)
 #   app/build/host/affine_host tests/scenarios/init.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -16,25 +17,43 @@ turn K3 1 10
 wait 200
 expect lane_kick 4369
 tap FX
+wait 150
+tap FX
 wait 300
-turn PRESET 1 80
+expect fxpart 0
+turn K1 1 80
 wait 300
 expect fx_ons 1
-turn SELECT 4 80
+tap FX
+wait 150
+tap FX
 wait 300
-expect fx_focus 4
-turn PRESET 1 80
+expect page 2
+expect fxpart 2
+expect item 0
+turn K1 1 80
 wait 400
 expect px_preset 1
 expect codec 1
-turn ALGO 4 80
+tap OCT+
+wait 60
+tap OCT+
+wait 60
+tap OCT+
+wait 60
+tap OCT+
+wait 60
+tap OCT+
 wait 300
-expect pp_part 4
+expect pp_part 5
 turn K2 10 30
 wait 200
 expect skchance >0
-tap ARP
+tap FX
+wait 150
+tap FX
 wait 300
+expect page 9
 turn K4 1 10
 wait 200
 key w2 down
@@ -55,8 +74,6 @@ expect brk_dj <0
 expect crush >0
 expect redux >0
 expect send >0
-tap HOME
-wait 200
 tap HOME
 wait 300
 expect page 10
@@ -214,13 +231,11 @@ tap SAVE
 release SEL
 wait 300
 expect row 3
-# HOME alone: as ever (PERFORM, then GENERATOR)
+# HOME alone: as ever (PERFORM, then SETTINGS)
 tap HOME
 wait 300
-expect page 1
+expect page 10
 # SEL alone: the combinations card names it (+HOME INIT); on PATTERN, SEQ's confirmed clear (SEQ HELD, CLEAR? SEQ)
-tap HOME
-wait 300
 tap HOME
 wait 300
 expect page 0

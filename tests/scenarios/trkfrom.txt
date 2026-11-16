@@ -1,14 +1,15 @@
-# LOAF BREAKER: TRACKS, SEL + PLAY: the item edited is where PLAY starts the track (a flag at its corner, FROM 2 at the
-# top); PLAY there plays the track from it (the page stays TRACKS); SEL + PLAY again on it: from the first again.
-# Track 1 as it starts: P1 x4, P2 x4, a DROP, P3 x8.
+# LOAF BREAKER: TRACKS, OCT+ to item 2, SEL + PLAY: the item edited is where PLAY starts the track (a flag at its
+# corner, FROM 2 at the top); PLAY there plays the track from it (the page stays TRACKS); SEL + PLAY again on it: from
+# the first again. Track 1 as it starts: P1 x4, P2 x4, a DROP, P3 x8.
 #   app/build/host/affine_host tests/scenarios/trkfrom.txt app/build/scenarios
 wait 4200
 tap ENV
 wait 300
 expect page 8
 expect trk_from 0
-turn ALGO 1 10
+tap OCT+
 wait 100
+expect trk_cur 1
 press SEL
 tap PLAY
 release SEL

@@ -1,15 +1,11 @@
-# CHOPPAH: pitch that keeps the length (GLOBAL, its second half: GLO twice), and the roll's level and swell
+# CHOPPAH: pitch that keeps the length, and the roll's level and swell. Controls phase 2: EDIT, the BREAK (was SOUNDS ›
+# BREAK, SEL + EDIT): K1 SPEED / KEEP LEN, OCT the pitch there (no items), both OCT: 0.
 #   app/build/host/affine_host tests/scenarios/pitch.txt app/build/scenarios
 wait 4200
-press SEL
 tap EDIT
-wait 100
-tap EDIT
-wait 100
-tap EDIT
-release SEL
 wait 300
-expect gpage 1
+expect page 11
+expect items 0
 shot g_pitch_default.png
 turn K1 -1 10
 wait 300
@@ -21,6 +17,7 @@ tap OCT+
 tap OCT+
 tap OCT+
 tap OCT+
+expect pitch 5
 wav pitch_speed_plus5.wav
 wait 2800
 wavstop
@@ -38,6 +35,7 @@ wait 100
 release OCT-
 release OCT+
 wait 300
+expect pitch 0
 key b1 down
 wait 200
 turn K4 -15 10

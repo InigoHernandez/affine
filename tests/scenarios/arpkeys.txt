@@ -1,11 +1,11 @@
 # LOAF BREAKER (0.9.45, FLEXOR): every black key set to ARP was its own (its effect, its LATCH), several at once. AFFINE
-# (16 Nov 2026, the owner): no ARP key on any row since CUSTOM went; what is left is the OVERLAY page's effects (several
-# at once, LATCH on: K4) and a recorded ARP (a save's, fxr_put) playing the effect the page touched last beside them:
-# keys 1 and 4 latched on (ovl_on 9), the recorded ARP on key 4's (arp_bits 8); key 1 touched again: off, and the
-# recording's effect key 1's; taken out: the latched one stays.
+# (16 Nov 2026, the owner): no ARP key on any row since CUSTOM went; what is left is FX › PLAY's effects (the OVERLAY
+# page's until controls phase 2; FX opens there; several at once, LATCH on: K4) and a recorded ARP (a save's, fxr_put)
+# playing the effect the page touched last beside them: keys 1 and 4 latched on (ovl_on 9), the recorded ARP on key
+# 4's (arp_bits 8); key 1 touched again: off, and the recording's effect key 1's; taken out: the latched one stays.
 #   app/build/host/affine_host tests/scenarios/arpkeys.txt app/build/scenarios
 wait 4200
-tap ARP
+tap FX
 wait 300
 expect page 9
 turn K4 1 10

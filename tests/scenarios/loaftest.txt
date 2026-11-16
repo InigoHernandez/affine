@@ -1,40 +1,51 @@
-# LOAF BREAKER TEST: the test firmware's new things. The start-up glitch; ARP: the OVERLAY page (0.244; FILL gone); MAGIC
-# MBC on the chain (MB OTT, gone in 0.229, was here); BUILD's TEMPO RISE; GLO MORE's CRT; a track playing: its progress
-# and DROP IN. (AFFINE: the kick's BASS part, GLIDE and REV BASS, gone with the hardcore kick.)
+# LOAF BREAKER TEST: the test firmware's new things. The start-up glitch; the OVERLAY page (0.244; FILL gone), FX's
+# PLAY now (controls phase 2); MAGIC MBC on the chain (MB OTT, gone in 0.229, was here): FX again, CHAIN, K1 the
+# type; BUILD's TEMPO RISE: ENV x4, BUILD; OCT+ to TEMPO RISE, K1; GLO's CRT: GLO x3, SCREEN's EFFECTS; a track
+# playing (ENV x2, PLAY): its progress and DROP IN. (AFFINE: the kick's BASS part, GLIDE and REV BASS, gone with the
+# hardcore kick.)
 #   app/build/host/affine_host tests/scenarios/loaftest.txt app/build/scenarios
 wait 250
 shot x_glitch.png
 wait 4000
 tap PLAY
 wait 400
-tap ARP
+tap FX
 wait 300
 expect page 9
 tap FX
 wait 300
-turn PRESET 20 10
+expect page 2
+expect fxpart 0
+turn K1 20 10
 wait 300
 expect mb_pre 3
 shot x_ott.png
-turn PRESET 1 10
-turn PRESET -20 10
+turn K1 1 10
+turn K1 -20 10
 wait 200
 tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 300
-turn PRESET 5 10
+expect tpage 4
+tap OCT+
+wait 200
+expect bitem 1
+turn K1 5 10
 wait 300
 expect accel 10
 shot x_build.png
 tap GLO
 wait 200
 tap GLO
+wait 200
+tap GLO
 wait 300
+expect gpage 3
 wait 400
 shot x_crt.png
 wait 200
@@ -42,8 +53,9 @@ tap PLAY
 wait 300
 tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 300
+expect tpage 1
 tap PLAY
 wait 300
 expect trk_on 1

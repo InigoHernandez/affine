@@ -1,37 +1,39 @@
-# LOAF BREAKER: RESET (GLO's sixth part). 0.239 (FLEXOR): K4 picks what, K2 alone counts the five clicks, then GLO
-# resets (not pressed within 5 s: cancelled). BUILD changed (BOOM ROLL, a beat's gap); RESET: K4 to BUILD; K2 four
-# clicks, a pause of 2.5 s, one more: nothing (counted from 0 again); K2 two clicks, then three: asked; GLO: BUILD back
-# to SNARE ROLL, no gap; then 3 s where RESET's knobs do nothing (a turn there: lost), DONE shown. BOOM (AFFINE, where
-# KNOB was): its preset JUNGLE (EDIT, K1), then RESET BOOM (K4, K2 five clicks, GLO): 808 again. Five clicks left
-# without GLO: nothing reset.
+# LOAF BREAKER: RESET (GLO's fourth part: GLO four times). 0.239 (FLEXOR): K4 picks what, K2 alone counts the five
+# clicks, then GLO resets (not pressed within 5 s: cancelled). BUILD changed (ENV four times: BOOM ROLL, a beat's gap);
+# RESET: K4 to BUILD; K2 four clicks, a pause of 2.5 s, one more: nothing (counted from 0 again); K2 two clicks, then
+# three: asked; GLO: BUILD back to SNARE ROLL, no gap; then 3 s where RESET's knobs do nothing (a turn there: lost),
+# DONE shown. BOOM (EDIT twice): its preset JUNGLE (K1), then RESET BOOM (K4, K2 five clicks, GLO): 808 again. Five
+# clicks left without GLO: nothing reset.
 #   app/build/host/affine_host tests/scenarios/reset.txt app/build/scenarios
 wait 4200
 tap ENV
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 150
+tap ENV
 wait 300
+expect tpage 4
 turn K1 1 10
 turn K4 3 10
 wait 200
 expect drop_style 1
 tap EDIT
+wait 150
+tap EDIT
 wait 300
+expect page 4
 turn K1 1 10
 wait 200
 expect kpreset 1
 tap GLO
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap GLO
+wait 150
+tap GLO
+wait 150
+tap GLO
 wait 300
 expect page 3
 expect gpage 5
@@ -73,22 +75,25 @@ wait 200
 expect kpreset 0
 shot rs_done.png
 wait 3100
-# SCREEN: VHS and the skin MIAMI on (GLO EFFECTS key 2, MORE K4), then RESET SCREEN: no effect, RED again
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn K4 13 10
-turn SELECT 1 10
+# SCREEN: the skin AMBER (GLO again: MIDI, again: SETUP, K1) and VHS (GLO again: SCREEN's EFFECTS, key 2) on, then
+# RESET (GLO again), RESET SCREEN: no effect, POLYGON again
+tap GLO
+wait 150
+tap GLO
+wait 300
+expect gpage 2
+turn K1 4 80
 wait 200
+expect skin 4
+tap GLO
+wait 300
+expect gpage 3
 key w1 down
 wait 30
 key w1 up
 wait 100
 expect sfx_on 2
-turn SELECT 1 10
-wait 150
-turn SELECT 1 10
+tap GLO
 wait 300
 expect gpage 5
 turn K4 8 10
@@ -99,3 +104,4 @@ wait 200
 tap GLO
 wait 300
 expect sfx_on 0
+expect skin 0

@@ -1,9 +1,10 @@
-# AFFINE (16 Nov 2026): SYSTEM › RESET EVERYTHING leaves nothing of the patterns behind. Before: pat_defaults cleared
+# AFFINE (16 Nov 2026): GLO › RESET EVERYTHING leaves nothing of the patterns behind. Before: pat_defaults cleared
 # the patterns but not the drum steps' own settings (HITS, CHANCE, NUDGE: steps.b) nor the track items' breaks
 # (steps.tb), and the reset then wrote the group in RAM's into all four groups; the snare's, hat's, clap's bars 3 and 4
 # (dx) of the groups not in RAM stayed. Here: P1's kick step 1 HITS 2 (stepb_n 1), P64's snare 64 steps with a hit in
 # bar 3 (dx_n 1, saved with its group as P1 comes back), track 1's first item a break (tb_n 1); RESET EVERYTHING
-# (K4 to it, K2 five clicks, GLO): none of it, in RAM, in P64 read back from its group, after a reboot.
+# (GLO four times, K4 to it, K2 five clicks, GLO): none of it, in RAM, in P64 read back from its group, after a reboot.
+# PRESETS the pattern; on SEQ, OCT+ twice: SNARE 1-16, twice more: its bar 3 (SNARE 33-48).
 #   app/build/host/affine_host tests/scenarios/resetall.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -24,7 +25,9 @@ wait 300
 expect pattern 63
 expect pgrp 3
 expect stepb_n 0
-turn ALGO 2 80
+tap OCT+
+wait 100
+tap OCT+
 wait 150
 expect seq_lane 6
 turn K4 -3 10
@@ -34,7 +37,9 @@ wait 150
 turn K4 1 10
 wait 150
 expect lane_steps 64
-turn ALGO 2 80
+tap OCT+
+wait 100
+tap OCT+
 wait 150
 expect seq_lane 8
 key w0 down
@@ -55,14 +60,12 @@ turn K4 1 10
 wait 200
 expect tb_n 1
 tap GLO
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap GLO
+wait 150
+tap GLO
+wait 150
+tap GLO
 wait 300
 expect gpage 5
 turn K4 20 10

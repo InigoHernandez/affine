@@ -1,11 +1,13 @@
 # LOAF BREAKER (0.9.22, FLEXOR): BEGINNER's SONG whole, as EXPERT's: on TRACKS a white key puts its pattern in,
-# ALGORITHM moves along the items (no EXPERT MODE), K1 the item's kick and K4 its break answer.
+# OCT- / OCT+ move along the items (no EXPERT MODE), K1 the track (track 2 and back: the cursor on item 1) and K4 the
+# item's break answer. GLO twice: SETUP, K3 left (the TUTORIAL off: one mode for everyone since AFFINE).
 #   app/build/host/affine_host tests/scenarios/trknovice.txt app/build/scenarios
 wait 4200
 tap GLO
 wait 150
-turn SELECT 1 10
+tap GLO
 wait 300
+expect gpage 2
 turn K3 -1 80
 wait 300
 tap HOME
@@ -16,11 +18,16 @@ expect page 8
 tapkey w2
 wait 300
 expect trk_cur 1
-turn ALGO -1 10
+tap OCT-
 wait 200
 expect trk_cur 0
 turn K1 1 10
 wait 200
+expect trk_it 0
+turn K1 -1 10
+wait 200
+expect trk_cur 0
+expect trk_it 3
 turn K4 1 10
 wait 300
 shot tn_tracks.png

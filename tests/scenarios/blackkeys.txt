@@ -1,11 +1,12 @@
 # LOAF BREAKER (11 Nov 2026; AFFINE: the rows AFFINE 0, CHOPPAH 1, CUSTOM 2, PUNCH 3). AFFINE (16 Nov 2026, the owner):
 # two rows, AFFINE and PUNCH (FX + OCT- / OCT+: punchrow.txt, rows2.txt); ARP's BLACK KEYS tab (K1 the row, K2 the
-# key, K3 its function: CUSTOM) gone, ARP one tab. A save holding CHOPPAH's row (bk_row 1) still plays its layout:
-# FREEZE on the fifth key (its LENGTH on K1), DUB on the last, VINYL BREAK on the seventh; FX + OCT- from it: AFFINE.
+# key, K3 its function: CUSTOM) gone; its one tab, the ARP EFFECTS, is FX › PLAY since controls phase 2 (FX, page 9;
+# SELECT the tempo there, the page stays). A save holding CHOPPAH's row (bk_row 1) still plays its layout: FREEZE on
+# the fifth key (its LENGTH on K1), DUB on the last, VINYL BREAK on the seventh; FX + OCT- from it: AFFINE.
 #   app/build/host/affine_host tests/scenarios/blackkeys.txt app/build/scenarios
 wait 4200
 expect bk_pre 0
-tap ARP
+tap FX
 wait 300
 expect page 9
 expect opage 0

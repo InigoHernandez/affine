@@ -1,15 +1,10 @@
-# CHOPPAH: the snap (GLOBAL, second half, K3): where a key pressed while playing lands, in slices
+# CHOPPAH: the snap (controls phase 2: EDIT, the BREAK, K3; was SOUNDS › BREAK): where a key pressed while playing
+# lands, in slices
 #   app/build/host/affine_host tests/scenarios/snap.txt app/build/scenarios
 wait 4200
-press SEL
 tap EDIT
-wait 100
-tap EDIT
-wait 100
-tap EDIT
-release SEL
 wait 300
-expect gpage 1
+expect page 11
 shot s_default.png
 turn K3 -3 10
 wait 300

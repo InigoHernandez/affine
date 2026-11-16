@@ -1,8 +1,9 @@
 # LOAF BREAKER: SEQ's hands. Stopped, the kick 64 steps (K4 twice), steps 1 and 3 on (0x0005); SEQ held + key 3: bar 1
 # copied onto bar 3; SEQ held + K1 right: the whole lane a step later (bar 1 0x000A, bar 3 0x000A); SEQ held 0.8 s,
 # then SEQ: the pattern cleared (AFFINE, 16 Nov 2026: SEQ held + REC's drums cleared, no question, gone; REC records
-# as anywhere). Then playing: the keys follow the bar playing (KICK 17-32 in bar 2); ALGORITHM: no more until
-# stopped. REC on, a drum lane: a white key writes the kick where it lands.
+# as anywhere). Then playing: the keys follow the bar playing (KICK 17-32 in bar 2); OCT- (AFFINE, controls phase 2:
+# the lane picked, ALGORITHM's before): no more until stopped. REC on, a drum lane: a white key writes the kick where
+# it lands.
 #   app/build/host/affine_host tests/scenarios/seqtools.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -62,8 +63,9 @@ tap PLAY
 wait 2100
 expect seq_lane 3
 shot sq_follow.png
-turn ALGO -1 10
-wait 1800
+# (a tap 80 ms, ALGORITHM's turn 10: the wait 70 ms shorter, REC's key on the same step)
+tap OCT-
+wait 1730
 expect seq_lane 2
 tap REC
 wait 100

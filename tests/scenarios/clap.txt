@@ -1,26 +1,41 @@
-# LOAF BREAKER: the clap and the big SEQ. On SEQ: two kicks on K1 (the kick 64 steps: K1-K4 shown, the empty snare,
-# hat and clap hidden); ALGORITHM to the clap's lane (K2 K3 K4 S1 H1 C1), four claps; its LENGTH to 32: C2; the hat's
-# lane, eight hats; playing; then EDIT on the clap's lane opens the clap's sound
+# LOAF BREAKER: the clap and the big SEQ. On SEQ (AFFINE, controls phase 2: OCT- / OCT+ the lanes): two kicks on
+# BOOM's bar 1; OCT+ six times to the clap's lane (past B2 S1 S2 H1 H2), four claps; its LENGTH to 64: OCT+, C2; OCT-
+# twice: the hat's bar 2, eight hats; playing; stopped, OCT+ to the hat's bar 2 again; EDIT four times: the HAT's
+# sound; OCT+ three times, MEMORY K1: its memory 3; OCT- twice, SHAPE: K3 its PRESET; SEQ, OCT-: the break's 17-32.
 #   app/build/host/affine_host tests/scenarios/clap.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 300
+expect seq_lane 2
 tapkey w0
 tapkey w8
 wait 200
 shot c_seq.png
-turn ALGO 6 10
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+wait 100
+expect seq_lane 14
 tapkey w4
 tapkey w12
 wait 200
 shot c_clap.png
 turn K4 1 10
-turn ALGO 1 10
+tap OCT+
+wait 100
+expect seq_lane 15
+expect lane_steps 64
 tapkey w4
 tapkey w14
 wait 200
 shot c_clap32.png
-turn ALGO -2 10
+tap OCT-
+tap OCT-
+wait 100
+expect seq_lane 11
 tapkey w2
 tapkey w6
 tapkey w10
@@ -32,20 +47,41 @@ wait 700
 shot c_play.png
 tap PLAY
 wait 200
-turn ALGO 1 10
+tap OCT+
+wait 100
+expect seq_lane 11
+tap EDIT
+wait 150
+tap EDIT
+wait 150
+tap EDIT
+wait 150
 tap EDIT
 wait 300
+expect page 7
+expect einst 2
 shot c_edit.png
-turn PRESET 2 10
+tap OCT+
+tap OCT+
+tap OCT+
+wait 100
+expect ppage 3
+turn K1 2 10
 wait 200
 shot c_mem3.png
-turn ALGO 1 10
+tap OCT-
+tap OCT-
+wait 100
+expect ppage 1
 turn K3 1 10
 wait 200
 shot c_preset.png
 tap SEQ
 wait 300
-turn ALGO -1 10
+expect seq_lane 2
+tap OCT-
+wait 100
+expect seq_lane 1
 tapkey w3
 wait 200
 shot c_break.png

@@ -1,0 +1,93 @@
+# AFFINE (16 Nov 2026, controls phase 2): ENV's four parts, ENV again for the next, round: TRACKS (OCT the song's
+# items, ALGORITHM before; K1 the track, PRESETS before; ENV held 0.45 s a gap, no part at its release), PLAY (no items,
+# OCT the pitch; K1 the track), DROP (a white key: the drop into its pattern, the build from the next bar; SEL + ENV
+# before), BUILD (OCT its items BUILD and TEMPO RISE; TEMPO RISE's K1, PRESETS before).
+#   app/build/host/affine_host tests/scenarios/nav_song.txt app/build/scenarios
+wait 4200
+tap ENV
+wait 300
+expect page 8
+expect tpage 0
+expect trk_cur 0
+tapkey w0
+wait 100
+tapkey w1
+wait 100
+expect trk_cur 2
+expect items 5
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+expect trk_cur 0
+expect trk_it 1
+tap OCT+
+wait 150
+expect trk_it 2
+expect pitch 0
+shot ns_tracks.png
+# (ENV held on TRACKS: a gap after item 2, the part stays)
+press ENV
+wait 600
+release ENV
+wait 200
+expect tpage 0
+expect trk_cur 2
+expect trk_it 253
+# (K1: track 2, empty; back to track 1)
+turn K1 1 80
+wait 200
+expect trk_it 0
+turn K1 -1 80
+wait 200
+expect trk_it 1
+tap ENV
+wait 300
+expect tpage 1
+expect items 0
+tap OCT+
+wait 150
+expect pitch 1
+tap OCT-
+wait 150
+expect pitch 0
+# (DROP: a white key, playing, the drop into P3)
+tap ENV
+wait 300
+expect tpage 2
+tap PLAY
+wait 500
+tapkey w2
+wait 300
+expect drop_bars 3
+expect pattern 0
+shot ns_drop.png
+wait 9000
+expect pattern 2
+# (BUILD: its items; TEMPO RISE's K1)
+tap ENV
+wait 300
+expect tpage 4
+expect items 2
+expect bitem 0
+tap OCT+
+wait 150
+expect bitem 1
+turn K1 3 80
+wait 200
+expect accel 6
+shot ns_rise.png
+tap OCT+
+wait 150
+expect bitem 1
+tap ENV
+wait 300
+expect tpage 0
+tap ENV
+tap ENV
+tap ENV
+wait 300
+expect tpage 4
+expect bitem 0

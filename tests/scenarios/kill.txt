@@ -1,11 +1,15 @@
 # LOAF BREAKER: the 10th black key, KIL: held, the sequencer's kicks are quiet (khits stays 0); let go, they play again.
 # AFFINE (16 Nov 2026, the owner): KIL alone on no row since CUSTOM went (its LATCH with it): PUNCH's DROP OUT (key
 # 11) holds it, and a recording (a save's, fxr_put) plays it: quiet while it plays, back when it's gone.
-# The kick on steps 1, 5, 9, 13 of each of its lane's four bars (SEQ).
+# The kick on steps 1, 5, 9, 13 of each of its lane's four bars (SEQ: K4 LENGTH right, 64 steps; OCT+ the next bar).
 #   app/build/host/affine_host tests/scenarios/kill.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 200
+expect seq_lane 2
+turn K4 1 10
+wait 100
+expect lane_steps 64
 key w0 down
 wait 30
 key w0 up
@@ -18,7 +22,7 @@ key w8 up
 key w12 down
 wait 30
 key w12 up
-turn ALGO 1 10
+tap OCT+
 wait 100
 key w0 down
 wait 30
@@ -32,7 +36,7 @@ key w8 up
 key w12 down
 wait 30
 key w12 up
-turn ALGO 1 10
+tap OCT+
 wait 100
 key w0 down
 wait 30
@@ -46,7 +50,7 @@ key w8 up
 key w12 down
 wait 30
 key w12 up
-turn ALGO 1 10
+tap OCT+
 wait 100
 key w0 down
 wait 30
@@ -60,6 +64,8 @@ key w8 up
 key w12 down
 wait 30
 key w12 up
+expect seq_lane 5
+expect kbar3 4369
 tap HOME
 tap PLAY
 wait 1300

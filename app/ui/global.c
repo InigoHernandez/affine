@@ -18,22 +18,12 @@ static void sfx_toggle(uint32_t e, int on)   /* LOAF BREAKER: GLO EFFECTS: effec
     app_say(SFX_NAME[e], set.sfx_on & b ? "ON" : "OFF");
     ui.redraw = RG_ALL;
 }
-/* LOAF BREAKER (0.201, the pages by domain): two parts of this page's code are shown elsewhere: GP_BREAK, the break's
- * PITCH, GRAIN, SNAP and LEVEL, is SOUNDS' BREAK (SEL + EDIT); GP_FILL, SWING and FILL, is PATTERN's SETTINGS (SEQ's
- * SELECT past DRUMS; AFFINE, 16 Nov 2026: SEL + ARP to it gone). SYSTEM (GLO) itself: MIDI, SETUP, EFFECTS, FX SET,
- * RESET */
-#define GP_BREAK 1u
+/* LOAF BREAKER (0.201, the pages by domain): GP_FILL, SWING and FILL, is SEQ's SETTINGS, this page's code shown
+ * there. AFFINE (controls phase 2): GLO's parts MIDI (0), SETUP (2), SCREEN (its items EFFECTS 3, FX SET 4, VIEWS
+ * GP_VIEW), RESET (5); the break's PITCH part (1) is EDIT's BREAK now (kick.c, PG_BREAK) */
 #define GP_FILL 6u
-#define NGLO 5u
-static const uint8_t GLO_ORD[NGLO] = {0u, 2u, 3u, 4u, 5u};
-static uint32_t glo_next(int32_t d)      /* SYSTEM's next or previous part (from the break's or GROOVE: MIDI) */
-{
-    uint32_t i;
-    for (i = 0; i < NGLO; i++)
-        if (GLO_ORD[i] == ui.gpage && ui.page == PG_GLOBAL)
-            return GLO_ORD[(i + (d > 0 ? 1u : NGLO - 1u)) % NGLO];
-    return 0u;
-}
+#define GP_VIEW 7u
+static void drum_view_turn(int32_t d);   /* (GLO › SCREEN › VIEWS K1: perc.c) */
 static int tut_on(void);                 /* (LOAF BREAKER: the TUTORIAL, tutor.c: further on) */
 static void tut_start(void);
 static void tut_quit(void);
@@ -52,6 +42,11 @@ static void global_value(int i, char *t)
     }
     if (ui.gpage == 4u) {                /* (FX SET: each 0..100 %) */
         pct_text((float)*sfx_knob(i) * 0.01f, t);
+        return;
+    }
+    if (ui.gpage == GP_VIEW) {           /* (VIEWS: K1 the drums') */
+        if (!i)
+            text_cat(t, ui.kclassic ? "CLASSIC" : ui.kview ? "WAVE" : "RGB");
         return;
     }
     if (ui.gpage == 3u) {                /* (EFFECTS: K1 the one pointed at, K2 it on or off) */
@@ -74,21 +69,6 @@ static void global_value(int i, char *t)
             text_cat(t, set.auto_save ? "ON" : "OFF");
         return;
     }
-    if (ui.gpage) {                      /* the pitch: speed or keep length, the grains */
-        if (i == 0)
-            text_cat(t, pitch_keeps() ? "KEEP LEN" : "SPEED");
-        else if (i == 1) {
-            int_text(set.grain_ms ? set.grain_ms : 30, t);
-            text_cat(t, " MS");
-        } else if (i == 2)
-            text_cat(t, SNAP_SHORT[snap_index()]);
-        else {                           /* (LOAF BREAKER: K4 the break's LEVEL, the MIXER's BREAK; RESET ALL: SYSTEM
-                                          * RESET, EVERYTHING) */
-            int_text(set.brk_level, t);
-            text_cat(t, "%");
-        }
-        return;
-    }
     text_cat(t, i == 0 ? (set.clk_in ? "FOLLOW" : "OFF") : i == 1 ? (set.clk_out ? "ON" : "OFF")
                 : i == 2 && !NOVICE ? (ui.meter_on ? "ON" : "OFF")
                 : "");                   /* (LOAF BREAKER: K3 the METER, EXPERT only; K4 BREAK TIME 0.256-0.9.1: HOME's
@@ -99,7 +79,7 @@ static void global_value(int i, char *t)
  * (AFFINE: the TUTORIAL's alone) */
 static int glo_knob_ok(int i)
 {
-    return !NOVICE || ui.page != PG_GLOBAL || (ui.gpage == GP_FILL ? i < 3 : ui.gpage == GP_BREAK ? i == 3 : 1);
+    return !NOVICE || (ui.page == PG_BREAK ? i == 3 : ui.page != PG_GLOBAL || ui.gpage != GP_FILL || i < 3);
 }
 static void global_turn(int i, int32_t d)
 {
@@ -140,6 +120,11 @@ static void global_turn(int i, int32_t d)
                                           * KICK › MORE › TOOLS, FLEXOR; neither named here since 0.9.30) */
         return;
     }
+    if (ui.gpage == GP_VIEW) {
+        if (!i)
+            drum_view_turn(d);
+        return;
+    }
     if (ui.gpage == 4u) {                /* LOAF BREAKER: FX SET: K1 AMOUNT, K2 KICK, K3 DROP, K4 LENGTH, 5 % a detent */
         static const char *const SN[4] = {"EFFECT AMOUNT", "ON A BOOM", "AT THE DROP", "MOMENTS' LENGTH"};
         uint8_t *p = sfx_knob(i);
@@ -173,21 +158,6 @@ static void global_turn(int i, int32_t d)
             app_say("AUTO SAVE", set.auto_save ? "ON" : "OFF");
             ui.redraw |= RG_BLOCKS | RG_FOOT;
         }
-        return;
-    }
-    if (ui.gpage) {
-        if (i == 0)
-            set.pitch_keep = d > 0 ? 1u : 2u;   /* right KEEP LENGTH, left SPEED */
-        else if (i == 1)
-            set.grain_ms = (uint8_t)clamp((int32_t)(set.grain_ms ? set.grain_ms : 30u) + d * 5, 10, 80);
-        else if (i == 2)
-            set.snap = (uint8_t)(clamp((int32_t)snap_index() + (d > 0 ? 1 : -1), 0, SNAPS - 1) + 1);
-        else                             /* (LOAF BREAKER: K4 the break's LEVEL) */
-            set.brk_level = (uint8_t)clamp((int32_t)set.brk_level + d * 2, 0, 100);
-        global_value(i, t);
-        app_say(i == 0 ? "PITCH" : i == 1 ? "GRAIN" : i == 2 ? "SNAP" : "BREAK LEVEL", i == 0 && pitch_keeps()
-                ? "KEEP LENGTH" : i == 2 ? SNAP_NAME[snap_index()] : t);
-        changed();
         return;
     }
     if (i == 0) {
@@ -458,63 +428,22 @@ static void glo_fill(const brk_status_t *st)
     g_frame(4 + (int32_t)shown * 116, 162, 118, 26, C_WHITE);
 }
 
-/* SOUNDS › BREAK (SYSTEM's PITCH part): the pitch now, large, between the keys that move it (OCT- / OCT+: a semitone,
- * both: 0); K1 SPEED (the pitch makes a slice shorter or longer: the slice against its length, the tick) or KEEP LEN
- * (its length kept, in grains K2 long); SNAP (K3): what it is in this break, and where a key lands on a bar's 16ths */
-static void glo_pitch(const brk_status_t *st)
+/* GLO › SCREEN › VIEWS (AFFINE, controls phase 2): the drums' view, the one in use lit */
+static void glo_view(const brk_status_t *st)
 {
-    char t[16];
-    int32_t keep = pitch_keeps(), w, k, g = set.grain_ms ? set.grain_ms : 30, step = 0;
-    float f = 1.0f, n = 0.0f;
     (void)st;
-    cv_rect(4, 52, 50, 30, C_BLOCK);
-    g_text(29, 62, "OCT-", 2, C_GRAY, 2);
-    cv_rect(186, 52, 50, 30, C_BLOCK);
-    g_text(211, 62, "OCT+", 2, C_GRAY, 2);
-    t[0] = set.pitch > 0 ? '+' : 0;
-    t[1] = 0;
-    int_text(set.pitch, t + (set.pitch > 0));
-    text_cat(t, " ST");
-    g_text(120, 60, t, 3, set.pitch ? C_HI : C_WHITE, 2);
-    g_seg(4, 96, 114, 22, "SPEED", !keep);
-    g_seg(122, 96, 114, 22, "KEEP LEN", keep);
-    for (k = 0; k < (set.pitch < 0 ? -set.pitch : set.pitch); k++)
-        f *= set.pitch > 0 ? 0.94387f : 1.05946f;   /* (a semitone: 2^(1/12)) */
-    w = (int32_t)(57.0f * f);
-    w = w < 3 ? 3 : w > 112 ? 112 : w;
-    cv_rect(6, 124, w, 12, keep ? C_LINE : C_AMB);
-    for (k = 0; k < 57; k += g / 5 + 3)  /* (a grain 10-80 ms: 4-18 pixels) */
-        cv_rect(124 + k, 124, 57 - k < g / 5 + 2 ? 57 - k : g / 5 + 2, 12, keep ? C_AMB : C_LINE);
-    cv_rect(63, 121, 1, 18, C_GRAY);     /* (the slice's own length) */
-    cv_rect(181, 121, 1, 18, C_GRAY);
-    g_text(6, 148, "SNAP", 2, C_GRAY, 0);
-    t[0] = 0;
-    if (snap_index()) {
-        n = SNAP_SL[snap_index()] * key_sps(brk_get_break());
-        sixteenths_text(n, t);
-        step = (int32_t)(n + 0.5f);
-    } else
-        text_cat(t, "OFF");
-    g_text(234, 148, t, 2, snap_index() ? C_HI : C_DIM, 1);
-    for (k = 0; k < 16; k++)
-        cv_rect(8 + k * 14, 166, 12, 20, snap_index() && (step <= 1 || k % step == 0) ? C_HI : (k & 3) ? C_BLOCK : C_DIM);
+    g_text(8, 60, "DRUM VIEW", 2, C_GRAY, 0);
+    g_seg(4, 100, 74, 30, "RGB", !ui.kclassic && !ui.kview);
+    g_seg(83, 100, 74, 30, "WAVE", !ui.kclassic && ui.kview);
+    g_seg(162, 100, 74, 30, "CLASSIC", ui.kclassic);
 }
-
 static void draw_global(const brk_status_t *st)
 {                                        /* (LOAF BREAKER: no waveform on SYSTEM: rows 44-192 its own) */
     static const uint8_t TOP[4] = {44u, 92u, 140u, 192u};
     g_strips(TOP, 3u, ui.gpage == GP_FILL ? glo_fill : ui.gpage == 3u ? glo_sfx : ui.gpage == 4u ? glo_sfxset
-             : ui.gpage == 2u ? glo_setup : ui.gpage ? glo_pitch : glo_midi, st);
+             : ui.gpage == GP_VIEW ? glo_view : ui.gpage == 2u ? glo_setup : glo_midi, st);
 }
 
-static void global_part(uint32_t g)      /* GLO (again: the next part) and ALGORITHM on GLOBAL (LOAF BREAKER: and the
-                                          * break's page, GROOVE) */
-{
-    ui.gpage = (uint8_t)g;
-    ui.page = PG_GLOBAL;
-    ui.redraw |= RG_FOOT | RG_BLOCKS;
-    page_say();
-}
 
 /* LOAF BREAKER (0.9.2, FLEXOR): HOME's SETTINGS, the waveform's settings where it is played: K1 VIEW (the waveform or
  * the slices; HOME held still flips it), K2 WAVE TYPE (REKORDBOX, SERATO; SYSTEM EFFECTS' K3 until 0.9.24), K3 WAVE ZOOM (SYSTEM

@@ -1,18 +1,21 @@
-# LOAF BREAKER: drops unlike each other. ENV's DROP: a 1-bar build; BUILD: KICK ROLL, LOW-PASS, the riser full, a beat
-# of silence before the drop. Playing: SEL + ENV (the build from the next bar, the gap, the drop); then STUTTER with
-# RANDOM sweep: SEL + ENV again. The sound: d_drops.wav
+# LOAF BREAKER: drops unlike each other. ENV three times: DROP, a 1-bar build; ENV again: BUILD: KICK ROLL, LOW-PASS,
+# the riser full, a beat of silence before the drop. Playing: ENV three times (DROP), white key 2 (the build into P2
+# from the next bar, the gap, the drop; HOME to watch it); then BUILD (ENV four times) STUTTER with RANDOM sweep, ENV
+# three times (DROP), white key 3: into P3. The sound: d_drops.wav
 #   app/build/host/affine_host tests/scenarios/drops.txt app/build/scenarios
 wait 4200
 tap ENV
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap ENV
+wait 150
+tap ENV
 wait 200
+expect tpage 2
 turn K1 -2 10
-turn SELECT 1 10
+tap ENV
 wait 300
 expect page 8
+expect tpage 4
 turn K1 1 10
 turn K2 1 10
 turn K3 10 10
@@ -22,31 +25,42 @@ shot d_build.png
 tap HOME
 wait 200
 tap PLAY
-wait 1500
-wav d_drops.wav
-press SEL
+wait 700
 tap ENV
-release SEL
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 200
+expect tpage 2
+wav d_drops.wav
+tapkey w1
+tap HOME
 wait 2000
 shot d_kickroll.png
-wait 3000
+wait 2300
 tap ENV
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 150
+tap ENV
 wait 200
+expect tpage 4
 turn K1 2 10
 turn K2 2 10
-tap HOME
-wait 300
-press SEL
 tap ENV
-release SEL
-wait 2200
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 200
+expect tpage 2
+tapkey w2
+tap HOME
+wait 2000
 shot d_stutter.png
-wait 2500
+wait 2700
 wavstop
 tap PLAY

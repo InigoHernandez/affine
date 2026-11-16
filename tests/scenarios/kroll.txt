@@ -1,7 +1,7 @@
-# LOAF BREAKER: the roll pads' THRU (MIX › SENDS K4 since 0.9.40, FLEXOR; K2 while held before): KICK, the kick rolled
-# at the pad's rate (R16: 16ths), the break left alone; BOTH, the two; BREAK, as ever. K2 while a roll is held: the
-# break's filter, HOME's (roll and filter at once). SEL + the pad: the kick alone for that press, THRU BREAK or not.
-# The sound: k_roll.wav
+# LOAF BREAKER: the roll pads' THRU (MIX › SENDS K4 since 0.9.40, FLEXOR; K2 while held before; AFFINE, controls
+# phase 2: FX › SENDS, FX five times): KICK, the kick rolled at the pad's rate (R16: 16ths), the break left alone;
+# BOTH, the two; BREAK, as ever. K2 while a roll is held: the break's filter, HOME's (roll and filter at once). SEL +
+# the pad: the kick alone for that press, THRU BREAK or not. The sound: k_roll.wav
 #   app/build/host/affine_host tests/scenarios/kroll.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -15,11 +15,14 @@ wav k_roll.wav
 expect khits >0
 wait 1412
 expect khits <5
-tap LFO
+tap FX
+tap FX
+tap FX
+tap FX
+tap FX
 wait 200
-turn SELECT 1 10
-wait 200
-expect mpage 1
+expect page 2
+expect fxpart 3
 turn K4 1 10
 wait 100
 expect rthru 1

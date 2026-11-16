@@ -57,7 +57,7 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
   own settings are `set.pxc` (psx_color_t, settings_t's tail since 16 Nov 2026: an older save loads its defaults, the
   sound as before), sent by `psx_apply` (`psx_bus_color`): COLOR's RATE (RAW in its steps), CRUNCH (PCM below 0),
   SMOOTH, AMOUNT (scales the codec's mix, CRUNCH, CONSOLE and SEND from 0 clean to 1 at their knobs), OUT's CONSOLE,
-  MONO, SEND, INPUT; `psx_preset` the four presets (PRESETS on the PSX page). Checks: `tests/engine/psx_color_demo.c`,
+  MONO, SEND, INPUT; `psx_preset` the four presets (the PSX page's PRESET item, K1). Checks: `tests/engine/psx_color_demo.c`,
   `psx_color2_demo.c` (`PSX_COLOR2_RENDERS=1` renders to build/review/psx_color2/), scenario `psxcolor`; costs:
   `psx_color_bench.c` (Mac instructions a sample with the FM-1's flags).
 - `app/ui/affont.c`: every page writes in AFFINE's pixel font (`app/aff_font.h`, CC BY-SA 4.0): macros route LOAF's
@@ -67,8 +67,10 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
   SETTINGS K2. The foot on every page is HOME's panel (main.c `draw_foot`).
 - Skins (common.c): AFFINE's five, POLYGON first; `C_BLACK` is the skin's ground inside the UI.
 - `tools/contact_sheet.py NAMES`: the simulator's screenshots side by side (after `sh tests/scenarios.sh`).
-- `app/ui/psxp.c`: the PSX page (EFFECTS, SELECT past the slots: `ui.fx_focus == BRK_FX_SLOTS`): six parts on ALGORITHM
-  (VERB, CODEC, COLOR, LOFI, SKIP, OUT), PRESETS the four presets; its text through `pp_text` (the host's audit sees it).
+- `app/ui/psxp.c`: the PSX page (FX's fourth part, `FX_PSX()`): seven items on OCT (PRESET, its K1 the four presets;
+  VERB, CODEC, COLOR, LOFI, SKIP, OUT); its text through `pp_text` (the host's audit sees it).
+- The controls (phase 2, `docs/plan.md` section 3): `app/ui/main.c`'s DM_* / nav_* map each page button to a domain,
+  its parts (the button again) and items (OCT); the encoders are the tempo, the break, the pattern everywhere.
 - BOOM (LOAF's kick stripped): `app/dsp/kick.c` and `app/ui/kick.c`.
 - Tests: `./build.sh test` (engine + PSX checks), `sh tests/scenarios.sh` (every host scenario; 8 inherited
   failures listed as KNOWN in it), `tests/look/home.c` (HOME drawn off the device).

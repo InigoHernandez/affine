@@ -1,0 +1,134 @@
+# AFFINE (16 Nov 2026, controls phase 2, the owner: "encoders the same on every page"): SELECT the tempo, ALGORITHM
+# the break, PRESETS the pattern, on HOME, FX's CHAIN, EDIT's SNARE, SEQ and GLO alike; PRESETS playing: queued to the
+# loop's end (pat_next, the header NEXT Pn) and in at its end; stopped: at once. A page button acts at its release (held:
+# nothing yet; let go: its part); held with a knob turned, nothing at its release. OCT: the pitch on PERFORM (no
+# items), the items on CHAIN (the pitch untouched), the pitch again on EDIT's BREAK. SEL tapped: the card.
+#   app/build/host/affine_host tests/scenarios/nav_global.txt app/build/scenarios
+wait 4200
+expect page 0
+expect_bpm 169 171
+turn SELECT 5 40
+wait 200
+expect_bpm 174 176
+turn ALGO 1 80
+wait 600
+expect brk 1
+# (stopped: PRESETS at once)
+turn PRESET 1 80
+wait 300
+expect pattern 1
+expect pat_next -1
+turn PRESET -1 80
+wait 300
+expect pattern 0
+# (OCT on PERFORM: the pitch)
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+expect pitch 2
+expect items 0
+# (a page button at its release)
+press FX
+wait 300
+expect page 0
+release FX
+wait 200
+expect page 9
+tap FX
+wait 200
+expect page 2
+expect fxpart 0
+expect items 4
+expect fx_focus 0
+# (OCT on CHAIN: the slots, the pitch untouched; the ends stay)
+tap OCT+
+wait 150
+expect fx_focus 1
+expect pitch 2
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+expect fx_focus 0
+shot ng_chain.png
+# (the encoders on CHAIN: as on HOME)
+turn SELECT -5 40
+wait 200
+expect_bpm 169 171
+turn ALGO -1 80
+wait 600
+expect brk 0
+expect fx_focus 0
+# (playing: PRESETS queued, NEXT P2 until the loop's end)
+tap PLAY
+wait 600
+turn PRESET 1 20
+expect pat_next 1
+expect pattern 0
+wait 100
+shot ng_next.png
+wait 3000
+expect pat_next -1
+expect pattern 1
+# (on EDIT's SNARE and SEQ: the same)
+tap EDIT
+wait 150
+tap EDIT
+wait 150
+tap EDIT
+wait 300
+expect page 7
+expect einst 1
+turn ALGO 1 80
+wait 600
+expect brk 1
+turn PRESET -1 20
+expect pat_next 0
+tap SEQ
+wait 300
+expect page 6
+turn SELECT 2 40
+wait 200
+expect_bpm 171 173
+wait 3000
+expect pattern 0
+expect pat_next -1
+# (EDIT's BREAK: no items, OCT the pitch; both: 0)
+tap EDIT
+wait 300
+expect page 11
+expect items 0
+tap OCT-
+wait 150
+expect pitch 1
+press OCT-
+press OCT+
+wait 100
+release OCT-
+release OCT+
+wait 150
+expect pitch 0
+# (a page button held while a knob turns: nothing at its release)
+press GLO
+wait 100
+turn SELECT -2 40
+release GLO
+wait 300
+expect page 11
+expect_bpm 169 171
+# (stopped: PRESETS at once again; SEL tapped: the card)
+tap PLAY
+wait 300
+turn PRESET 1 80
+wait 200
+expect pattern 1
+expect pat_next -1
+tap SEL
+wait 600
+expect help 1
+shot ng_help.png
+tap HOME
+wait 300
+expect help 0
+expect page 0

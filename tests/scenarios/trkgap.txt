@@ -1,5 +1,6 @@
 # LOAF BREAKER: ENV held on TRACKS: a gap after the item edited (the ones after it one place right), filled with a
-# white key; K2 left on a gap: gone again; a gap left is played past. Track 1 as it starts: P1 x4, P2 x4, DROP, P3.
+# white key; K2 left on a gap: gone again; a gap left is played past. OCT- / OCT+ walk the items; K1 the track; ENV
+# again: PLAY. Track 1 as it starts: P1 x4, P2 x4, DROP, P3.
 #   app/build/host/affine_host tests/scenarios/trkgap.txt app/build/scenarios
 wait 4200
 tap ENV
@@ -14,20 +15,20 @@ expect page 8
 expect trk_cur 1
 expect trk_it 253
 shot t_gap.png
-turn ALGO 1 10
+tap OCT+
 wait 100
 expect trk_it 2
-turn ALGO -1 10
+tap OCT-
 key w4 down
 key w4 up
 wait 200
 expect trk_cur 2
 expect trk_it 2
-turn ALGO -1 10
+tap OCT-
 wait 100
 expect trk_it 5
 shot t_gap_put.png
-turn ALGO -1 10
+tap OCT-
 press ENV
 wait 600
 release ENV
@@ -37,21 +38,23 @@ turn K2 -1 10
 wait 200
 expect trk_cur 1
 expect trk_it 5
-# track 2: P1, P2, then a gap between them, played past
-turn PRESET 1 10
+# track 2 (K1): P1, P2, then a gap between them, played past
+turn K1 1 10
 key w0 down
 key w0 up
 key w1 down
 key w1 up
-turn ALGO -2 10
+tap OCT-
+tap OCT-
 press ENV
 wait 600
 release ENV
 wait 200
 expect trk_cur 1
 expect trk_it 253
-turn SELECT 1 10
+tap ENV
 wait 300
+expect tpage 1
 tap PLAY
 wait 300
 expect page 0
@@ -66,8 +69,10 @@ wait 300
 tap ENV
 wait 300
 expect page 8
-turn ALGO -5 10
-turn ALGO 1 10
+tap OCT-
+tap OCT-
+tap OCT-
+tap OCT+
 wait 100
 expect trk_it 253
 press ENV
@@ -76,32 +81,32 @@ release ENV
 wait 200
 expect trk_cur 0
 expect trk_it 1
-turn ALGO 1 10
+tap OCT+
 wait 100
 expect trk_it 2
-# ALGORITHM on TRACKS: the item (K1 is its kick), the break left as it is
-turn ALGO 1 10
+# OCT on TRACKS: the item, the break left as it is (ALGORITHM is the break on every page now)
+tap OCT+
 wait 200
 expect trk_cur 2
 expect brk_next -1
-turn ALGO -1 10
+tap OCT-
 wait 200
 expect trk_cur 1
-# each item its break (K4): track 3, P1 (the break playing), then P2 with break 3: in with P2
+# each item its break (K4): track 3 (K1), P1 (the break playing), then P2 with break 3: in with P2
 expect page 8
 expect brk 0
-turn PRESET 1 10
+turn K1 1 10
 key w0 down
 key w0 up
 key w1 down
 key w1 up
-turn ALGO -1 10
+tap OCT-
 turn K4 3 10
 wait 200
 shot t_brk.png
 turn K4 -1 10
 turn K4 1 10
-turn SELECT 1 10
+tap ENV
 wait 300
 tap PLAY
 wait 300

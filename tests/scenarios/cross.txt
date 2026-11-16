@@ -1,11 +1,14 @@
 # LOAF BREAKER (crossbreed): on SEQ the kick 4X4 (K3 right; 2-STEP no more), step 11's kick a note +5 (held, K1),
-# the snare 4X4; P1 copied onto P2 (SEL + SEQ, SEL + PRESETS, SEL + SEQ); DUCK 60 % (MIX › MASTER K3; SEL + K1
-# until AFFINE); ENV DROP's BREAK the bank's second break; playing, then the BUILD (SEL + ENV) and its DROP into P2 and
-# that break. The sound: x_crossbreed.wav. (AFFINE: LOAF BREAKER's KICK EQ at the end gone)
+# OCT+ twice: the snare 4X4; P1 copied onto P2 (SEL + SEQ, PRESETS, SEL + SEQ); DUCK 60 % (LFO twice: MASTER K3; SEL
+# + K1 until AFFINE); ENV three times, DROP: K3 its BREAK the bank's second break; playing, ENV three times, white key
+# 2: the BUILD and its DROP into P2 and that break (SEL + ENV until controls phase 2), HOME to watch. The sound:
+# x_crossbreed.wav. Then SEQ, OCT+ seven times: the clap's bar 2, 4X4, step 5 held, K1; EDIT five times: the CLAP.
+# (AFFINE: LOAF BREAKER's KICK EQ at the end gone)
 #   app/build/host/affine_host tests/scenarios/cross.txt app/build/scenarios
 wait 4200
 tap SEQ
 wait 300
+expect seq_lane 2
 turn K3 4 10
 wait 200
 key w10 down
@@ -15,7 +18,10 @@ key w10 up
 wait 200
 expect knotes 1
 shot x_kick.png
-turn ALGO 4 10
+tap OCT+
+tap OCT+
+wait 150
+expect seq_lane 6
 turn K3 4 10
 wait 200
 shot x_snare.png
@@ -23,32 +29,31 @@ press SEL
 tap SEQ
 release SEL
 wait 200
-press SEL
 turn PRESET 1 10
-release SEL
 wait 200
+expect pattern 1
 press SEL
 tap SEQ
 release SEL
 wait 200
-press SEL
 turn PRESET -1 10
-release SEL
 wait 200
+expect pattern 0
 tap LFO
-wait 100
-turn SELECT 2 10
-wait 100
+wait 150
+tap LFO
+wait 150
 turn K3 30 10
 wait 200
 expect mpage 2
 shot x_duck.png
 tap ENV
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+wait 150
+tap ENV
+wait 150
+tap ENV
 wait 300
+expect tpage 2
 turn K3 2 10
 wait 200
 shot x_dropbrk.png
@@ -58,12 +63,19 @@ tap PLAY
 wait 1000
 wav x_crossbreed.wav
 wait 3000
-press SEL
 tap ENV
-release SEL
-wait 3500
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 150
+tapkey w1
+wait 150
+tap HOME
+wait 3200
 shot x_build.png
 wait 4000
+expect pattern 1
 shot x_drop.png
 wait 3000
 wavstop
@@ -71,9 +83,19 @@ shot x_after.png
 tap PLAY
 tap SEQ
 wait 300
-turn ALGO 7 10
+expect seq_lane 2
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+tap OCT+
+wait 150
+expect seq_lane 15
 turn K3 1 10
 wait 100
+expect lane_mask 4369
 key w4 down
 wait 100
 turn K1 3 10
@@ -81,5 +103,15 @@ key w4 up
 wait 200
 shot x_stab.png
 tap EDIT
+wait 150
+tap EDIT
+wait 150
+tap EDIT
+wait 150
+tap EDIT
+wait 150
+tap EDIT
 wait 300
+expect page 7
+expect einst 3
 shot x_stab_edit.png

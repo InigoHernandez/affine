@@ -1,6 +1,7 @@
-# LOAF BREAKER: four on the floor on the kick (SEQ, K3 right; pattern 2 eighths), TERROR at 60 % (SEL + K4),
-# playing; then SEL three times: the BUILD (four bars: the roll speeding up, the high-pass, the riser), then the DROP
-# into pattern 2 (the flash). The sound of it all: t_build_drop.wav
+# LOAF BREAKER: four on the floor on the kick (SEQ, K3 right; pattern 2 eighths), playing; then the BUILD (four bars:
+# the roll speeding up, the high-pass, the riser), then the DROP into pattern 2 (the flash): ENV three times, DROP,
+# white key 2 (AFFINE, controls phase 2; SEL + ENV before), HOME to watch. (AFFINE: TERROR, SEL + K4, gone with the
+# hardcore kick: the turn does nothing.) The sound of it all: t_build_drop.wav
 #   app/build/host/affine_host tests/scenarios/terror.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -8,9 +9,11 @@ wait 300
 turn K3 1 10
 turn PRESET 1 10
 wait 200
+expect pattern 1
 turn K3 2 10
 turn PRESET -1 10
 wait 200
+expect pattern 0
 tap HOME
 wait 300
 press SEL
@@ -21,11 +24,16 @@ shot t_terror.png
 tap PLAY
 wait 1500
 wav t_build_drop.wav
-wait 1400
-press SEL
 tap ENV
-release SEL
-wait 2800
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 860
+expect tpage 2
+tapkey w1
+tap HOME
+wait 2720
 shot t_build1.png
 wait 2700
 shot t_build2.png
@@ -40,6 +48,7 @@ shot t_drop4.png
 wait 400
 shot t_drop5.png
 wait 3000
+expect pattern 1
 wavstop
 shot t_after.png
 tap PLAY

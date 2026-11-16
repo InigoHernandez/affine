@@ -1,8 +1,10 @@
-# CHOPPAH: the OVERLAY page on ARP (LOAF BREAKER: back in 0.244, FILL gone; key 16 REESE, a bass, no more CUT). Each white key an effect over everything, on while held (any together); K1 the
-# amount of the one touched last, K2 the rate, K3 the sweep, K4 LATCH (a press then switches it on and off)
+# CHOPPAH: the OVERLAY page (LOAF BREAKER: on ARP, back in 0.244, FILL gone; key 16 REESE, a bass, no more CUT; AFFINE,
+# controls phase 2: FX's PLAY, where FX opens, page 9). Each white key an effect over everything, on while held (any
+# together); K1 the amount of the one touched last, K2 the rate, K3 the sweep, K4 LATCH (a press then switches it on
+# and off); latched ones stay on HOME
 #   app/build/host/affine_host tests/scenarios/overlay.txt app/build/scenarios
 wait 4200
-tap ARP
+tap FX
 wait 150
 expect page 9
 shot o_page.png
@@ -38,7 +40,7 @@ tap HOME
 wait 150
 expect page 0
 expect ovl_on 8208
-tap ARP
+tap FX
 wait 150
 tapkey w4
 wait 100

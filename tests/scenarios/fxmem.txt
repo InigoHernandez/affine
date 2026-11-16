@@ -1,29 +1,49 @@
-# LOAF BREAKER: an effect's settings kept. FX slot 1 (CRUNCH): K1 down, PRESETS to the next effect and back: K1 as it
-# was left; SEL + REC: CRUNCH's starting settings; SEL + REC again: back (undone). (AFFINE: the KICK menu's SUB FX part
-# gone with the kick's layers' effects.)
+# LOAF BREAKER: an effect's settings kept. FX slot 1 (CRUNCH): K1 down, the next effect and back: K1 as it was left.
+# (AFFINE: the KICK menu's SUB FX part gone with the kick's layers' effects. Controls phase 2: FX three times: SLOT, K1
+# there; HOME, FX twice: CHAIN, its K1 the effect (PRESETS before), right one, left one. SEL + REC's effect reset gone
+# with no replacement: SEL + REC is REC now, the slot left as it was.)
 #   app/build/host/affine_host tests/scenarios/fxmem.txt app/build/scenarios
 wait 4200
 tap FX
+wait 150
+tap FX
+wait 150
+tap FX
 wait 300
 expect page 2
+expect fxpart 1
 expect fx_focus 0
 expect fx_p1 57
 turn K1 -10 10
 wait 100
 expect fx_p1 37
-turn PRESET 1 10
+tap HOME
+wait 150
+tap FX
+wait 150
+tap FX
+wait 300
+expect page 2
+expect fxpart 0
+expect fx_focus 0
+expect fx_type 2
+turn K1 1 10
 wait 100
-turn PRESET -1 10
+expect fx_type 3
+turn K1 -1 10
 wait 100
+expect fx_type 2
 expect fx_p1 37
 press SEL
 tap REC
 release SEL
 wait 600
-expect fx_p1 57
+expect rec 1
+expect fx_p1 37
 shot m_reset.png
 press SEL
 tap REC
 release SEL
 wait 600
+expect rec 0
 expect fx_p1 37

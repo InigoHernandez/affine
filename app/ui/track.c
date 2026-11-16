@@ -9,12 +9,8 @@
 static void page_say(void);
 static void break_ask(uint32_t i);      /* (main.c) */
 #define NTPART 6u
-static const char *const TPART[NTPART] = {"TRACKS", "PLAY", "DROP", "KNOB", "BUILD", "RESET"};
-#define NTORD 4u
-static const uint8_t TORDER[NTORD] = {0u, 1u, 2u, 4u};   /* (ENV's parts in order: BUILD after DROP; LOAF BREAKER TEST:
-                                          * KNOB out (AFFINE: gone, SEL + K1-K4 free), RESET on GLO, its sixth part) */
-#define NGPART 6u                        /* (GLO's parts' code: MIDI, PITCH (SOUNDS' BREAK), SETUP, EFFECTS, FX SET,
-                                          * RESET; SYSTEM shows GLO_ORD's) */
+/* (ENV's parts, ui.tpage: 0 TRACKS, 1 PLAY, 2 DROP, 4 BUILD; 3, LOAF's KNOB, gone; RESET is GLO's, RST_ON. AFFINE,
+ * controls phase 2: their order and names in main.c's DM_PART) */
 #define RST_ON (ui.page == PG_GLOBAL && ui.gpage == 5u)   /* (GLO RESET: drawn and turned by ENV's code here) */
 /* RESET (ENV's last part): K1 what (a list: more to come), K4 turned right twice within 3 s: back to the start */
 enum { RST_DROP, RST_BUILD, RST_KICK, RST_DRUMS, RST_MIX, RST_FX, RST_STEPS, RST_PADS, RST_KEYS, RST_TRACK, RST_SCREEN,
@@ -347,20 +343,6 @@ static void drop_start_k(uint32_t to, int item)   /* item: a track's DROP item (
         return;                          /* (asked already: it comes) */
     build_n++;
 }
-/* SEL clicked three times: the drop, into DROP's AFTER (a track playing: its next pattern, the track on from it) */
-static void build_click(void)
-{
-    if (ui.trk_on && build_p < 0.0f && !build_wait) {
-        const track_t *t = trk_now();
-        int i = trk_pat_from(t, ui.trk_pos + 1u, t->end == 0u);
-        if (i >= 0) {
-            ui.trk_drop = (uint8_t)i;
-            drop_start((uint32_t)t->it[i] - 1u);
-            return;
-        }
-    }
-    drop_start(set.drop_after ? set.drop_after - 1u : (pat_cur() + 1u) % NPAT_ALL);
-}
 
 /* PLAY: the track from its first item (TRK_FROM; a DROP there: the pattern after it), from bar 1; HOME (home: 0, from
  * TRACKS: it stays) */
@@ -554,6 +536,16 @@ static void track_text(int i, char *t, int foot)
         }
         return;
     }
+    if (ui.tpage == 4u && ui.bitem) {    /* (AFFINE, controls phase 2: BUILD's TEMPO RISE item, PRESETS until then) */
+        if (i == 0 && !set.drop_accel)
+            text_cat(t, "OFF");
+        else if (i == 0) {
+            t[0] = '+';
+            int_text(set.drop_accel, t + 1);
+            text_cat(t, "%");
+        }
+        return;
+    }
     if (ui.tpage == 4u) {                /* BUILD: its style, its filter, its noise, the gap before the drop */
         if (i == 0)
             text_cat(t, (foot ? DS_SHORT : DS_NAME)[set.drop_style % DS_N]);
@@ -613,9 +605,9 @@ static void track_text(int i, char *t, int foot)
             text_cat(t, TRK_END_NAME[tr->end % 3u]);
         return;
     }
-    if (i == 0)                          /* TRACKS: K1 nothing (AFFINE: LOAF BREAKER's item's kick gone; the item:
-                                          * ALGORITHM) */
-        ;
+    if (i == 0)                          /* TRACKS: K1 the track (AFFINE, controls phase 2: PRESETS until then; the
+                                          * item: OCT) */
+        int_text((int32_t)set.trk + 1, t);
     else if (i == 1)
         trk_item_text(tr, ui.trk_cur % TRK_ITEMS, t, r);
     else if (i == 2) {
@@ -640,13 +632,14 @@ static void track_text(int i, char *t, int foot)
 }
 static void track_say(int i)             /* the knob turned, on the strip */
 {
-    static const char *const N[NTPART][4] = {{"", "PUT", "LOOPS", "BREAK"}, {"PLAY", "FROM ITEM", "AT THE END", ""},
+    static const char *const N[NTPART][4] = {{"TRACK", "PUT", "LOOPS", "BREAK"}, {"TRACK", "FROM ITEM", "AT THE END", ""},
                                         {"BUILD", "AFTER DROP", "DROP BREAK", "CRASH"}, {"", "", "", ""},
                                         {"BUILD STYLE", "SWEEP", "RISER", "GAP"}, {"RESET", "RESET", "RESET", "RESET"}};
     char t[20];
     track_text(i, t, 0);
     int drp = !ui.tpage && trk_now()->it[ui.trk_cur % TRK_ITEMS] == TI_DROP;
-    app_say(drp && i == 2 ? "STUTTER" : drp && i == 3 ? "GAP KEEPS" : N[ui.tpage % NTPART][i & 3], t);
+    app_say(drp && i == 2 ? "STUTTER" : drp && i == 3 ? "GAP KEEPS" : ui.tpage == 4u && ui.bitem ? "TEMPO RISE"
+            : N[ui.tpage % NTPART][i & 3], t);
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's SONG keeps each part's essentials: TRACKS the item's pattern (K2)
@@ -657,6 +650,7 @@ static int trk_knob_ok(int i)            /* (0.9.22, FLEXOR: BEGINNER's SONG who
     (void)i;
     return 1;
 }
+static void track_pick(int32_t d);
 static void track_turn(int i, int32_t d)
 {
     track_t *t = trk_now();
@@ -693,6 +687,14 @@ static void track_turn(int i, int32_t d)
     }
     if (!trk_knob_ok(i)) {
         easy_no();                       /* (BEGINNER: not this one) */
+        return;
+    }
+    if (ui.tpage == 4u && ui.bitem) {    /* BUILD's TEMPO RISE: K1, the tempo up with the build (LOAF BREAKER TEST) */
+        if (i == 0) {
+            set.drop_accel = (uint8_t)clamp((int32_t)set.drop_accel + (dir > 0 ? 2 : -2), 0, 30);
+            changed();
+            track_say(0);
+        }
         return;
     }
     if (ui.tpage == 4u) {                /* BUILD */
@@ -732,17 +734,10 @@ static void track_turn(int i, int32_t d)
         } else
             return;
     } else {
-        if (i < 0) {                     /* (ALGORITHM) the item: up to the one after the last */
-            uint32_t n = trk_len(t);
-            char s[8];
-            ui.trk_cur = (uint8_t)clamp((int32_t)c + dir, 0, (int32_t)(n < TRK_ITEMS ? n : TRK_ITEMS - 1u));
-            int_text((int32_t)ui.trk_cur + 1, s);
-            app_say("ITEM", s);
-            ui.redraw |= RG_BLOCKS | RG_FOOT;
+        if (i == 0) {                    /* (AFFINE, controls phase 2: K1 the track, as PLAY's) */
+            track_pick(d);
             return;
-        } else if (i == 0)               /* (AFFINE: K1 free, the item's kick gone) */
-            return;
-        else if (i == 1) {               /* END, EMPTY, DROP, P1..P64 (LOAF BREAKER: DROP just left of P1, the 64
+        } else if (i == 1) {               /* END, EMPTY, DROP, P1..P64 (LOAF BREAKER: DROP just left of P1, the 64
                                           * past; EMPTY left of it, a case emptied: gone with one more turn left, or
                                           * ENV held) */
             static uint32_t del_t;       /* (0.9.26, FLEXOR: an item deleted, K2 left does nothing until the knob has
@@ -808,7 +803,7 @@ static void track_turn(int i, int32_t d)
     }
     track_say(i);
 }
-/* PRESETS on ENV: the track (TRACKS and PLAY the same) */
+/* TRACKS' K1: the track (PRESETS until controls phase 2) */
 static void track_pick(int32_t d)
 {
     set.trk = (uint8_t)clamp((int32_t)set.trk + (d > 0 ? 1 : -1), 0, (int32_t)NTRACKS - 1);
@@ -835,6 +830,12 @@ static void track_from_here(void)
  * track played (keys 1-8) */
 static void track_key(uint32_t k)
 {
+    if (ui.tpage == 2u) {                /* AFFINE (controls phase 2): DROP, a white key: the drop into that pattern
+                                          * (of the group in), its build from the next bar (SEL + ENV until then, into
+                                          * AFTER) */
+        drop_start(set.pgrp % NGRP * NPAT + k);
+        return;
+    }
     if (ui.tpage == 1u) {
         if (k < NTRACKS) {
             set.trk = (uint8_t)k;
@@ -917,9 +918,11 @@ static void track_gap(void)
     app_say(ui.msg[0], "KEY: A PATTERN");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-static uint32_t track_keys_lit(void)     /* TRACKS: the item's pattern; PLAY: the tracks there are; KNOB: its function */
+static uint32_t track_keys_lit(void)     /* TRACKS: the item's pattern; PLAY: the tracks there are; DROP: the patterns */
 {
     uint32_t m = 0u, i;
+    if (ui.tpage == 2u)                  /* (DROP: every key a pattern to drop into, the one playing lit) */
+        return 1u << set.pattern % NPAT;
     if (ui.tpage == 1u) {
         for (i = 0; i < NTRACKS; i++)
             if (trk_len(&pats.trk[i]))
@@ -1031,7 +1034,7 @@ static void drop_picture(int build)
     char s[16];
     /* the line over it */
     if (build) {
-        pic_text(6, 4, "PRESETS: TEMPO", C_GRAY);
+        pic_text(6, 4, "TEMPO RISE", C_GRAY);   /* (AFFINE, controls phase 2: BUILD's item; PRESETS before) */
         s[0] = 0;
         if (!set.drop_accel)
             text_cat(s, "OFF");
@@ -1040,9 +1043,9 @@ static void drop_picture(int build)
             int_text(set.drop_accel, s + 1);
             text_cat(s, "%");
         }
-        pic_text(6 + pic_tw("PRESETS: TEMPO") + 8, 4, s, set.drop_accel ? C_HI : C_DIM);
+        pic_text(6 + pic_tw("TEMPO RISE") + 8, 4, s, set.drop_accel ? C_HI : C_DIM);
     } else
-        pic_text(6, 4, "SEL + ENV: THE DROP", C_GRAY);
+        pic_text(6, 4, "WHITE KEY: THE DROP", C_GRAY);   /* (controls phase 2: SEL + ENV before) */
     /* the build's bars (none: the bar playing ends into the drop, dim) */
     for (k = 0; k < (bars ? bars : 1u); k++) {
         int32_t bx = x0 + (int32_t)k * (xe - x0) / (int32_t)(bars ? bars : 1u);
@@ -1256,29 +1259,4 @@ static void track_picture(int32_t top)
 static void draw_track(void)
 {
     pic_draw(track_picture);             /* (in strips: no text cut between two) */
-}
-/* ENV: TRACKS; again, PLAY, DROP, BUILD, and back */
-static void track_tab_turn(int32_t d)    /* (LOAF BREAKER, 0.9.2, FLEXOR: SELECT, ENV's tabs, both ways) */
-{
-    uint32_t k;
-    for (k = 0; k < NTORD && TORDER[k] != ui.tpage; k++)
-        ;
-    ui.tpage = TORDER[(k + (d > 0 ? 1u : NTORD - 1u)) % NTORD];
-    ui.redraw |= RG_FOOT | RG_BLOCKS;
-    page_say();
-}
-static void track_open(void)
-{
-    if (ui.page == PG_TRACK) {
-        uint32_t k;
-        for (k = 0; k < NTORD && TORDER[k] != ui.tpage; k++)
-            ;
-        ui.tpage = TORDER[(k + 1u) % NTORD];
-    }
-    else {
-        ui.page = PG_TRACK;
-        ui.tpage = 0u;
-    }
-    ui.redraw |= RG_FOOT | RG_BLOCKS;
-    page_say();
 }

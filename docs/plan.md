@@ -64,11 +64,12 @@ The owner's ask: super performative. What it means on the FM-1:
 2. **Black keys: eleven pads, every one latchable.** Held: on while held. Tapped twice: latched until tapped again.
    K1-K4 tune the pad held. AFFINE's layout: R8, R16, R32, REVERSE, HALF, TAPE STOP, FREEZE, SKIP, VERB THROW (a
    burst into SPU VERB: the old DUB pad on the PS1's echoes), CRUSH THROW, FILTER THROW.
-3. **White keys + ARP: the overlays.** LOAF's sixteen, with PSX ones in for the weakest: SPU, XA, SKIP, FREEZE.
+3. **White keys on FX › PLAY: the overlays** (ARP's until controls phase 2). LOAF's sixteen, with PSX ones in for
+   the weakest: SPU, XA, SKIP, FREEZE.
 4. **Motion record.** With REC on, pad presses and the four gestures are written into the pattern's steps, and play
    back every loop. SEQ's clear (SEQ held, then SEQ) and INIT clear them with the pattern. Room: the kick's four freed store objects hold one group of 16 patterns each.
 5. **Scenes A/B and MORPH.** Two snapshots of the gestures and the FX chain. HOME's second page: K4 MORPH glides
-   between them, PRESETS + a white key stores one.
+   between them, a white key stores one (to be placed: PRESETS is the pattern on every page since phase 2).
 
 ### The black keys' rows, PUNCH, REC (built 2026-11-16, branch `punch`; CUSTOM gone, branch `controls1`)
 
@@ -117,6 +118,65 @@ The owner's decisions: fewer, safer gestures, one mode for everyone.
   with the pattern's undo), and again takes it off.
 - **RESET EVERYTHING** clears the drum steps' own settings, the track items' breaks and every group's drum bars 3-4
   (they survived it, written into all four groups).
+
+### Controls, phase 2 (2026-11-16, branch `controls2`)
+
+The owner's decisions: "simplify and add more coherence to the workflow ... remove redundancies and locate FX same
+place because ARP has other effects too ... more intuitive and predictable all the actions". Navigation is UI state:
+no saved field changed.
+
+**Global rules**
+
+1. **Encoders, every page:** SELECT the tempo (EXT CLOCK when a clock leads), ALGORITHM the break (next / previous),
+   PRESETS the pattern (playing: queued to the loop's end, the header says NEXT Pn until it lands; stopped: at once).
+   No page gives them another job; SEL + PRESETS is PRESETS.
+2. **Page buttons** (HOME, FX, EDIT, SEQ, ARP, ENV, LFO, GLO), each a domain named on the screen as the button is
+   printed: from another domain, its first part; on its own, the next part, round; at the release, so a hold means
+   one other thing. Anything else done while one is held (a button, a key, a knob): no part at its release. The
+   holds: SEQ 0.7 s CLEAR Pn? (SEQ again clears), FX 0.7 s alone the FX fader 0 / 100 %, ENV 0.45 s on TRACKS a gap,
+   LFO + K1-K3 the levels, SEQ + white key 1-4 a bar copied, SEQ + K1 the lane shifted.
+3. **OCT- / OCT+:** on a part with items, the previous / next item (the ends stay; the header names it); on a part
+   without, the pitch (both: 0). REC on and stopped: step recording's, every page. FX + OCT- / OCT+: the rows
+   AFFINE / PUNCH from any page.
+4. **K1-K4:** the item's knobs.
+5. **The header:** the tab bar under it names the DOMAIN, a pip for each part (the open one lit), the PART in a lit
+   tab, the item at the right; the header says them as a part opens. HOME's PERFORM and FX › PSX draw their own (PSX:
+   FX PSX, the item, the parts' pips). The SEL card: SEL's five, then the part's three lines.
+
+**The map** (`app/ui/main.c`, DM_* and nav_*)
+
+| Button | Parts (button again) | Items (OCT) | Knobs |
+| --- | --- | --- | --- |
+| HOME | PERFORM · SETTINGS | none (OCT the pitch) | PERFORM: FILTER CRUSH REDUX VERB. SETTINGS: VIEW (waveform / slices, HOME held before) GATE ZOOM BREAK TIME |
+| FX | PLAY · CHAIN · SLOT · PSX · SENDS | PLAY: the rows AFFINE, PUNCH. CHAIN: slot 1-4. SLOT: MAIN, MORE, MOD (an MB COMP its six). PSX: PRESET, VERB, CODEC, COLOR, LOFI, SKIP, OUT. SENDS: none | PLAY: AMOUNT RATE SWEEP LATCH of the last effect (the white keys the sixteen effects, ARP's OVERLAY before). CHAIN: TYPE (PRESETS before), MIX (the slot's K4: SEND on a DELAY, MID FREQ on an EQ), ON/OFF (SEL + FX before), POSITION (FX held + ALGORITHM before). SLOT: the effect's. PSX: the stage's; PRESET's K1 the four presets (PRESETS before). SENDS (MIX's before): FX, DRUMS, ARP, ROLL |
+| EDIT | BREAK · BOOM · SNARE · HAT · CLAP | BREAK: none (OCT the pitch). BOOM: BOOM, SHAPE. Drums: SOUND, SHAPE, MORE, MEMORY | BREAK (SYSTEM's PITCH part's code before, kick.c `brkp_*`): SPEED/KEEP GRAIN SNAP LEVEL. BOOM: K1 its preset. MEMORY: K1 the memory 1-10 (PRESETS before), K2 COPY, K3 PASTE (SEL + ARP before) |
+| SEQ | STEPS · DRUMS · SETTINGS | STEPS, DRUMS: the lanes top to bottom with their bars (ALGORITHM before); from another domain, BOOM's lane | the lane's / the step's, as before. SETTINGS: SWING, BREAK ROWS, FOLLOW |
+| ARP | GENERATOR | none | COMPLEXITY ANCHOR ROLL FILL (HOME's second part before) |
+| ENV | TRACKS · PLAY · DROP · BUILD | TRACKS: the song's items (ALGORITHM before). BUILD: BUILD, TEMPO RISE | TRACKS: K1 the track (PRESETS before), PUT, LOOPS, BREAK. PLAY: TRACK FROM END. DROP: BUILD AFTER BREAK CRASH, and a white key the drop into its pattern (SEL + ENV before). TEMPO RISE: K1 (PRESETS before) |
+| LFO | LEVELS · MASTER · DYN | none | as before (SENDS went to FX) |
+| GLO | MIDI · SETUP · SCREEN · RESET | SCREEN: EFFECTS, FX SET, VIEWS | VIEWS: K1 the drums' view RGB / WAVE / CLASSIC (EDIT held before). RESET keeps its five turns and GLO |
+
+On CHAIN, SLOT, PSX and SENDS the white keys stay slices. Entering CHAIN, PSX, SENDS or PLAY puts the slot on MAIN;
+SLOT is the slot CHAIN chose.
+
+**SEL after phase 2:** tapped the card; twice locked; SEL + SAVE undo; SEL + HOME, then HOME INIT; SEL + SEQ copy /
+paste; SEL + PLAY on TRACKS the start item; SEL with a white key held that key back to defaults. Nothing else (in the
+TUTORIAL, SEL + GLO still skips a step). Gone: SEL + REC's effect reset (no replacement), SEL + EDIT, SEL + ENV, SEL +
+ARP, SEL + FX (moved, above); HOME held and EDIT held (their views: knobs, above).
+
+**Details chosen where the owner left them open:** a drum's memory on a MEMORY item (its first page's knobs are all
+taken), with COPY and PASTE beside it; the drum views on GLO › SCREEN's VIEWS item (one place, not a drum item); the
+drop on ENV › DROP's white keys (each its pattern), the one place a page could hold it; CHAIN's K2 the slot's own K4
+(its name shown: SEND, MID F); CHAIN's K3 right on, left off; PSX's PRESET K1 shows its place (2/4), the picture its
+name; SLOT on an empty slot has the one item MAIN; OCT on the items stops at the ends (no wrap).
+
+**The TUTORIAL** (28 steps): HOME, PLAY, slices, ALGORITHM; HOME again (SETTINGS), again (PERFORM); a black key; FX
+(PLAY), two effects, OCT+ (PUNCH), OCT- (AFFINE); SEQ, two BOOMs, OCT+ to the snare and one; EDIT (BREAK), again
+(BOOM), PLAY (stop), keys 1-4; EDIT again (SNARE), K1, K2; PLAY, FX, again (CHAIN), K1 an effect; ENV three times
+(DROP), a white key; SAVE.
+
+Checks: scenarios nav_global, nav_fx, nav_edit, nav_seq, nav_song; every older one rewritten for the map (105 of 113,
+the 8 known); the parts' sheet `build/review/controls2-sheet.png`.
 
 ### The PSX bus (built, 6a2a425)
 

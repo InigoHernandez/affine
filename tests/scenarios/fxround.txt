@@ -1,29 +1,48 @@
-# LOAF BREAKER (0.218, FLEXOR): FX again on the FX page goes round the slot's parts (MAIN, MORE, MOD, MAIN ..), never
-# to the next slot (ALGORITHM does that); an MB COMP round its six.
+# LOAF BREAKER (0.218, FLEXOR): FX again on the FX page went round the slot's parts (MAIN, MORE, MOD, MAIN ..), never
+# to the next slot. AFFINE, controls phase 2: the slot's parts are SLOT's items: FX twice: CHAIN, OCT+ to slot 2; FX:
+# SLOT 2 on MAIN; OCT+ MORE, MOD, and there it stays (no wrap), never the next slot; OCT- back to MAIN. The next slot
+# is CHAIN's: HOME, FX twice, OCT+ to slot 3.
 #   app/build/host/affine_host tests/scenarios/fxround.txt app/build/scenarios
 wait 4200
 tap FX
+wait 150
+tap FX
 wait 300
 expect page 2
-turn SELECT 1 60
+expect fxpart 0
+tap OCT+
 wait 200
 expect fx_focus 1
-turn ALGO 1 10
-wait 200
-turn ALGO 1 10
-wait 200
-turn ALGO 1 10
-wait 200
+tap FX
+wait 300
+expect fxpart 1
 expect fx_focus 1
-turn ALGO 1 10
+expect fx_page 0
+expect items 3
+tap OCT+
 wait 200
-turn ALGO 1 10
+tap OCT+
 wait 200
-turn ALGO 1 10
-wait 200
-turn ALGO 1 10
-wait 200
+expect fx_page 2
 expect fx_focus 1
-turn SELECT 1 60
+tap OCT+
+wait 200
+expect fx_page 2
+expect fx_focus 1
+tap OCT-
+wait 200
+tap OCT-
+wait 200
+expect fx_page 0
+expect fx_focus 1
+tap HOME
+wait 150
+tap FX
+wait 150
+tap FX
+wait 300
+expect fxpart 0
+expect fx_focus 1
+tap OCT+
 wait 200
 expect fx_focus 2

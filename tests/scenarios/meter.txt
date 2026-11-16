@@ -1,18 +1,23 @@
-# CHOPPAH: the header's level meter beside the BPM, and the FX page showing the chain's mix (MIXER K4 FX)
+# CHOPPAH: the header's level meter beside the BPM, and the FX page showing the chain's mix (MIXER K4 FX). AFFINE,
+# controls phase 2: the chain's mix is FX › SENDS K1 (FX five times), its bar there; K1 left: 40 %.
 #   app/build/host/affine_host tests/scenarios/meter.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 1500
 shot m_meter.png
 tap FX
-wait 1600
-shot m_fx_mix.png
-tap LFO
-wait 200
-turn K4 -30 10
-wait 1600
+tap FX
+tap FX
+tap FX
 tap FX
 wait 1600
+expect page 2
+expect fxpart 3
+expect fx_wet 100
+shot m_fx_mix.png
+turn K1 -30 10
+wait 1600
+expect fx_wet 40
 shot m_fx_mix40.png
 tap PLAY
 wait 3000

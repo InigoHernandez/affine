@@ -325,36 +325,6 @@ static void x_knob_turn(int i, int32_t d)
     changed_fx();
 }
 
-/* FX again on the FX page: the focused slot's next part, past its last its first again (LOAF BREAKER, 0.218, FLEXOR:
- * never the next slot: ALGORITHM does that) */
-static void fx_algo(int32_t d, uint32_t sel);
-static void fx_next_part(void)
-{
-    uint32_t n = fx_npages(fx_sl(fx_foc())->type);
-    if (NOVICE) {                    /* (LOAF BREAKER, BEGINNER: the slot's MAIN only; MORE, MOD: EXPERT) */
-        ui.fx_page = 0u;
-        easy_no();                       /* (AFFINE: the TUTORIAL's; LOAF said EXPERT) */
-        ui.redraw |= RG_BLOCKS | RG_FOOT;
-        return;
-    }
-    ui.fx_page = (uint8_t)(ui.fx_page + 1u < n ? ui.fx_page + 1u : 0u);
-    page_say();
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-
-static void fx_part_turn(int32_t d)      /* (LOAF BREAKER, 0.9.2, FLEXOR: ALGORITHM, the slot's parts, MAIN MORE MOD,
-                                          * both ways; SELECT the slots) */
-{
-    uint32_t n = fx_npages(fx_sl(fx_foc())->type);
-    if (d > 0 || NOVICE) {
-        fx_next_part();
-        return;
-    }
-    ui.fx_page = (uint8_t)(ui.fx_page ? ui.fx_page - 1u : n - 1u);
-    page_say();
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-
 static const char *fx_param_long(uint32_t slot, int i)   /* (the header's: in full) */
 {
     if (mb_detail(slot))
@@ -667,88 +637,68 @@ static void fx_type_turn(int32_t d)
     changed();
 }
 
-/* LOAF BREAKER: SEL clicked twice on FX: the focused slot's effect back to its starting settings (its MORE, its MOD,
- * MB COMP's detail), forgotten as it was; twice again within 4 s: as it was (the reset taken back) */
-static struct {
-    brk_fxslot_t sl;
-    brk_fxx_t x;
-    brk_mbc_t m;
-    uint32_t t;
-    uint8_t slot;
-} fx_undo;
-static void fx_reset(void)
+/* AFFINE (controls phase 2): FX's CHAIN, the four slots at a glance; OCT the slot (its items), K1 TYPE (the list
+ * PRESETS had), K2 its MIX (the slot's K4: SEND on a DELAY, MID FREQ on an EQ), K3 ON / OFF (SEL + FX before), K4
+ * POSITION (FX held + ALGORITHM before): the slot moves along the chain, its effect, extras and detail with it */
+static void fx_move(int32_t d)
 {
-    uint32_t k = fx_foc(), now = plat_ms(), t;
-    brk_fxslot_t *sl = fx_sl(k);
-    if (fx_undo.t && now - fx_undo.t < 4000u && fx_undo.slot == k && fx_undo.sl.type == sl->type) {
-        *sl = fx_undo.sl;
-        *fxx_at(k) = fx_undo.x;
-        *mbc_at(k) = fx_undo.m;
-        fx_undo.t = 0u;
-        app_say(BRK_FXT_NAME[sl->type % BRK_NFXT], "RESET UNDONE");
-    } else {
-        uint8_t on = sl->on;
-        t = sl->type;
-        if (t == FXT_EMPTY || t >= BRK_NFXT) {
-            app_say("SLOT", "EMPTY");
-            return;
-        }
-        fx_undo.sl = *sl;
-        fx_undo.x = *fxx_at(k);
-        fx_undo.m = *mbc_at(k);
-        fx_undo.slot = (uint8_t)k;
-        fx_undo.t = now | 1u;
-        brk_fx_slot_defaults(sl, (int)t);
-        sl->on = on;
-        brk_fxx_defaults(fxx_at(k), (int)t);
-        if (t == FXT_MBCOMP)
-            brk_mbc_defaults(mbc_at(k));
-        pats.mem.fx_ok &= (uint16_t)~(1u << t);
-        app_say(BRK_FXT_NAME[t], "RESET (SEL+REC: UNDO)");
-    }
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-    changed();
-}
-
-/* ALGORITHM on the FX page: the next or previous slot; with SEL held, the focused slot moves along the chain */
-static void fx_algo(int32_t d, uint32_t sel)
-{
-    uint32_t base = 0u, ns = fx_nslots();
-    uint32_t a = fx_foc(), b = base + (a - base + (d > 0 ? 1u : ns - 1u)) % ns;
+    uint32_t ns = fx_nslots(), a = fx_foc(), b = (a + (d > 0 ? 1u : ns - 1u)) % ns;
     char n[8];
-    if (!sel) {                          /* AFFINE: SELECT goes round the slots, then PSX (focus BRK_FX_SLOTS: psxp.c) */
-        uint32_t cur = ui.fx_focus == BRK_FX_SLOTS ? ns : fx_foc(), nx = (cur + (d > 0 ? 1u : ns)) % (ns + 1u);
-        ui.fx_focus = (uint8_t)(nx == ns ? BRK_FX_SLOTS : nx);
-        ui.fx_page = 0u;
-        page_say();
-        ui.redraw |= RG_ALL;
-        return;
-    }
-    if (ui.fx_focus == BRK_FX_SLOTS)     /* (the PSX page: nothing to move) */
-        return;
-    if (sel) {
+    if ((d > 0 && a + 1u >= ns) || (d < 0 && !a))
+        return;                          /* (the ends stay the ends) */
+    {
         brk_fxslot_t tmp = *fx_sl(a);
         brk_mbc_t tm = *mbc_at(a);
-        if ((d > 0 && a == base + ns - 1u) || (d < 0 && a == base))
-            return;                      /* (the ends stay the ends) */
+        brk_fxx_t tx = *fxx_at(a);
         *fx_sl(a) = *fx_sl(b);
         *fx_sl(b) = tmp;
         *mbc_at(a) = *mbc_at(b);         /* (an MB COMP's detail goes with it, and the extras) */
         *mbc_at(b) = tm;
-        {
-            brk_fxx_t tx = *fxx_at(a);
-            *fxx_at(a) = *fxx_at(b);
-            *fxx_at(b) = tx;
-        }
-        changed();
-    } else
-        ui.fx_page = 0u;                 /* another slot: from its first part */
+        *fxx_at(a) = *fxx_at(b);
+        *fxx_at(b) = tx;
+    }
+    changed();
     ui.fx_focus = (uint8_t)b;
-    int_text((int32_t)(b - base) + 1, n);
-    if (sel)
-        app_say("MOVED TO", n);
+    int_text((int32_t)b + 1, n);
+    app_say("MOVED TO", n);
+    ui.redraw |= RG_ALL;
+}
+static const char *chain_name(int i)
+{
+    static const char *const N[4] = {"TYPE", "MIX", "ON/OFF", "POSITION"};
+    return i == 1 && fx_sl(fx_foc())->type != FXT_EMPTY ? fx_short(base_param_name(fx_foc(), 3)) : N[i & 3];
+}
+static void chain_value(int i, char *t)
+{
+    const brk_fxslot_t *sl = fx_sl(fx_foc());
+    t[0] = 0;
+    if (i == 0)
+        text_cat(t, sl->type == FXT_EMPTY ? "EMPTY" : fx_name(fx_foc()));
+    else if (i == 3)
+        int_text((int32_t)fx_foc() + 1, t);
+    else if (sl->type == FXT_EMPTY)
+        text_cat(t, "-");
+    else if (i == 1)
+        fx_value(fx_foc(), 3, t);
     else
-        page_say();
+        text_cat(t, sl->on ? "ON" : "OFF");
+}
+static void chain_turn(int i, int32_t d)
+{
+    brk_fxslot_t *sl = fx_sl(fx_foc());
+    if (i == 0)
+        fx_type_turn(d);
+    else if (i == 3)
+        fx_move(d);
+    else if (sl->type == FXT_EMPTY)
+        app_say("EMPTY", "K1: AN EFFECT");
+    else if (i == 1)
+        fx_knob_turn(fx_foc(), 3, d);
+    else {
+        sl->on = (uint8_t)(d > 0);       /* (right on, left off) */
+        app_say(fx_name(fx_foc()), sl->on ? "ON" : "OFF");
+        changed();
+    }
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
 static int delay_slot(void)              /* the chain's DELAY in use (the first one on), -1 none */
@@ -1130,7 +1080,7 @@ static void draw_xview(uint32_t now)
     for (x = 0; x < 240; x += 4)         /* the middle (the tones), 0 dB (the responses) */
         cv_rect(x, mid, 2, 1, C_LINE);
     if (t == FXT_EMPTY)                  /* (one line: what puts an effect here) */
-        fxv_text(120 - text_w(&FONT_T, "EMPTY: TURN PRESETS") / 2, mid - 12, "EMPTY: TURN PRESETS", C_GRAY);
+        fxv_text(120 - text_w(&FONT_T, "EMPTY: CHAIN K1") / 2, mid - 12, "EMPTY: CHAIN K1", C_GRAY);
     for (x = 0; t != FXT_EMPTY && x < 240; x++) {
         float in, base, v = x_plot(t, x, p, xx, now, &in, &base);
         y = mid - (int32_t)(brk_clampf(v, -1.0f, 1.0f) * (float)amp);
@@ -1189,6 +1139,40 @@ static void draw_xview(uint32_t now)
         fxv_text(mx + 6 - text_w(&FONT_T, i ? "OUT" : "IN") / 2, 42, i ? "OUT" : "IN", C_GRAY);
     }
     cv_blit(0, 140);
+}
+
+/* FX's CHAIN (AFFINE, controls phase 2): the four slots side by side, the signal left to right: each its number, its
+ * effect's short name, ON or OFF, its MIX as a bar; the slot OCT is on lit */
+static void draw_fxchain(void)
+{
+    uint32_t band, i;
+    for (band = 0; band < 2u; band++) {
+        cv_begin(240, 52, C_BLACK);
+        cv_oy = -(int32_t)band * 52;
+        for (i = 0; i < fx_nslots(); i++) {
+            const brk_fxslot_t *sl = fx_sl(i);
+            int32_t x = 2 + (int32_t)i * 60, foc = i == fx_foc(), on = sl->on && sl->type != FXT_EMPTY;
+            uint16_t ink = foc ? C_BLACK : on ? C_WHITE : C_DIM;
+            char n[4];
+            cv_rect(x, 2, 54, 98, foc ? C_HI : C_BLOCK);
+            if (i + 1u < fx_nslots())        /* (the signal on to the next) */
+                cv_rect(x + 54, 50, 6, 2, C_LINE);
+            if (!band) {
+                n[0] = (char)('1' + i);
+                n[1] = 0;
+                fxv_text(x + 4, 6, n, ink);
+                fxv_text(x + 27 - text_w(&FONT_T, fx_chain_name(i)) / 2, 24, fx_chain_name(i), ink);
+            } else {
+                const char *st = sl->type == FXT_EMPTY ? "-" : sl->on ? "ON" : "OFF";
+                int32_t h = sl->type == FXT_EMPTY ? 0 : (int32_t)(brk_clampf(sl->mix, 0.0f, 1.0f) * 28.0f + 0.5f);
+                fxv_text(x + 27 - text_w(&FONT_T, st) / 2, 56, st, ink);
+                cv_rect(x + 20, 70, 14, 28, foc ? C_BLOCK_HI : C_LINE);
+                cv_rect(x + 20, 98 - h, 14, h, foc ? C_BLACK : on ? C_HI : C_DIM);
+            }
+        }
+        cv_oy = 0;
+        cv_blit(0, 88u + band * 52u);
+    }
 }
 
 /* the FX page: the focused slot's view (an MB COMP its own) */

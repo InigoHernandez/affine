@@ -1,5 +1,6 @@
-# LOAF BREAKER (0.9.31, FLEXOR): SEQ › SETTINGS K3 FOLLOW. OFF: the grid stays on the kick's first bar while it plays;
-# ON (as to start): it goes with the bar playing (the kick 64 steps: K2, K3, K4).
+# LOAF BREAKER (0.9.31, FLEXOR): SEQ › SETTINGS K3 FOLLOW (AFFINE, controls phase 2: SEQ three times, SETTINGS; again:
+# STEPS). OFF: the grid stays on the kick's first bar while it plays; ON (as to start): it goes with the bar playing
+# (the kick 64 steps: K2, K3, K4).
 #   app/build/host/affine_host tests/scenarios/seqfollow.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -9,13 +10,15 @@ expect seq_lane 2
 turn K4 1 10
 wait 150
 expect lane_steps 64
-turn SELECT -1 80
+tap SEQ
+wait 150
+tap SEQ
 wait 300
 expect page 3
 turn K3 -1 80
 wait 200
 shot sf_settings.png
-turn SELECT 1 80
+tap SEQ
 wait 300
 expect page 6
 expect seq_lane 2
@@ -24,12 +27,16 @@ wait 3500
 expect seq_lane 2
 tap PLAY
 wait 300
-turn SELECT -1 80
+tap SEQ
+wait 150
+tap SEQ
 wait 300
+expect page 3
 turn K3 1 80
 wait 200
-turn SELECT 1 80
+tap SEQ
 wait 300
+expect page 6
 tap PLAY
 wait 3500
 expect seq_lane >2

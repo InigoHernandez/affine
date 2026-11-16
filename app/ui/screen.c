@@ -349,7 +349,7 @@ static void draw_head(const brk_status_t *st, const brk_break_t *b, uint32_t now
         head_put(HEAD_X, HEAD_Y2, w, head_fit(w, HEAD_R - HEAD_X, 1), tut_ok ? C_HI : C_WHITE);   /* (done: "OK! NEXT IN 4 S") */
     } else {
         int32_t x, r, room;
-        char p[8], tr[8];
+        char p[12], tr[8];
         if (ui.rec) {                    /* REC: a dot (AFFINE: in place of the mark, the word gone at 2x) */
             cv_rect(10, 9, 6, 10, C_HI);
             cv_rect(9, 10, 8, 8, C_HI);
@@ -368,10 +368,14 @@ static void draw_head(const brk_status_t *st, const brk_break_t *b, uint32_t now
             r -= 8 + text_w(&FONT_B, "EXT");
             cv_text(r, 6, &FONT_B, "EXT", C_AMB);
         }
-        p[0] = 'P';                      /* the pattern (> one queued), a track playing ("T1"): as far as room */
+        p[0] = 'P';                      /* the pattern, a track playing ("T1"): as far as room (AFFINE, controls phase
+                                          * 2: one queued by PRESETS, playing: "NEXT P5" until it lands) */
         int_text((int32_t)pat_cur() + 1, p + 1);
-        if (pat_next >= 0)
-            text_cat(p, ">");
+        if (pat_next >= 0) {
+            p[0] = 0;
+            text_cat(p, "NEXT P");
+            int_text((int32_t)pat_next + 1, p + 6);
+        }
         tr[0] = 0;
         if (ui.trk_on) {
             tr[0] = 'T';

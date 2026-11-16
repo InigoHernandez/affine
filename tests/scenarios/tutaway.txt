@@ -1,13 +1,16 @@
 # LOAF BREAKER: the TUTORIAL keeps to its steps (0.249, FLEXOR: "the tutorial must flow"): a page button the step
-# doesn't ask for does nothing ("FOLLOW THE STEP"); off the step's page all the same (0.248), the header says the way
-# back and only that button blinks and works (AFFINE: SETUP K3 right starts it). Step 3 (the slices, HOME): EDIT held back. SEL + GLO to step 14 (two kicks
-# into the pattern; 9 before HOME's five steps, 0.9.2), still on HOME: "PRESS SEQ: BACK TO THE PATTERN"; EDIT held back, SEQ: the pattern, the step again.
+# doesn't ask for does nothing ("FOLLOW THE STEP"), nor at its release; off the step's page all the same (0.248), the
+# header says the way back and only that button blinks and works (AFFINE: SETUP K3 right starts it). Step 3 (the
+# slices, HOME): EDIT held back. SEL + GLO to step 13 (two BOOMs into the pattern; AFFINE, controls phase 2: the steps
+# already done on the page skipped to, HOME's PERFORM, the AFFINE row, go on at once), still on HOME: "SEQ: BACK TO
+# PATTERN"; EDIT held back, SEQ: the pattern, the step again.
 #   app/build/host/affine_host tests/scenarios/tutaway.txt app/build/scenarios
 wait 4200
 tap GLO
 wait 150
-turn SELECT 1 10
+tap GLO
 wait 300
+expect gpage 2
 turn K3 1 80
 wait 300
 expect tut 1
@@ -37,15 +40,9 @@ wait 150
 tap GLO
 wait 150
 tap GLO
-wait 150
-tap GLO
-wait 150
-tap GLO
-wait 150
-tap GLO
 release SEL
 wait 300
-expect tut 14
+expect tut 13
 expect page 0
 tap EDIT
 wait 400

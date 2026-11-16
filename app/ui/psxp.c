@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-/* AFFINE: the PSX page, EFFECTS' fifth tab (SELECT past the slots: ui.fx_focus == BRK_FX_SLOTS), the PSX bus's settings
- * (psx.h; HOME's knobs keep the amounts: FILTER, CRUSH, REDUX, VERB). Six parts on ALGORITHM:
+/* AFFINE: the PSX page, FX's fourth part (controls phase 2; EFFECTS' fifth tab before), the PSX bus's settings (psx.h;
+ * HOME's knobs keep the amounts: FILTER, CRUSH, REDUX, VERB). Seven items on OCT: PRESET (K1 the four presets, psx.h
+ * PSXP_*, every stage at once; PRESETS before), then:
  *   VERB   TYPE (the nine), SIZE (on CHAOS and DELAY in note values at the tempo), TONE, DEPTH; the picture: the
  *          preset's own early echoes (its combs, from its registers) and its tail, the sound going in lit
  *   CODEC  MODE (OFF, GRIT, XA), RATE, BITS, MIX; the picture: a wave as the codec's steps hold it
@@ -12,20 +13,20 @@
  *   OUT    CONSOLE, MONO, SEND (the PSX's own into SPU VERB), INPUT (SPU VERB's): the SPU's mixer and the console's
  *          output (VERB's four knobs are taken: TYPE, SIZE, TONE, DEPTH); the picture: CONSOLE's roll-off and clip
  *          curve, the reverb's input as INPUT drives it and SEND fills it, the two speakers (one dot: MONO)
- * PRESETS: the four PSX presets (psx.h PSXP_*), every stage at once. Drawn whole in the POLYGON look (app/ui/aff.c), as
- * HOME. Part of app.c's unity, after aff.c. */
+ * Drawn whole in the POLYGON look (app/ui/aff.c), as HOME. Part of app.c's unity, after aff.c. */
 
-#define FX_PSX() (ui.page == PG_FX && ui.fx_focus == BRK_FX_SLOTS)
-enum { PP_VERB, PP_CODEC, PP_COLOR, PP_LOFI, PP_SKIP, PP_OUT, PP_N };
-static const char *const PP_NAME[PP_N] = {"VERB", "CODEC", "COLOR", "LOFI", "SKIP", "OUT"};
-static uint8_t pp_part;                  /* the part shown (not saved) */
+enum { PP_PRESET, PP_VERB, PP_CODEC, PP_COLOR, PP_LOFI, PP_SKIP, PP_OUT, PP_N };
+static const char *const PP_NAME[PP_N] = {"PRESET", "VERB", "CODEC", "COLOR", "LOFI", "SKIP", "OUT"};
+static uint8_t pp_part;                  /* the item shown (not saved; AFFINE, controls phase 2: OCT walks them, PRESET
+                                          * first, its K1 the four presets) */
 static const char *const VERB_SHORT[PSXV_N] = {"ROOM", "STD S", "STD M", "STD L", "HALL", "HALF", "SPACE", "CHAOS",
                                                "DELAY"};   /* (the presets' names short: HOME's picture, this page) */
 static const float GRIT_RATES[6] = {11025.0f, 16000.0f, 22050.0f, 32000.0f, 37800.0f, 44100.0f};
 
 static const char *psxp_name(int i)
 {
-    static const char *const N[PP_N][4] = {{"TYPE", "SIZE", "TONE", "DEPTH"}, {"MODE", "RATE", "BITS", "MIX"},
+    static const char *const N[PP_N][4] = {{"PRESET", "", "", ""}, {"TYPE", "SIZE", "TONE", "DEPTH"},
+                                           {"MODE", "RATE", "BITS", "MIX"},
                                            {"AMOUNT", "RATE", "CRUNCH", "SMOOTH"}, {"CRUSH", "MASK", "REDUX", "JITTER"},
                                            {"LENGTH", "CHANCE", "SEEK", "MIX"}, {"CONSOLE", "MONO", "SEND", "INPUT"}};
     return N[pp_part % PP_N][i & 3];
@@ -95,6 +96,15 @@ static void psxp_value(int i, char *t)
     const psx_bus_t *b = &set.psx;
     t[0] = 0;
     switch (pp_part % PP_N) {
+    case PP_PRESET:                      /* (K1: the preset the stages came from, its place, 2/4; "-" once a stage is
+                                          * turned. Its name is the picture's, lit, and the header's as it turns: the
+                                          * panel's cell holds no SUBTLE GLUE beside its name) */
+        if (i == 0 && set.pxc.preset) {
+            int_text((int32_t)set.pxc.preset, t);
+            text_cat(t, "/4");
+        } else if (i == 0)
+            text_cat(t, "-");
+        break;
     case PP_VERB:
         if (i == 0)
             text_cat(t, VERB_SHORT[b->vtype % PSXV_N]);
@@ -183,6 +193,7 @@ static float psxp_norm(int i)            /* the knob's gauge, 0..1, -1 none (a c
 {
     const psx_bus_t *b = &set.psx;
     switch (pp_part % PP_N) {
+    case PP_PRESET: return -1.0f;
     case PP_VERB: return i == 0 ? -1.0f : i == 1 ? b->vsize : i == 2 ? b->vtone : b->vdepth;
     case PP_CODEC: return i == 3 ? b->cmix : -1.0f;
     case PP_COLOR: return i == 0 ? set.pxc.amount : i == 1 ? -1.0f : i == 2 ? set.pxc.crunch : set.pxc.smooth;
@@ -192,12 +203,17 @@ static float psxp_norm(int i)            /* the knob's gauge, 0..1, -1 none (a c
     }
 }
 
+static void psxp_preset_turn(int32_t d);
 static void psxp_turn(int i, int32_t d)
 {
     psx_bus_t *b = &set.psx;
     char t[16];
     int s = d > 0 ? 1 : -1;
     switch (pp_part % PP_N) {
+    case PP_PRESET:                      /* (K1: the four presets, every stage at once; PRESETS until phase 2) */
+        if (i == 0)
+            psxp_preset_turn(d);
+        return;
     case PP_VERB:
         if (i == 0)
             b->vtype = (uint8_t)clamp((int32_t)b->vtype + s, 0, PSXV_N - 1);
@@ -286,13 +302,7 @@ static void psxp_turn(int i, int32_t d)
     changed_fx();
 }
 
-static void psxp_part_turn(int32_t d)    /* ALGORITHM on the PSX page: its parts */
-{
-    pp_part = (uint8_t)((pp_part + (d > 0 ? 1u : PP_N - 1u)) % PP_N);
-    app_say("PSX", PP_NAME[pp_part]);
-}
-
-static void psxp_preset_turn(int32_t d)  /* PRESETS on the PSX page: the four presets, every stage at once */
+static void psxp_preset_turn(int32_t d)  /* PRESET's K1: the four presets, every stage at once */
 {
     int32_t k = set.pxc.preset;
     if (!k)
@@ -600,6 +610,19 @@ static void pp_draw_out(int32_t band, uint32_t now)
     }
 }
 
+/* PRESET: the four presets a row each, the one the stages came from lit (none once a stage is turned) */
+static void pp_draw_preset(int32_t band)
+{
+    uint32_t k;
+    for (k = 0; k < PSXP_N; k++) {
+        int32_t y = 54 + (int32_t)k * 32, on = set.pxc.preset == k + 1u, r;
+        for (r = y; r < y + 26; r++)
+            if (r >= band && r < band + 60)
+                cv_rect(16, r - band, 208, 1, on ? A_HOT : A_BG1);
+        pp_text(120, y + 8, PSXP_NAME[k], on ? A_BG0 : A_DIM, band, 2);
+    }
+}
+
 static void psxp_draw(uint32_t now)
 {
     int32_t top, i;
@@ -607,11 +630,17 @@ static void psxp_draw(uint32_t now)
     for (top = 0; top < 240; top += 60) {
         cv_begin(240, 60, A_BG0);
         aff_check();
-        /* the header: PSX, a message or the colour's state; the part shown, and the six as pips, its one lit */
+        /* the header (AFFINE, controls phase 2): FX PSX, a message, the pattern to come or the colour's state; the
+         * item shown, and FX's five parts as pips, PSX lit */
         if (top < 40) {
-            pp_text(8, 8, "PSX", A_INK, top, 0);
+            pp_text(8, 8, "FX PSX", A_INK, top, 0);
             if (now < ui.msg_until)
                 pp_text(232, 8, ui.msg[1], A_HOT, top, 1);
+            else if (pat_next >= 0) {    /* (PRESETS playing: the pattern to come, until it lands) */
+                char t[12] = "NEXT P";
+                int_text((int32_t)pat_next + 1, t + 6);
+                pp_text(232, 8, t, A_HOT, top, 1);
+            }
             else if (pp_part == PP_COLOR && set.psx.codec != CODEC_GRIT)
                 pp_text(232, 8, "GRIT OFF", A_DIM, top, 1);   /* (the colour is GRIT's: off, a turn of K2-K4) */
             else if (set.pxc.preset && (pp_part == PP_COLOR || pp_part == PP_OUT))
@@ -619,14 +648,15 @@ static void psxp_draw(uint32_t now)
             else
                 pp_text(232, 8, "SPU", A_DIM, top, 1);
             pp_text(8, 24, PP_NAME[pp_part % PP_N], A_HOT, top, 0);
-            for (i = 0; i < PP_N; i++) {  /* (the pips: 8 x 8, 4 apart, right-aligned) */
-                int32_t px = 232 - (PP_N - i) * 12 + 4, yy, xx;
+            for (i = 0; i < 5; i++) {    /* (the pips: 8 x 8, 4 apart, right-aligned) */
+                int32_t px = 232 - (5 - i) * 12 + 4, yy, xx;
                 for (yy = 25; yy < 33; yy++)
                     for (xx = px; xx < px + 8; xx++)
-                        pp_px(xx, yy, i == pp_part ? A_HOT : A_DIM, top);
+                        pp_px(xx, yy, i == 1 + FXP_PSX ? A_HOT : A_DIM, top);
             }
         }
         switch (pp_part % PP_N) {
+        case PP_PRESET: pp_draw_preset(top); break;
         case PP_VERB: pp_draw_verb(top, now); break;
         case PP_CODEC: pp_draw_codec(top, now); break;
         case PP_COLOR: pp_draw_color(top, now); break;

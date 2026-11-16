@@ -40,23 +40,6 @@ static void boom_pre_turn(int32_t d)     /* K1 PRESET, PRESETS, SEQ's K2 on a BO
 {
     boom_pre_set((uint32_t)clamp((int32_t)(set.kpre % BOOM_PRESETS) + (d > 0 ? 1 : -1), 0, BOOM_PRESETS - 1));
 }
-static void kick_open(void)              /* EDIT: BOOM's page */
-{
-    ui.page = PG_KICK;
-    ui.einst = DR_KICK;
-    ui.redraw |= RG_FOOT | RG_BLOCKS;
-    page_say();
-}
-static void boom_part_turn(int32_t d)    /* ALGORITHM on BOOM: its parts, BOOM and SHAPE (EXPERT) */
-{
-    if (NOVICE) {
-        easy_no();
-        return;
-    }
-    ui.kpage = (uint8_t)((ui.kpage % BOOM_PARTS + (d > 0 ? 1u : BOOM_PARTS - 1u)) % BOOM_PARTS);
-    page_say();
-    ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;
-}
 static const char *kick_knob_name(int i) { return BOOM_KNOB[boom_part()][i & 3]; }
 static void kick_value(int i, char *t)
 {
@@ -275,4 +258,91 @@ static void draw_kick(const brk_status_t *st)
         boom_picture(st, (int32_t)top);
         cv_blit(0, 44u + top);
     }
+}
+
+/* ------------------------------------------------------------------------------ EDIT › BREAK (AFFINE) --- */
+/* AFFINE (controls phase 2): EDIT's first part, the break itself (SYSTEM's PITCH part's code until then, SOUNDS ›
+ * BREAK): K1 SPEED / KEEP LEN, K2 GRAIN, K3 SNAP, K4 the break's LEVEL; no items, so OCT is the pitch here as on
+ * PERFORM. The pitch now, large, between the keys that move it (OCT- / OCT+: a semitone,
+ * both: 0); K1 SPEED (the pitch makes a slice shorter or longer: the slice against its length, the tick) or KEEP LEN
+ * (its length kept, in grains K2 long); SNAP (K3): what it is in this break, and where a key lands on a bar's 16ths */
+static void brkp_body(const brk_status_t *st)
+{
+    char t[16];
+    int32_t keep = pitch_keeps(), w, k, g = set.grain_ms ? set.grain_ms : 30, step = 0;
+    float f = 1.0f, n = 0.0f;
+    (void)st;
+    cv_rect(4, 52, 50, 30, C_BLOCK);
+    g_text(29, 62, "OCT-", 2, C_GRAY, 2);
+    cv_rect(186, 52, 50, 30, C_BLOCK);
+    g_text(211, 62, "OCT+", 2, C_GRAY, 2);
+    t[0] = set.pitch > 0 ? '+' : 0;
+    t[1] = 0;
+    int_text(set.pitch, t + (set.pitch > 0));
+    text_cat(t, " ST");
+    g_text(120, 60, t, 3, set.pitch ? C_HI : C_WHITE, 2);
+    g_seg(4, 96, 114, 22, "SPEED", !keep);
+    g_seg(122, 96, 114, 22, "KEEP LEN", keep);
+    for (k = 0; k < (set.pitch < 0 ? -set.pitch : set.pitch); k++)
+        f *= set.pitch > 0 ? 0.94387f : 1.05946f;   /* (a semitone: 2^(1/12)) */
+    w = (int32_t)(57.0f * f);
+    w = w < 3 ? 3 : w > 112 ? 112 : w;
+    cv_rect(6, 124, w, 12, keep ? C_LINE : C_AMB);
+    for (k = 0; k < 57; k += g / 5 + 3)  /* (a grain 10-80 ms: 4-18 pixels) */
+        cv_rect(124 + k, 124, 57 - k < g / 5 + 2 ? 57 - k : g / 5 + 2, 12, keep ? C_AMB : C_LINE);
+    cv_rect(63, 121, 1, 18, C_GRAY);     /* (the slice's own length) */
+    cv_rect(181, 121, 1, 18, C_GRAY);
+    g_text(6, 148, "SNAP", 2, C_GRAY, 0);
+    t[0] = 0;
+    if (snap_index()) {
+        n = SNAP_SL[snap_index()] * key_sps(brk_get_break());
+        sixteenths_text(n, t);
+        step = (int32_t)(n + 0.5f);
+    } else
+        text_cat(t, "OFF");
+    g_text(234, 148, t, 2, snap_index() ? C_HI : C_DIM, 1);
+    for (k = 0; k < 16; k++)
+        cv_rect(8 + k * 14, 166, 12, 20, snap_index() && (step <= 1 || k % step == 0) ? C_HI : (k & 3) ? C_BLOCK : C_DIM);
+}
+
+static void brkp_value(int i, char *t)
+{
+    t[0] = 0;
+    if (i == 0)
+        text_cat(t, pitch_keeps() ? "KEEP LEN" : "SPEED");
+    else if (i == 1) {
+        int_text(set.grain_ms ? set.grain_ms : 30, t);
+        text_cat(t, " MS");
+    } else if (i == 2)
+        text_cat(t, SNAP_SHORT[snap_index()]);
+    else {                               /* (LOAF BREAKER: K4 the break's LEVEL, the MIXER's BREAK) */
+        int_text(set.brk_level, t);
+        text_cat(t, "%");
+    }
+}
+static void brkp_turn(int i, int32_t d)
+{
+    char t[16];
+    if (!glo_knob_ok(i)) {
+        easy_no();
+        return;
+    }
+    if (i == 0)
+        set.pitch_keep = d > 0 ? 1u : 2u;   /* right KEEP LENGTH, left SPEED */
+    else if (i == 1)
+        set.grain_ms = (uint8_t)clamp((int32_t)(set.grain_ms ? set.grain_ms : 30u) + d * 5, 10, 80);
+    else if (i == 2)
+        set.snap = (uint8_t)(clamp((int32_t)snap_index() + (d > 0 ? 1 : -1), 0, SNAPS - 1) + 1);
+    else
+        set.brk_level = (uint8_t)clamp((int32_t)set.brk_level + d * 2, 0, 100);
+    brkp_value(i, t);
+    app_say(i == 0 ? "PITCH" : i == 1 ? "GRAIN" : i == 2 ? "SNAP" : "BREAK LEVEL", i == 0 && pitch_keeps()
+            ? "KEEP LENGTH" : i == 2 ? SNAP_NAME[snap_index()] : t);
+    changed();
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
+static void draw_brkp(const brk_status_t *st)
+{                                        /* (no waveform: rows 44-192 its own, as SYSTEM's were) */
+    static const uint8_t TOP[4] = {44u, 92u, 140u, 192u};
+    g_strips(TOP, 3u, brkp_body, st);
 }

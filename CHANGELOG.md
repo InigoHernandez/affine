@@ -4,6 +4,14 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Controls:** the same encoders on every page: SELECT the tempo, ALGORITHM the break, PRESETS the pattern (playing:
+  NEXT Pn until it comes in). A page button opens its first part, pressed again the next, as you let it go; OCT- /
+  OCT+ step through the part's items (the header names them), or change the pitch where there are none. FX holds
+  every effect: PLAY (the white-key effects, ARP's before; OCT the black-key row), CHAIN (K1 the effect, K2 its
+  mix, K3 on / off, K4 its place), SLOT, PSX (PRESET first), SENDS (MIX's before). EDIT opens the BREAK, then BOOM,
+  SNARE, HAT, CLAP; a drum's MEMORY item picks, copies and pastes its sounds. ARP is the GENERATOR. ENV's DROP: a
+  white key drops into its pattern; BUILD's TEMPO RISE an item. The drum views on GLO › SCREEN › VIEWS. The
+  tutorial walks the new way (28 steps).
 - **Screen:** HOME's gem a little lower (the owner), clear of the header's second line even on the beat.
 - **Controls:** two rows of black keys, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM and ARP's BLACK KEYS tab gone; a
   saved CUSTOM row plays AFFINE's, and what REC recorded still plays). No clear without a question: REC just records
