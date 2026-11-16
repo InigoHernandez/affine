@@ -224,40 +224,173 @@ static void global_turn(int i, int32_t d)
     changed();
 }
 
-/* the GLOBAL page's panel: Bluetooth, the clock coming in, the clock going out, MIDI through each port */
-/* LOAF BREAKER (0.9.30, FLEXOR): GLO EFFECTS' cards, two rows of four on rows 46-189, drawn into the strip from screen
- * row top: each effect's card a small picture (a block, a zigzag, a floor) with that effect done to it, its key and
- * name below, lit when on; the eighth what the keys do */
-static void sfx_cards(int32_t top)
+/* ------------------------------------------------------------------------------------ AFFINE: the body at 2x --- */
+/* AFFINE (the owner, 0.1 on the FM-1: "everything in the UI looks very small"): SYSTEM's parts and LIVE SETTINGS at
+ * 2x, the least; the foot already says each knob's name and value, so the body shows pictures (what a setting does,
+ * the choices, the ports) and few words. The body is drawn in strips (the canvas: 60 rows at most), the page's
+ * drawing whole into each, cv_oy at the strip's first row: a rect across two strips is cut between them; a text goes
+ * into the one strip that holds it (each placed inside one; the host's audit names one across two) */
+static int32_t g_top;                    /* the strip being drawn: its first screen row */
+static void g_text(int32_t x, int32_t y, const char *s, int32_t z, uint16_t c, int align)
+{                                        /* s at the screen's (x, y), y its capitals' top, z times (2 the least); align
+                                          * 0 left, 1 right (x its end), 2 centred on x */
+    int32_t ly = y - g_top;
+    if (align)
+        x -= aff_text_w(s, z) / (align == 1 ? 1 : 2);
+    if (ly + (int32_t)AFF_CAP_H * z <= 0 || ly >= (int32_t)cv_h)
+        return;                          /* (another strip's) */
+    aff_aud_add(x, ly, z, s);
+    aff_text(x, y, s, z, c, 0, 0);       /* (cv_oy: into the strip's rows) */
+}
+static void g_strips(const uint8_t *top, uint32_t n, void (*draw)(const brk_status_t *), const brk_status_t *st)
+{                                        /* the body in n strips from top[0] to top[n] */
+    uint32_t b;
+    for (b = 0; b < n; b++) {
+        cv_begin(240, (uint32_t)(top[b + 1] - top[b]), C_BLACK);
+        g_top = top[b];
+        cv_oy = -g_top;
+        draw(st);
+        cv_oy = 0;
+        cv_blit(0, top[b]);
+    }
+}
+static void g_tri(int32_t x, int32_t y, int32_t h, uint16_t c)   /* a triangle pointing right: x, y its left top */
+{
+    int32_t r;
+    for (r = 0; r < h; r++)
+        cv_rect(x, y + r, (r < h / 2 ? r : h - 1 - r) + 1, 1, c);
+}
+static void g_seg(int32_t x, int32_t y, int32_t w, int32_t h, const char *s, int on)
+{                                        /* one of a knob's choices: lit when it is the one */
+    cv_rect(x, y, w, h, on ? C_HI : C_BLOCK);
+    g_text(x + w / 2, y + (h - 10) / 2, s, 2, on ? C_BLACK : C_GRAY, 2);
+}
+static void g_row(int32_t y, const char *l, const char *v, uint16_t c)
+{                                        /* a settings row, 26 rows from y: its name left, its value right, a rule */
+    g_text(8, y + 8, l, 2, C_GRAY, 0);
+    g_text(232, y + 8, v, 2, c, 1);
+    cv_rect(4, y + 25, 232, 1, C_LINE);
+}
+static void g_frame(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)   /* a frame 2 pixels thick, inside */
+{
+    cv_rect(x, y, w, 2, c);
+    cv_rect(x, y + h - 2, w, 2, c);
+    cv_rect(x, y, 2, h, c);
+    cv_rect(x + w - 2, y, 2, h, c);
+}
+
+/* SYSTEM › MIDI: the settings a row each (where MIDI goes, the clock in and the tempo it gives, the clock out), then
+ * the two ports: an arrow into the name lit while MIDI comes in, one out of it while it goes out (lit: in the last
+ * 0.3 s; LOAF BREAKER, 0.259: no Bluetooth; the TRS jack takes MIDI in only) */
+static void glo_midi(const brk_status_t *st)
+{
+    static const char *const PORT_NAME[2] = {"USB", "TRS"};
+    char t[24], v[16];
+    uint32_t p;
+    g_row(44, "MIDI", "USB+TRS", C_WHITE);
+    t[0] = 0;
+    if (!set.clk_in)
+        text_cat(t, "OFF");
+    else if (!ext_active())
+        text_cat(t, "WAITING");
+    else {
+        tenths_text((int32_t)(ext.bpm * 10.0f + 0.5f), v);
+        text_cat(t, v);
+        text_cat(t, " BPM");
+    }
+    g_row(70, "CLOCK IN", t, ext_active() ? C_HI : set.clk_in ? C_WHITE : C_DIM);
+    if (ext_active()) {                  /* (the outside's transport: started, a play's triangle; stopped, a square) */
+        int32_t x = 232 - aff_text_w(t, 2) - 16;
+        if (ext.run)
+            g_tri(x, 77, 11, C_HI);
+        else
+            cv_rect(x, 78, 9, 9, C_HI);
+    }
+    g_row(96, "CLOCK OUT", set.clk_out ? "TO USB" : "OFF",   /* (LOAF BREAKER, 0.259: USB; sent while playing) */
+          set.clk_out && st->playing ? C_HI : set.clk_out ? C_WHITE : C_DIM);
+    for (p = 0; p < 2u; p++) {
+        uint32_t port = p ? (uint32_t)PORT_TRS : 0u;
+        int32_t x = 4 + (int32_t)p * 118;
+        int in = plat_midi_ago((int)port, 0) < 300u, out = !p && plat_midi_ago((int)port, 1) < 300u;
+        cv_rect(x, 132, 114, 54, C_BLOCK);
+        cv_rect(x + 8, 159, 14, 2, in ? C_HI : C_LINE);   /* in: into the name */
+        g_tri(x + 22, 154, 11, in ? C_HI : C_LINE);
+        g_text(x + 57, 155, PORT_NAME[p], 2, in || out ? C_WHITE : C_GRAY, 2);
+        if (!p) {                        /* out: out of it */
+            cv_rect(x + 80, 159, 14, 2, out ? C_HI : C_LINE);
+            g_tri(x + 94, 154, 11, out ? C_HI : C_LINE);
+        }
+    }
+}
+
+/* SYSTEM › SETUP: the skins as little scenes in their colours, the one on framed (K1); the mode's three choices as
+ * K3 turns through them; AUTO SAVE (K4): a memory card, lit when on, and when it saves */
+static void glo_setup(const brk_status_t *st)
+{
+    static const char *const MODE[3] = {"TUTORIAL", "BEGINNER", "EXPERT"};
+    uint32_t s, m = tut_on() ? 0u : set.novice ? 1u : 2u;
+    uint16_t mc = set.auto_save ? C_HI : C_LINE;
+    (void)st;
+    for (s = 0; s < NSKINS; s++) {       /* (its ground, a floor of its cards' colour under a rule, the hot gem, a
+                                          * line of text and one of an amount) */
+        const uint8_t (*c)[3] = SKIN_RGB[s];
+        int32_t x = 8 + (int32_t)s * 46, y = 52;
+        if (s == skin_idx())
+            g_frame(x - 3, y - 3, 46, 38, C_WHITE);
+        cv_rect(x, y, 40, 32, skin_rgb(c[7], 100u));
+        cv_rect(x, y + 20, 40, 12, skin_rgb(c[5], 100u));
+        cv_rect(x, y + 20, 40, 1, skin_rgb(c[0], 100u));
+        cv_rect(x + 15, y + 5, 10, 10, skin_rgb(c[4], 100u));
+        cv_rect(x + 4, y + 25, 14, 2, skin_rgb(c[6], 100u));
+        cv_rect(x + 22, y + 25, 14, 2, skin_rgb(c[3], 100u));
+    }
+    for (s = 0; s < 3u; s++)             /* (left to right as the knob turns) */
+        g_seg((int32_t)s * 81, 100, 78, 24, MODE[s], s == m);
+    cv_rect(10, 148, 28, 38, mc);        /* the memory card: its body, the notch, the label, the contacts */
+    cv_rect(32, 148, 6, 6, C_BLACK);
+    cv_rect(15, 160, 18, 10, C_BLACK);
+    for (s = 0; s < 4u; s++)
+        cv_rect(14 + (int32_t)s * 6, 178, 3, 5, C_BLACK);
+    g_text(50, 152, "AUTO SAVE", 2, set.auto_save ? C_WHITE : C_GRAY, 0);
+    g_text(50, 170, "1 MIN AFTER A CHANGE", 2, C_DIM, 0);   /* (once stopped 20 s: main.c's AS_REST) */
+}
+
+/* LOAF BREAKER (0.9.30, FLEXOR): GLO EFFECTS' cards, two rows of four: each effect's card a small picture (a block, a
+ * zigzag, a floor) with that effect done to it, its key's number on it, its name below, lit when on, K1's framed;
+ * the eighth place the keys 1-7 that turn them on, lit as they are (AFFINE: the names at 2x, the cards a pixel
+ * apart) */
+static void glo_sfx(const brk_status_t *st)
 {
     uint32_t f, cur = ui.sfx_cur < SFX_CRT || ui.sfx_cur >= SFX_N ? SFX_CRT : ui.sfx_cur;
-    cv_oy = -top;
+    int32_t top = g_top;
+    (void)st;
     for (f = SFX_CRT; f <= SFX_N; f++) {
-        int32_t x = 4 + (int32_t)((f - 1u) % 4u) * 59, y = 46 + (int32_t)((f - 1u) / 4u) * 74, i, yy;
-        char n[12] = {(char)('0' + f), ' ', 0};
-        if (f == SFX_N) {                /* (the last place: what the keys do here) */
-            cv_text(x + 2, y + 14, &FONT_XS, "KEYS 1-7:", C_DIM);
-            cv_text(x + 2, y + 28, &FONT_XS, "ON / OFF", C_DIM);
-            cv_text(x + 2, y + 42, &FONT_XS, "K1: PICK", C_DIM);
+        int32_t x = 1 + (int32_t)((f - 1u) % 4u) * 60, y = 45 + (int32_t)((f - 1u) / 4u) * 74, i, yy;
+        char n[2] = {(char)('0' + f), 0};
+        if (f == SFX_N) {                /* (the last place: a keyboard's seven keys, lit as their effects) */
+            static const uint8_t BLK[5] = {0u, 1u, 3u, 4u, 5u};
+            cv_rect(x, y, 59, 72, C_BLOCK);
+            g_text(x + 29, y + 4, "KEYS", 2, C_GRAY, 2);
+            for (i = 0; i < 7; i++)
+                cv_rect(x + 2 + i * 8, y + 18, 7, 50, SFX_ON((uint32_t)i + 1u) ? C_HI : C_GRAY);
+            for (i = 0; i < 5; i++)
+                cv_rect(x + 7 + (int32_t)BLK[i] * 8, y + 18, 5, 28, C_BLACK);
             break;
         }
-        if (f == cur)
-            cv_rect(x - 2, y - 2, 59, 74, C_WHITE);
-        cv_rect(x, y, 55, 70, C_BLACK);
-        cv_rect(x + 1, y + 1, 53, 50, C_LINE);       /* the picture: a sky, a floor, a block, a zigzag */
-        cv_rect(x + 1, y + 38, 53, 13, C_DIM);
-        cv_rect(x + 8, y + 12, 14, 14, C_HI);
-        for (i = 0; i < 53; i++) {
+        cv_rect(x, y, 59, 54, C_LINE);   /* the picture: a sky, a floor, a block, a zigzag */
+        cv_rect(x, y + 40, 59, 14, C_DIM);
+        cv_rect(x + 30, y + 10, 14, 14, C_HI);   /* (right of the key's number) */
+        for (i = 0; i < 59; i++) {
             yy = (i * 3) % 24;
-            cv_rect(x + 1 + i, y + 20 + (yy < 12 ? yy : 24 - yy), 1, 2, C_WHITE);
+            cv_rect(x + i, y + 22 + (yy < 12 ? yy : 24 - yy), 1, 2, C_WHITE);
         }
-        for (yy = y + 1; yy < y + 51; yy++) {   /* (the effect, on this strip's rows of it) */
+        for (yy = y; yy < y + 54; yy++) {   /* (the effect, on this strip's rows of it) */
             int32_t r = yy - top;
-            uint16_t *p, tmp[53];
+            uint16_t *p, tmp[59];
             if (r < 0 || r >= (int32_t)cv_h)
                 continue;
-            p = cv_px + (uint32_t)r * cv_w + (uint32_t)(x + 1);
-            for (i = 52; i >= 0; i--) {
+            p = cv_px + (uint32_t)r * cv_w + (uint32_t)x;
+            for (i = 58; i >= 0; i--) {
                 uint32_t c = swap16(p[i]), h = ((uint32_t)i * 2654435761u) ^ ((uint32_t)yy * 40503u);
                 h ^= h >> 13;
                 if (f == SFX_CRT && (yy & 1))
@@ -276,192 +409,112 @@ static void sfx_cards(int32_t top)
             }
             if (f == SFX_VHS && ((yy - y) / 5) % 3 == 1) {   /* (a band in three slipped aside) */
                 int32_t d = ((yy - y) / 15) & 1 ? 5 : -5;
-                for (i = 0; i < 53; i++)
-                    p[i] = tmp[(i - d + 53) % 53];
+                for (i = 0; i < 59; i++)
+                    p[i] = tmp[(i - d + 59) % 59];
             } else
-                for (i = 0; i < 53; i++)
+                for (i = 0; i < 59; i++)
                     p[i] = tmp[i];
-            if (f == SFX_8BIT && (yy - y - 1) % 3 && r > 0)
-                for (i = 0; i < 53; i++)
+            if (f == SFX_8BIT && (yy - y) % 3 && r > 0)
+                for (i = 0; i < 59; i++)
                     p[i] = p[i - (int32_t)cv_w];   /* (3 x 3 blocks, the row above's) */
         }
-        cv_rect(x, y + 53, 55, 17, SFX_ON(f) ? C_HI : C_BLOCK);
-        text_cat(n, SFX_NAME[f]);
-        cv_text(x + 3, y + 55, text_w(&FONT_T, n) <= 50 ? &FONT_T : &FONT_XS, n, SFX_ON(f) ? C_BLACK : C_GRAY);
+        if (f == cur)
+            g_frame(x, y, 59, 54, C_WHITE);
+        cv_rect(x + 4, y + 4, 14, 14, C_BLACK);   /* its key */
+        g_text(x + 11, y + 6, n, 2, SFX_ON(f) ? C_HI : C_WHITE, 2);
+        cv_rect(x, y + 54, 59, 18, SFX_ON(f) ? C_HI : C_BLOCK);
+        g_text(x + 29, y + 58, SFX_NAME[f], 2, SFX_ON(f) ? C_BLACK : C_GRAY, 2);
     }
-    cv_oy = 0;
 }
-static void draw_global(const brk_status_t *st)
+
+/* SYSTEM › FX SET: the effects' four settings (the foot's values) as bars */
+static void glo_sfxset(const brk_status_t *st)
 {
-    static const char *const PORT_NAME[NPORTS] = {"USB", "BT", "TRS"};
-    char t[32], v[16];
-    uint32_t p;
-    int bs = plat_ble_state();
-    cv_begin(240, 44, C_BLACK);          /* LOAF BREAKER: no waveform on GLOBAL: its place the skins' on MORE, black
-                                          * on the others */
-    if (ui.gpage == GP_FILL) {           /* LOAF BREAKER: GROOVE: the swing (0.244: FILL gone), and the bar's 16ths
-                                          * as it lays them out */
-        static const char *const SN[3] = {"SWING", "BREAK ROWS", "FOLLOW"};
-        uint32_t s;
-        char v[12];
-        cv_text(6, 1, &FONT_T, "SEQ SETTINGS", C_GRAY);   /* (0.9.31, FLEXOR: GROOVE until 0.9.30) */
-        cv_text(6, 16, &FONT_XS, "K1 SWING  K2 THE BREAK'S ROWS IN FULL", C_DIM);
-        cv_text(6, 28, &FONT_XS, "K3 FOLLOW: THE GRID ON THE BAR PLAYING", C_DIM);
-        cv_blit(0, 44);
-        cv_begin(240, 52, C_BLACK);
-        for (s = 0; s < 3u; s++) {       /* (each setting's box, its value large) */
-            global_value((int)s, v);
-            cv_rect(4 + (int32_t)s * 78, 4, 74, 42, C_BLOCK);
-            cv_text(8 + (int32_t)s * 78, 6, &FONT_XS, SN[s], C_GRAY);
-            cv_text(8 + (int32_t)s * 78, 24, text_w(&FONT_B, v) <= 66 ? &FONT_B : &FONT_T, v, C_WHITE);
-        }
-        cv_blit(0, 88);
-        cv_begin(240, 52, C_BLACK);
-        cv_text(6, 2, &FONT_XS, "THE BAR'S 16THS, SWUNG", C_DIM);
-        for (s = 0; s < 16u; s++) {      /* (the odd 16ths pushed later as the swing grows) */
-            int32_t x = 6 + (int32_t)s * 14 + ((s & 1u) ? (int32_t)(set.swing - 50u) * 6 / 25 : 0);
-            cv_rect(x, 18, 10, 22, (s & 3u) ? C_BLOCK : C_HI);
-        }
-        cv_blit(0, 140);
-        return;
+    static const char *const L[4] = {"AMOUNT", "BOOM", "DROP", "LENGTH"};   /* (on a BOOM, at the DROP) */
+    int32_t k, j;
+    (void)st;
+    for (k = 0; k < 4; k++) {
+        int32_t y = 46 + k * 36, v = (int32_t)*sfx_knob((int)k);
+        cv_rect(2, y, 236, 32, C_BLOCK);
+        g_text(10, y + 11, L[k], 2, v ? C_GRAY : C_DIM, 0);
+        cv_rect(84, y + 9, 146, 14, C_LINE);
+        cv_rect(84, y + 9, v * 146 / 100, 14, C_AMB);
+        for (j = 1; j < 4; j++)          /* (its quarters) */
+            cv_rect(84 + j * 146 / 4, y + 9, 1, 14, C_BLOCK);
     }
-    if (ui.gpage == 3u) {                /* LOAF BREAKER: EFFECTS: the seven, lit when on (keys 1-7), K1's outlined;
-                                          * 0.9.30, FLEXOR: bigger, each one's picture with its effect on it */
-        static const uint8_t TOP[3] = {44u, 92u, 140u}, HT[3] = {48u, 48u, 52u};
-        uint32_t b;
-        for (b = 0; b < 3u; b++) {
-            cv_begin(240, HT[b], C_BLACK);
-            sfx_cards(TOP[b]);
-            cv_blit(0, TOP[b]);
-        }
-        return;
+}
+
+/* SEQ's SETTINGS (LOAF BREAKER: GROOVE until 0.9.30; 0.9.31, FLEXOR: BREAK ROWS, FOLLOW): the bar's 16ths swung (K1);
+ * the FULL view's break rows, one or two of 16 (K2); FOLLOW (K3): the grid's window on the bar playing, or kept */
+static void glo_fill(const brk_status_t *st)
+{
+    uint32_t s, b, rows = bk_seq() & 2u ? 1u : 2u, shown;
+    int32_t pos = st->playing && st->step >= 0 ? st->step % 32 : -1;
+    g_text(6, 50, "SWING", 2, C_GRAY, 0);
+    for (s = 0; s < 16u; s++) {          /* (the odd 16ths pushed later as the swing grows) */
+        int32_t x = 6 + (int32_t)s * 14 + ((s & 1u) ? (int32_t)(set.swing - 50u) * 6 / 25 : 0);
+        cv_rect(x, 66, 10, 22, (s & 3u) ? C_DIM : C_HI);
     }
-    if (ui.gpage == 4u) {                /* LOAF BREAKER: FX SET: the effects' four settings as bars */
-        static const char *const L[4] = {"AMOUNT", "ON A BOOM", "AT THE DROP", "LENGTH"};
-        uint32_t k;
-        cv_text(6, 1, &FONT_T, "EFFECTS SET", C_GRAY);
-        cv_text(96, 16, &FONT_XS, "FOR ALL THE EFFECTS ON", C_DIM);
-        cv_text(96, 28, &FONT_XS, "BOOM, DROP: 0 = NONE", C_DIM);
-        cv_blit(0, 44);
-        for (k = 0; k < 2u; k++) {
-            uint32_t j;
-            cv_begin(240, 52, C_BLACK);
-            for (j = 0; j < 2u; j++) {
-                uint32_t n = k * 2u + j, v = *sfx_knob((int)n);
-                char a[8];
-                int32_t y = (int32_t)j * 26;
-                cv_text(6, y + 2, &FONT_T, L[n], C_GRAY);
-                pct_text((float)v * 0.01f, a);
-                cv_text(196, y + 2, &FONT_T, a, C_WHITE);
-                cv_rect(96, y + 7, 94, 5, C_LINE);
-                cv_rect(96, y + 7, (int32_t)(v * 94u / 100u), 5, C_HI);
-            }
-            cv_blit(0, 88u + k * 52u);
-        }
-        return;
-    }
-    if (ui.gpage == 2u) {                /* MORE: the skin, and every skin's colours to pick from (K4) */
-        uint32_t s;
-        cv_text(6, 1, &FONT_T, "K1 SKIN", C_GRAY);
-        cv_text(96, 1, &FONT_T, SKIN_NAME[skin_idx()], C_HI);
-        for (s = 0; s < NSKINS; s++) {   /* a swatch each: its value colour on its ground, the one on outlined */
-            int32_t x = 6 + (int32_t)(s % 12u) * 19, y = 18 + (int32_t)(s / 12u) * 13;   /* (LOAF BREAKER, 0.237:
-                                          * two rows of twelve, FLEXOR's) */
-            const uint8_t (*c)[3] = SKIN_RGB[s];
-            if (s == skin_idx())
-                cv_rect(x - 2, y - 2, 21, 15, C_WHITE);
-            cv_rect(x, y, 17, 11, skin_rgb(c[5], 100u));
-            cv_rect(x + 2, y + 2, 13, 4, skin_rgb(c[4], 100u));
-            cv_rect(x + 2, y + 7, 13, 2, skin_rgb(c[3], 100u));
-        }
-        cv_blit(0, 44);
-        cv_begin(240, 52, C_BLACK);
-        cv_text(96, 26, &FONT_XS, "SCREEN EFFECTS: SELECT", C_DIM);   /* (WAVE ZOOM gone, 0.9.25: HOME's SETTINGS) */
-        cv_text(6, 38, &FONT_T, "K3 MODE", C_GRAY);
-        cv_text(96, 38, &FONT_T, tut_on() ? "TUTORIAL" : set.novice ? "BEGINNER" : "EXPERT", C_HI);
-        cv_blit(0, 88);
-        cv_begin(240, 52, C_BLACK);
-        cv_text(6, 2, &FONT_T, "K4 AUTO SAVE", C_GRAY);
-        cv_text(96, 2, &FONT_T, set.auto_save ? "ON" : "OFF", set.auto_save ? C_HI : C_DIM);
-        cv_text(96, 16, &FONT_XS, "A MINUTE AFTER A CHANGE,", C_DIM);
-        cv_text(96, 28, &FONT_XS, "ONCE STOPPED 20 S", C_DIM);
-        cv_blit(0, 140);
-        return;
-    }
-    cv_blit(0, 44);
-    if (ui.gpage) {                      /* the pitch: what the mode does, the pitch now */
-        cv_begin(240, 52, C_BLACK);
-        cv_text(6, 2, &FONT_T, "PITCH", C_GRAY);
-        cv_text(96, 2, &FONT_T, pitch_keeps() ? "KEEP LENGTH" : "SPEED", C_HI);
-        cv_text(96, 16, &FONT_XS, pitch_keeps() ? "SLICES KEEP LENGTH" : "PITCH CHANGES LENGTH", C_DIM);
-        cv_text(6, 30, &FONT_T, "NOW", C_GRAY);
-        t[0] = set.pitch > 0 ? '+' : 0;
-        t[1] = 0;
-        int_text(set.pitch, t + (set.pitch > 0));
-        text_cat(t, " ST  (OCT- / OCT+)");
-        cv_text(96, 30, &FONT_T, t, C_WHITE);
-        cv_blit(0, 88);
-        cv_begin(240, 52, C_BLACK);
-        cv_text(6, 2, &FONT_T, "GRAIN", C_GRAY);
-        int_text(set.grain_ms ? set.grain_ms : 30, t);
-        text_cat(t, " MS");
-        cv_text(96, 2, &FONT_T, t, pitch_keeps() ? C_WHITE : C_DIM);
-        cv_text(96, 14, &FONT_XS, "LOWER: TIGHTER HITS", C_DIM);
-        cv_text(6, 30, &FONT_T, "SNAP", C_GRAY);   /* where a key lands, and what that is in this break */
-        t[0] = 0;
-        text_cat(t, SNAP_NAME[snap_index()]);
-        if (snap_index()) {
-            const brk_break_t *b = brk_get_break();
-            text_cat(t, " = ");
-            sixteenths_text(SNAP_SL[snap_index()] * key_sps(b), v);
-            text_cat(t, v);
-        }
-        cv_text(96, 30, &FONT_T, t, C_HI);
-        cv_blit(0, 140);
-        return;
-    }
-    cv_begin(240, 52, C_BLACK);          /* where MIDI goes (LOAF BREAKER: no Bluetooth), and the clock in */
-    (void)bs;
-    cv_text(6, 2, &FONT_T, "MIDI", C_GRAY);
-    cv_text(96, 2, &FONT_T, "USB AND THE TRS JACK", C_WHITE);
-                                         /* (BREAK TIME gone, 0.9.25, FLEXOR: HOME's SETTINGS K4 alone) */
-    cv_text(6, 30, &FONT_T, "CLOCK IN", C_GRAY);
+    g_text(6, 98, "BREAK ROWS", 2, C_GRAY, 0);
+    for (b = 0; b < rows; b++)
+        for (s = 0; s < 16u; s++)
+            cv_rect(8 + (int32_t)s * 14, 114 + (int32_t)b * 12, 13, 10, (s & 3u) ? C_DIM : C_GRAY);
+    g_text(6, 146, "FOLLOW", 2, C_GRAY, 0);
+    shown = !(bk_seq() & 1u) && pos >= 16 ? 1u : 0u;
+    for (b = 0; b < 2u; b++)
+        for (s = 0; s < 16u; s++)
+            cv_rect(8 + (int32_t)(b * 116u + s * 7u), 166, 6, 18, pos == (int32_t)(b * 16u + s) ? C_HI : (s & 3u) ? C_DIM
+                    : C_GRAY);
+    g_frame(4 + (int32_t)shown * 116, 162, 118, 26, C_WHITE);
+}
+
+/* SOUNDS › BREAK (SYSTEM's PITCH part): the pitch now, large, between the keys that move it (OCT- / OCT+: a semitone,
+ * both: 0); K1 SPEED (the pitch makes a slice shorter or longer: the slice against its length, the tick) or KEEP LEN
+ * (its length kept, in grains K2 long); SNAP (K3): what it is in this break, and where a key lands on a bar's 16ths */
+static void glo_pitch(const brk_status_t *st)
+{
+    char t[16];
+    int32_t keep = pitch_keeps(), w, k, g = set.grain_ms ? set.grain_ms : 30, step = 0;
+    float f = 1.0f, n = 0.0f;
+    (void)st;
+    cv_rect(4, 52, 50, 30, C_BLOCK);
+    g_text(29, 62, "OCT-", 2, C_GRAY, 2);
+    cv_rect(186, 52, 50, 30, C_BLOCK);
+    g_text(211, 62, "OCT+", 2, C_GRAY, 2);
+    t[0] = set.pitch > 0 ? '+' : 0;
+    t[1] = 0;
+    int_text(set.pitch, t + (set.pitch > 0));
+    text_cat(t, " ST");
+    g_text(120, 60, t, 3, set.pitch ? C_HI : C_WHITE, 2);
+    g_seg(4, 96, 114, 22, "SPEED", !keep);
+    g_seg(122, 96, 114, 22, "KEEP LEN", keep);
+    for (k = 0; k < (set.pitch < 0 ? -set.pitch : set.pitch); k++)
+        f *= set.pitch > 0 ? 0.94387f : 1.05946f;   /* (a semitone: 2^(1/12)) */
+    w = (int32_t)(57.0f * f);
+    w = w < 3 ? 3 : w > 112 ? 112 : w;
+    cv_rect(6, 124, w, 12, keep ? C_LINE : C_AMB);
+    for (k = 0; k < 57; k += g / 5 + 3)  /* (a grain 10-80 ms: 4-18 pixels) */
+        cv_rect(124 + k, 124, 57 - k < g / 5 + 2 ? 57 - k : g / 5 + 2, 12, keep ? C_AMB : C_LINE);
+    cv_rect(63, 121, 1, 18, C_GRAY);     /* (the slice's own length) */
+    cv_rect(181, 121, 1, 18, C_GRAY);
+    g_text(6, 148, "SNAP", 2, C_GRAY, 0);
     t[0] = 0;
-    if (!set.clk_in)
+    if (snap_index()) {
+        n = SNAP_SL[snap_index()] * key_sps(brk_get_break());
+        sixteenths_text(n, t);
+        step = (int32_t)(n + 0.5f);
+    } else
         text_cat(t, "OFF");
-    else if (!ext_active())
-        text_cat(t, "WAITING FOR CLOCK");
-    else {
-        tenths_text((int32_t)(ext.bpm * 10.0f + 0.5f), v);
-        text_cat(t, v);
-        text_cat(t, " BPM ");
-        text_cat(t, PORT_NAME[ext.port % NPORTS]);
-        text_cat(t, ext.run ? "  RUNNING" : "  STOPPED");
-    }
-    cv_text(96, 30, &FONT_T, t, ext_active() ? C_HI : set.clk_in ? C_WHITE : C_DIM);
-    cv_blit(0, 88);
-    cv_begin(240, 52, C_BLACK);          /* the clock out, and MIDI through each port (lit: in the last 0.3 s) */
-    cv_text(6, 2, &FONT_T, "CLOCK OUT", C_GRAY);
-    t[0] = 0;
-    if (!set.clk_out)
-        text_cat(t, "OFF");
-    else {
-        text_cat(t, "TO USB");           /* (LOAF BREAKER, 0.259: no Bluetooth: USB, whatever MIDI TO says) */
-        text_cat(t, st->playing ? "  SENDING" : "  (WHILE PLAYING)");
-    }
-    cv_text(96, 2, &FONT_T, t, set.clk_out && st->playing ? C_HI : set.clk_out ? C_WHITE : C_DIM);
-    cv_text(6, 30, &FONT_T, "MIDI", C_GRAY);
-    for (p = 0; p < NPORTS; p++) {       /* (LOAF BREAKER, 0.259: USB and TRS; no Bluetooth, no BT box) */
-        int32_t x = 96 + (p == PORT_TRS ? 1 : 0) * 48;
-        if (p != PORT_TRS && p != 0u)
-            continue;
-        int in = plat_midi_ago((int)p, 0) < 300u, out = p != PORT_TRS && plat_midi_ago((int)p, 1) < 300u;
-        cv_rect(x, 28, 44, 18, C_BLOCK);
-        cv_text(x + 4, 30, &FONT_T, PORT_NAME[p], in || out ? C_WHITE : C_DIM);
-        cv_rect(x + 34, 31, 4, 4, in ? C_HI : C_LINE);       /* in */
-        cv_rect(x + 34, 38, 4, 4, out ? C_HI : C_LINE);      /* out */
-    }
-    cv_blit(0, 140);
+    g_text(234, 148, t, 2, snap_index() ? C_HI : C_DIM, 1);
+    for (k = 0; k < 16; k++)
+        cv_rect(8 + k * 14, 166, 12, 20, snap_index() && (step <= 1 || k % step == 0) ? C_HI : (k & 3) ? C_BLOCK : C_DIM);
+}
+
+static void draw_global(const brk_status_t *st)
+{                                        /* (LOAF BREAKER: no waveform on SYSTEM: rows 44-192 its own) */
+    static const uint8_t TOP[4] = {44u, 92u, 140u, 192u};
+    g_strips(TOP, 3u, ui.gpage == GP_FILL ? glo_fill : ui.gpage == 3u ? glo_sfx : ui.gpage == 4u ? glo_sfxset
+             : ui.gpage == 2u ? glo_setup : ui.gpage ? glo_pitch : glo_midi, st);
 }
 
 static void global_part(uint32_t g)      /* GLO (again: the next part) and ALGORITHM on GLOBAL (LOAF BREAKER: and the
@@ -510,39 +563,48 @@ static void hset_turn(int i, int32_t d)
     app_say(HSET_NAME[i & 3], t);
     ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;
 }
-static void draw_hset(void)
+/* (AFFINE, 2x: the four as cards, K1-K4 left to right, a short name and a picture each; the foot has the values) VIEW:
+ * a waveform and the slices, the one shown lit (HOME held flips it); GATE: how much of every slice sounds; ZOOM: two
+ * bars of the break, the part the waveform shows framed; BREAK: the tempo's beats and the break's under them (HALF:
+ * half as many), the break's tempo */
+static void hset_body(const brk_status_t *st)
 {
-    uint32_t i;
-    char t[48], v[16];
-    cv_begin(240, 52, C_BLACK);          /* the four, as cards: the name, the value large (K1-K4 left to right) */
-    for (i = 0; i < 4u; i++) {
-        int32_t x = 2 + (int32_t)i * 60;
-        cv_rect(x, 0, 56, 50, C_BLOCK);
-        {                                /* (the name a word a line: the card's width) */
-            const char *n = HSET_NAME[i];
-            uint32_t j = 0u;
-            while (n[j] && n[j] != ' ')
-                j++;
-            t[0] = 0;
-            text_cat(t, n);
-            t[j] = 0;
-            cv_text(x + 4, 3, &FONT_XS, t, C_GRAY);
-            if (n[j])
-                cv_text(x + 4, 13, &FONT_XS, n + j + 1, C_GRAY);
-        }
-        hset_value((int)i, t);
-        cv_text(x + 4, 32, text_w(&FONT_T, t) > 50 ? &FONT_XS : &FONT_T, t, C_HI);
+    static const char *const L[4] = {"VIEW", "GATE", "ZOOM", "BREAK"};
+    static const uint8_t WV[12] = {22u, 14u, 8u, 4u, 12u, 6u, 18u, 10u, 6u, 3u, 14u, 8u};   /* (a break's peaks) */
+    int32_t i, j, x, half = (int32_t)(set.bkeys.bk[BK_BHALF] & 1u), gate = set.gate && set.gate < 100u ? set.gate : 100,
+            zw = (int32_t)CDJ_Z[set.wzoom % CDJ_ZN] * 2;
+    char v[16];
+    (void)st;
+    for (i = 0; i < 4; i++) {
+        cv_rect(1 + i * 60, 90, 58, 100, C_BLOCK);
+        g_text(30 + i * 60, 95, L[i], 2, C_GRAY, 2);
     }
-    cv_blit(0, 88);
-    cv_begin(240, 52, C_BLACK);          /* what they do */
-    t[0] = 0;
-    text_cat(t, set.bkeys.bk[BK_BHALF] & 1u ? "THE BREAK AT HALF: " : "THE BREAK AT THE TEMPO: ");
-    tenths_text((int32_t)set.tempo_x10 / ((set.bkeys.bk[BK_BHALF] & 1u) ? 2 : 1), v);
-    text_cat(t, v);
-    text_cat(t, " BPM");
-    cv_text(6, 2, &FONT_XS, "HOME HELD: WAVEFORM / SLICES", C_DIM);
-    cv_text(6, 14, &FONT_XS, "GATE: HOW MUCH OF EVERY SLICE SOUNDS", C_DIM);   /* (AFFINE: K2) */
-    cv_text(6, 26, &FONT_XS, t, C_DIM);
-    cv_text(6, 38, &FONT_XS, "SELECT: TEMPO", C_DIM);
-    cv_blit(0, 140);
+    for (j = 0; j < 24; j++)             /* VIEW */
+        cv_rect(6 + j * 2, 127 - WV[j % 12] / 2, 1, WV[j % 12], ui.blocks ? C_LINE : C_HI);
+    for (j = 0; j < 4; j++)
+        cv_rect(6 + j * 12, 148, 11, 30, ui.blocks ? C_HI : C_LINE);
+    for (j = 0; j < 4; j++) {            /* GATE: four slices, two a row */
+        x = 66 + (j & 1) * 25;
+        cv_rect(x, 116 + (j >> 1) * 34, 23, 26, C_LINE);
+        cv_rect(x, 116 + (j >> 1) * 34, 23 * gate / 100 < 1 ? 1 : 23 * gate / 100, 26, C_AMB);
+    }
+    for (j = 0; j < 24; j++) {           /* ZOOM: 48 pixels two bars (CDJ_Z: twelfths of a bar) */
+        x = 126 + j * 2;
+        cv_rect(x, 145 - WV[(j + 5) % 12] / 2, 1, WV[(j + 5) % 12], x - 126 < zw ? C_HI : C_LINE);
+    }
+    for (j = 0; j < 3; j++)
+        cv_rect(126 + j * 24 - (j == 2), 118, 1, 54, C_GRAY);
+    g_frame(124, 116, zw + 4, 58, C_WHITE);
+    for (j = 0; j < 4; j++)              /* BREAK: the tempo's beats, the break's */
+        cv_rect(186 + j * 12, 114, 10, 10, C_GRAY);
+    for (j = 0; j < (half ? 2 : 4); j++)
+        cv_rect(186 + j * (half ? 24 : 12), 128, half ? 22 : 10, 10, C_HI);
+    tenths_text((int32_t)set.tempo_x10 / (half ? 2 : 1), v);
+    g_text(210, 152, v, 2, C_WHITE, 2);
+    g_text(210, 168, "BPM", 2, C_GRAY, 2);
+}
+static void draw_hset(void)
+{                                        /* (rows 44-88: the waveform, draw_wave's) */
+    static const uint8_t TOP[3] = {88u, 140u, 192u};
+    g_strips(TOP, 2u, hset_body, (const brk_status_t *)0);
 }
