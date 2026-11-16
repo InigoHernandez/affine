@@ -55,6 +55,7 @@ img, canvas { image-rendering: pixelated; }
 }
 .rules { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .rules i { border-left: 1px dotted var(--line); }
+.rules i:last-child { border-right: 1px dotted var(--line); }   /* (the last column closed: the grid's right edge) */
 
 /* the bars, top and foot */
 .bar { position: relative; z-index: 2; align-items: center; min-height: var(--s6); border-bottom: 1px solid var(--line); background: var(--bg); }

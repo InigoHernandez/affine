@@ -4,6 +4,7 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Site:** the background grid closed on the right, its last column ruled like the others.
 - **Release 0.1:** the first public build, a beta not yet run on an FM-1: the installer on the site
   (<https://inigohernandez.github.io/affine/install/>) and the GitHub release v0.1 carry the same file. The site's
   FM-1 runs 0.1 too.
