@@ -104,6 +104,8 @@ static void aff_aud_check(uint32_t bx, uint32_t by)
     int32_t i, j;
     for (i = 0; i < aff_aud_n; i++) {
         int32_t x = aff_aud[i].x, y = aff_aud[i].y, w = aff_aud[i].w, h = aff_aud[i].h;
+        if (y + h <= 0 || y >= (int32_t)cv_h || x + w <= 0 || x >= (int32_t)cv_w)
+            continue;                    /* (wholly in another strip of a picture drawn in several: drawn there) */
         if (x < 0 || x + w > (int32_t)cv_w || y < 0 || y + h > (int32_t)cv_h)
             fprintf(stderr, "AUDIT edge \"%s\" at (%d,%d) %dx%d in %ux%u at (%u,%u)\n", aff_aud[i].s, (int)(x + (int32_t)bx),
                     (int)(y + (int32_t)by), (int)w, (int)h, (unsigned)cv_w, (unsigned)cv_h, (unsigned)bx, (unsigned)by);

@@ -4,6 +4,11 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Screen:** every text on the FM-1 at 2x at least (the owner: "everything in the UI looks very small"), every
+  page laid out again for it: pictures in place of help prose (EFFECTS, MIX, SYSTEM, LIVE SETTINGS, BOOM and the
+  drums, OVERLAY, SONG, PATTERN, RESET, the tutorial, the SEL card), the tabs as the open one and a square for each,
+  the foot's knob names in short forms, the header in one or two lines; no text cut or on another in any of the
+  simulator's 100 sessions.
 - **Site:** the FM-1's screen and the panel beside it one height in The chip and Perform; the waveform takes the
   room left.
 - **Site:** the header's gem is HOME's, in 3D: a pointer on it throws it into a spin.

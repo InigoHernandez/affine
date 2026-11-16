@@ -629,7 +629,8 @@ static const char *const AFF_SHORT_N[][2] = {
     {"WAVE ZOOM", "ZOOM"}, {"BREAK ROWS", "ROWS"}, {"MAX OUT", "MAX"}, {"C ATTACK", "C ATT"}, {"C RELEASE", "C REL"},
     {"D RELEASE", "D REL"}, {"DUCKS", "DUCK"}, {"DRUMS", "DRUM"}, {"EFFECT", "FX"}, {"REVERSE", "REV"},
     {"GAP KEEPS", "KEEP"}, {"STUTTER", "STUT"}, {"CLR / 4X4", "CLR"}, {"LENGTH", "LEN"}, {"PRESET", "PRE"},
-    {"ON / OFF", "ON"}, {"SWEEP", "SWP"}, {"TONE", "TN"}};
+    {"ON / OFF", "ON"}, {"SWEEP", "SWP"}, {"TONE", "TN"}, {"BREAK", "BRK"},
+    {"STYLE", "STY"}};
 static const char *const AFF_SHORT_V[][2] = {
     {"WAVEFORM", "WAVE"}, {"KEEP LEN", "KEEP"}, {"BEGINNER", "BEGIN"}, {"TUTORIAL", "TUTOR"}};
 static int aff_streq(const char *a, const char *b)
@@ -662,10 +663,12 @@ static void aff_knob_cell(int32_t x, int32_t y, int32_t w, const char *name, con
             vw = aff_text_w(vv, 2);
         }
     if (aff_text_w(nm, 2) + vw + 6 > w) {   /* (a unit after the number: "32 STEPS", "1 1/4 BARS") */
-        for (k = 0; vv[k] && vv[k] != ' '; k++)
-            ;
-        if (vv[k] && k > 0 && vv[0] >= '0' && vv[0] <= '9' && vv[k + 1] >= 'A') {
-            vv[k] = 0;
+        int32_t sp = -1;
+        for (k = 0; vv[k]; k++)          /* (the last word, when it is a unit after a number) */
+            if (vv[k] == ' ')
+                sp = k;
+        if (sp > 0 && vv[0] >= '0' && vv[0] <= '9' && vv[sp + 1] >= 'A') {
+            vv[sp] = 0;
             vw = aff_text_w(vv, 2);
         }
     }
