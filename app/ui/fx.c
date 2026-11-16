@@ -21,6 +21,30 @@ static const char *const FXP_NAME[BRK_NFXT][3] = {
     {"AMOUNT", "ATTACK", "RELEASE"}, {"RATE", "DEPTH", "FEEDBK"}, {"FREQ", "SPREAD", ""}, {"RATE", "DEPTH", "PAN"},
     {"SIZE", "TONE", "PRE"}, {"TIME", "FEEDBK", "TONE"}, {"LOW", "MID", "HIGH"}, {"DRIVE", "WARMTH", "WOW"},
     {"LOW", "MID", "HIGH"}, {"DRIVE", "KNEE", "CEILING"}};
+/* AFFINE (2x): the foot's cell is 108 px, a name and its value at 2x: the names too long beside their values are
+ * shortened there (and as the MOD's DEST); the header still says them in full */
+static const char *const FX_SHORT[][2] = {
+    {"CUTOFF", "FREQ"}, {"ATTACK", "ATT"}, {"RELEASE", "REL"}, {"MID FREQ", "MID F"}, {"CEILING", "CEIL"},
+    {"THRESH", "THR"}, {"LOW X", "LO X"}, {"HIGH X", "HI X"}, {"OUTPUT", "OUT"}, {"LOW CUT", "LO CUT"},
+    {"MAKE-UP", "GAIN"}, {"LOW F", "LO F"}, {"HIGH F", "HI F"}, {"LEVEL", "OUT"},
+    {"WOW RATE", "RATE"}, {"SHAPE", "WAVE"}, {"TARGET", "DEST"}};
+static const char *fx_short(const char *n)
+{
+    uint32_t k, i;
+    for (k = 0; k < sizeof FX_SHORT / sizeof FX_SHORT[0]; k++) {
+        const char *a = FX_SHORT[k][0];
+        for (i = 0; a[i] && a[i] == n[i]; i++)
+            ;
+        if (!a[i] && !n[i])
+            return FX_SHORT[k][1];
+    }
+    return n;
+}
+/* AFFINE (2x): a word at 2x with its capitals' top at row ycap (FONT_T's line puts them a row down) */
+static int32_t fxv_text(int32_t x, int32_t ycap, const char *s, uint16_t c)
+{
+    return cv_text(x, ycap - aff_foff(&FONT_T, aff_fz(&FONT_T), 1), &FONT_T, s, c);
+}
 
 /* ------------------------------------------------------- MB COMP's detail --- */
 /* (PRD A-49a) an MB COMP focused has six parts: AMOUNT (the slot's own knobs: each band's amount, MIX), each band's
@@ -251,10 +275,10 @@ static void x_value(int i, char *t)
         i &= 3;
         if (i == 0)
             text_cat(t, BRK_MOD_DIV_NAME[brk_idx(v, BRK_MOD_DIVS)]);
-        else if (i == 2)
-            text_cat(t, BRK_MOD_SHAPE_NAME[brk_idx(v, BRK_MOD_SHAPES)]);
-        else if (i == 3)
-            text_cat(t, base_param_name(fx_foc(), (int)brk_idx(v, 4u)));
+        else if (i == 2)                 /* (AFFINE, 2x: TRIANGLE as TRI, to fit the foot) */
+            text_cat(t, brk_idx(v, BRK_MOD_SHAPES) == 1u ? "TRI" : BRK_MOD_SHAPE_NAME[brk_idx(v, BRK_MOD_SHAPES)]);
+        else if (i == 3)                 /* (the setting it moves, as the foot names it) */
+            text_cat(t, fx_short(base_param_name(fx_foc(), (int)brk_idx(v, 4u))));
         else if (v > 0.49f && v < 0.51f)
             text_cat(t, "OFF");
         else {
@@ -331,13 +355,24 @@ static void fx_part_turn(int32_t d)      /* (LOAF BREAKER, 0.9.2, FLEXOR: ALGORI
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
 
-static const char *fx_param_name(uint32_t slot, int i)
+static const char *fx_param_long(uint32_t slot, int i)   /* (the header's: in full) */
 {
     if (mb_detail(slot))
         return mb_knob_name(i);
     if (x_detail(slot))
         return x_name(i);
     return base_param_name(slot, i);
+}
+static const char *fx_param_name(uint32_t slot, int i)   /* the foot's (AFFINE, 2x: short where the long is too wide) */
+{
+    if (x_detail(slot) && ui.fx_page == XP_MORE) {
+        const xk_t *k = xk(fx_sl(slot)->type, i);
+        if (k && k->unit == XU_DEG)      /* (FLANGER's SPREAD in degrees: "180 DEG") */
+            return "L/R";
+        if (k && k->unit == XU_CH && k->u.ch == CH_DSHAPE)   /* (DRIVE's SHAPE: a curve, not a wave) */
+            return k->name;
+    }
+    return fx_short(fx_param_long(slot, i));
 }
 static const char *base_param_name(uint32_t slot, int i)   /* its MAIN part's */
 {
@@ -382,13 +417,8 @@ static void fx_value(uint32_t slot, int i, char *t)
     }
     case FXT_TAPE * 4 + 0: int_text((int32_t)(v * 24.0f + 0.5f), t); text_cat(t, " DB"); return;
     case FXT_CLIP * 4 + 0: text_cat(t, "+"); int_text((int32_t)(v * 24.0f + 0.5f), t + 1); text_cat(t, " DB"); return;
-    case FXT_CLIP * 4 + 1: text_cat(t, v < 0.34f ? "SOFT " : v < 0.67f ? "MID " : "HARD ");
-        {
-            char d[8];
-            pct_text(v, d);
-            text_cat(t, d);
-        }
-        return;
+    case FXT_CLIP * 4 + 1: pct_text(v, t); return;   /* (AFFINE, 2x: "HARD 80%" did not fit the foot; the picture
+                                                      * shows the knee) */
     case FXT_CLIP * 4 + 2:
         if (v < 0.005f)
             text_cat(t, "0 DB");
@@ -478,7 +508,7 @@ static void fx_knob_turn(uint32_t slot, int i, int32_t d)
         sl->p[i] = knob_f(sl->p[i], d, step, 0.0f, 1.0f);
     }
     fx_value(slot, i, t);
-    app_say(fx_param_name(slot, i), t);
+    app_say(fx_param_long(slot, i), t);
     ui.redraw |= RG_BLOCKS;
     changed_fx();
 }
@@ -779,17 +809,21 @@ static float mb_resp_db(float f, float flo, float fhi, const float *g, uint32_t 
     return 3.0103f * brk_log2f(tr * tr + ti * ti + 1e-9f);
 }
 
-/* a row of chips along the top of a strip (the one chosen lit), and a word at the right */
+/* a row of chips along the top of a strip (the one chosen lit), and a word at the right. AFFINE: at 2x, FX_CHIP_H
+ * rows; w 0: each chip as wide as its word */
+#define FX_CHIP_H 14
 static void fx_chips(const char *const *nm, uint32_t n, uint32_t sel, int32_t w, const char *st, uint16_t stc)
 {
     uint32_t b;
+    int32_t cx = 1;
     for (b = 0; b < n; b++) {
-        int32_t cx = 2 + (int32_t)b * (w + 2), on = b == sel;
-        cv_rect(cx, 0, w, 11, on ? C_HI : C_BLOCK);
-        cv_text(cx + (w - text_w(&FONT_T, nm[b])) / 2, 0, &FONT_T, nm[b], on ? C_BLACK : C_GRAY);
+        int32_t tw = text_w(&FONT_T, nm[b]), cw = w ? w : tw + 6, on = b == sel;
+        cv_rect(cx, 0, cw, FX_CHIP_H, on ? C_HI : C_BLOCK);
+        fxv_text(cx + (cw - tw) / 2, 2, nm[b], on ? C_BLACK : C_GRAY);
+        cx += cw + 2;
     }
     if (st)
-        cv_text(237 - text_w(&FONT_T, st), 0, &FONT_T, st, stc);
+        fxv_text(238 - text_w(&FONT_T, st), 2, st, stc);
 }
 
 static const char *const SLOT_NUM[4] = {"1", "2", "3", "4"};   /* (the FX page's chain, the tabs: main.c) */
@@ -805,8 +839,22 @@ static void cv_frame(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
 /* the FX page with an MB COMP focused (PRD A-49a). Above: its parts as tabs, then the spectrum 20 Hz .. 20 kHz split
  * in its three bands, the curve the sound goes through right now (each band at its reduction: it dips as the band is
  * pressed), the splits marked. Below: each band's in / out curve (threshold, ratio, knee) with its level riding it as
- * a dot, its level in, its reduction (a peak held a second), its ratio, threshold and gain */
+ * a dot, its level in, its reduction (a peak held a second). AFFINE (2x): the parts' tabs at 2x (BYPASS over the
+ * spectrum, SOLO the band's name lit), the splits' frequencies without "HZ"; the bands' numbers gone (the foot has
+ * them), their curves larger */
 #define MB_X(f) ((int32_t)(brk_log2f((f) * 0.05f) * (239.0f / 9.9658f) + 0.5f))   /* 20 Hz .. 20 kHz on 0..239 */
+#define MB_SP 15                         /* the spectrum: rows MB_SP .. 40, 1 px a dB, 0 dB on row MB_Z (+4 .. -21) */
+#define MB_Z 19
+#define MB_CB 36                         /* a band's in / out curve: MB_CB px square, -48 .. 0 dB each way */
+static void mb_split_text(float hz, char *t)   /* "200", "2.5K" (the axis says Hz) */
+{
+    uint32_t n;
+    hz_text(hz, t);
+    for (n = 0; t[n]; n++)
+        ;
+    if (n > 2u && t[n - 2u] == 'H' && t[n - 1u] == 'Z')
+        t[n - 2u] = 0;
+}
 static void draw_mbcomp(uint32_t now)
 {
     uint32_t k = fx_foc(), b, solo;
@@ -815,7 +863,6 @@ static void draw_mbcomp(uint32_t now)
     float gr[MB_BANDS], lvl[MB_BANDS], g[MB_BANDS], g_rest[MB_BANDS], grdb[MB_BANDS], flo, fhi;
     mb_eff_t e[MB_BANDS];
     int32_t x, xlo, xhi, py = 0, focus = ui.fx_page >= MBP_LOW && ui.fx_page <= MBP_HIGH ? ui.fx_page - MBP_LOW : -1;
-    char t[16];
     solo = m->solo <= MB_BANDS ? m->solo : 0u;
     brk_fx_mb_meter(k, gr, lvl);
     flo = brk_mb_xlo_hz(m->xlo);
@@ -835,24 +882,23 @@ static void draw_mbcomp(uint32_t now)
 
     /* ---- above: the parts, the spectrum */
     cv_begin(240, 52, C_BLACK);
-    fx_chips(MBP_TAB, NMBP, ui.fx_page, 30, !sl->on ? "BYPASS" : solo ? "SOLO" : "ON",
-             !sl->on ? C_DIM : solo ? MB_COL[solo - 1u] : C_HI);
+    fx_chips(MBP_TAB, NMBP, ui.fx_page, 0, 0, 0);
     for (x = 0; x < 3; x++) {            /* 100 Hz, 1 kHz, 10 kHz: faint marks */
         int32_t gx = MB_X(x == 0 ? 100.0f : x == 1 ? 1000.0f : 10000.0f), y;
-        for (y = 13; y < 41; y += 3)
+        for (y = MB_SP; y < 41; y += 3)
             cv_rect(gx, y, 1, 1, C_LINE);
     }
-    for (x = 0; x < 240; x++) {          /* 1 px a dB, +4 .. -23 (0 dB on row 17): where it rests (dotted: each band's
+    for (x = 0; x < 240; x++) {          /* 1 px a dB, +4 .. -21 (0 dB on row MB_Z): where it rests (dotted: each band's
                                           * GAIN and the OUTPUT), and now, filled under in its band's colour (its
                                           * reduction a dip; the make-up left out, it would hide the dip) */
         uint32_t zb = MB_MID, zr = MB_MID;
         float f = 20.0f * brk_exp2f((float)x * (9.9658f / 239.0f)), mix = brk_clampf(sl->mix, 0.0f, 1.0f);
         float db = mb_resp_db(f, flo, fhi, g, solo, sl->on ? mix : 0.0f, &zb);
         float rdb = mb_resp_db(f, flo, fhi, g_rest, solo, sl->on ? mix : 0.0f, &zr);
-        int32_t y = 17 - (int32_t)(db + (db < 0.0f ? -0.5f : 0.5f)), ry = 17 - (int32_t)(rdb + (rdb < 0.0f ? -0.5f : 0.5f));
+        int32_t y = MB_Z - (int32_t)(db + (db < 0.0f ? -0.5f : 0.5f)), ry = MB_Z - (int32_t)(rdb + (rdb < 0.0f ? -0.5f : 0.5f));
         int lit = focus < 0 ? !solo : (int32_t)zb == focus;
-        y = y < 13 ? 13 : y > 40 ? 40 : y;
-        ry = ry < 13 ? 13 : ry > 39 ? 39 : ry;
+        y = y < MB_SP ? MB_SP : y > 40 ? 40 : y;
+        ry = ry < MB_SP ? MB_SP : ry > 39 ? 39 : ry;
         if (y < 40)
             cv_rect(x, y, 1, 40 - y, !sl->on ? C_BLOCK : lit || (solo && solo == zb + 1u) ? MB_DIM[zb] : MB_TINT_HI[zb]);
         if (!(x & 1) && ry < y)          /* where it would be: what the reduction takes away shows between */
@@ -862,89 +908,102 @@ static void draw_mbcomp(uint32_t now)
         py = y < 40 ? y : 39;
     }
     for (x = 0; x < 240; x += 4)         /* 0 dB */
-        cv_rect(x, 17, 2, 1, C_DIM);
-    for (b = 0; b < 2u; b++) {           /* the splits, their frequencies under them (lit on X-OVER) */
-        int32_t sx = b ? xhi : xlo, y, w;
+        cv_rect(x, MB_Z, 2, 1, C_DIM);
+    {                                    /* the splits, their frequencies under them (lit on X-OVER), pushed apart when
+                                          * they would touch */
+        char tl[12], th[12];
+        int32_t wl, wh, xl, xh, y, over;
         uint16_t c = ui.fx_page == MBP_XOVER ? C_WHITE : C_GRAY;
-        for (y = 13; y < 41; y += 2)
-            cv_rect(sx, y, 1, 1, c);
-        hz_text(b ? fhi : flo, t);
-        w = text_w(&FONT_T, t);
-        x = sx - w / 2;
-        x = x < 1 ? 1 : x + w > 239 ? 239 - w : x;
-        cv_text(x, 40, &FONT_T, t, c);
+        for (y = MB_SP; y < 41; y += 2) {
+            cv_rect(xlo, y, 1, 1, c);
+            cv_rect(xhi, y, 1, 1, c);
+        }
+        mb_split_text(flo, tl);
+        mb_split_text(fhi, th);
+        wl = text_w(&FONT_T, tl);
+        wh = text_w(&FONT_T, th);
+        xl = xlo - wl / 2;
+        xh = xhi - wh / 2;
+        over = xl + wl + 8 - xh;
+        if (over > 0) {
+            xl -= over / 2;
+            xh += over - over / 2;
+        }
+        if (xl < 1) {
+            xl = 1;
+            xh = xh < xl + wl + 8 ? xl + wl + 8 : xh;
+        }
+        if (xh + wh > 239) {
+            xh = 239 - wh;
+            xl = xl > xh - 8 - wl ? xh - 8 - wl : xl;
+        }
+        fxv_text(xl, 42, tl, c);
+        fxv_text(xh, 42, th, c);
+    }
+    if (!sl->on) {                       /* (bypassed: the curve flat and grey, and said) */
+        int32_t w = text_w(&FONT_T, "BYPASS");
+        cv_rect(117 - w / 2, 21, w + 6, 14, C_BLACK);
+        fxv_text(120 - w / 2, 23, "BYPASS", C_GRAY);
     }
     cv_blit(0, 88);
 
     /* ---- below: each band */
     cv_begin(240, 52, C_BLACK);
     for (b = 0; b < MB_BANDS; b++) {
-        int32_t x0 = (int32_t)b * 80, bx = x0 + 3, by = 14, i, cy = 0;
+        int32_t x0 = (int32_t)b * 80, bx = x0 + 10, by = 14, i, cy = 0, mx = bx + MB_CB + 4;
         int dim = !sl->on || (solo && solo != b + 1u);
         uint16_t col = dim ? C_GRAY : MB_COL[b];
         float in_db = lvl[b] > 0.0039f ? 6.0206f * brk_log2f(lvl[b]) : -48.0f;   /* (-48 dB and under: the floor) */
+        float sc = (float)(MB_CB - 1) / 48.0f;
         if ((int32_t)b == focus)
             cv_frame(x0 + 1, 0, 78, 52, C_WHITE);
-        cv_text(x0 + 4, 1, &FONT_T, MB_BAND_NAME[b], col);
-        if (grdb[b] >= 0.1f) {           /* its reduction now */
-            signed_tenths(-grdb[b], "DB", t);
-            cv_text(x0 + 76 - text_w(&FONT_T, t), 1, &FONT_T, t, C_WHITE);
-        }
-        /* its curve: in -48 .. 0 dB across 34 px, out the same up */
-        cv_rect(bx, by, 34, 34, C_BLOCK);
-        for (i = 0; i < 34; i += 2)      /* in = out */
-            cv_rect(bx + i, by + 33 - i, 1, 1, C_LINE);
+        if (solo == b + 1u) {            /* SOLO: its name lit in its colour */
+            cv_rect(bx - 3, 0, text_w(&FONT_T, MB_BAND_NAME[b]) + 6, 13, MB_COL[b]);
+            fxv_text(bx, 2, MB_BAND_NAME[b], C_BLACK);
+        } else
+            fxv_text(bx, 2, MB_BAND_NAME[b], col);
+        /* its curve: in -48 .. 0 dB across MB_CB px, out the same up */
+        cv_rect(bx, by, MB_CB, MB_CB, C_BLOCK);
+        for (i = 0; i < MB_CB; i += 2)   /* in = out */
+            cv_rect(bx + i, by + MB_CB - 1 - i, 1, 1, C_LINE);
         if (e[b].ratio > 1.001f) {       /* the threshold */
-            int32_t tx = bx + (int32_t)((e[b].thr + 48.0f) * (33.0f / 48.0f) + 0.5f);
-            for (i = 0; i < 34; i += 3)
+            int32_t tx = bx + (int32_t)((e[b].thr + 48.0f) * sc + 0.5f);
+            for (i = 0; i < MB_CB; i += 3)
                 cv_rect(tx, by + i, 1, 1, C_DIM);
         }
-        for (i = 0; i < 34; i++) {
-            float idb = -48.0f + (float)i * (48.0f / 33.0f), odb = idb - brk_mb_reduce(idb - e[b].thr, e[b].slope, e[b].knee);
-            int32_t y = by + 33 - (int32_t)((odb + 48.0f) * (33.0f / 48.0f) + 0.5f);
-            y = y < by ? by : y > by + 33 ? by + 33 : y;
+        for (i = 0; i < MB_CB; i++) {
+            float idb = -48.0f + (float)i / sc, odb = idb - brk_mb_reduce(idb - e[b].thr, e[b].slope, e[b].knee);
+            int32_t y = by + MB_CB - 1 - (int32_t)((odb + 48.0f) * sc + 0.5f);
+            y = y < by ? by : y > by + MB_CB - 1 ? by + MB_CB - 1 : y;
             if (i)
                 cv_line(bx + i - 1, cy, bx + i, y, col);
             cy = y;
         }
         if (lvl[b] > 0.0039f && sl->on) {   /* its level, riding the curve */
             float odb = in_db - brk_mb_reduce(in_db - e[b].thr, e[b].slope, e[b].knee);
-            int32_t dx = bx + (int32_t)((in_db + 48.0f) * (33.0f / 48.0f) + 0.5f);
-            int32_t dy = by + 33 - (int32_t)((odb + 48.0f) * (33.0f / 48.0f) + 0.5f);
-            dx = dx > bx + 33 ? bx + 33 : dx;
+            int32_t dx = bx + (int32_t)((in_db + 48.0f) * sc + 0.5f);
+            int32_t dy = by + MB_CB - 1 - (int32_t)((odb + 48.0f) * sc + 0.5f);
+            dx = dx > bx + MB_CB - 1 ? bx + MB_CB - 1 : dx;
             dy = dy < by ? by : dy;
             cv_rect(dx - 1, dy - 1, 3, 3, C_WHITE);
         }
         {                                /* its level in (up from the floor), the threshold marked */
-            int32_t h = (int32_t)((in_db + 48.0f) * (34.0f / 48.0f) + 0.5f), ty;
-            cv_rect(x0 + 40, by, 4, 34, C_BLOCK);
+            int32_t h = (int32_t)((in_db + 48.0f) * ((float)MB_CB / 48.0f) + 0.5f), ty;
+            cv_rect(mx, by, 6, MB_CB, C_BLOCK);
             if (h > 0)
-                cv_rect(x0 + 40, by + 34 - h, 4, h, dim ? C_DIM : MB_DIM[b]);
-            ty = by + 33 - (int32_t)((e[b].thr + 48.0f) * (33.0f / 48.0f) + 0.5f);
+                cv_rect(mx, by + MB_CB - h, 6, h, dim ? C_DIM : MB_DIM[b]);
+            ty = by + MB_CB - 1 - (int32_t)((e[b].thr + 48.0f) * sc + 0.5f);
             if (e[b].ratio > 1.001f)
-                cv_rect(x0 + 39, ty, 6, 1, C_WHITE);
+                cv_rect(mx - 1, ty, 8, 1, C_WHITE);
         }
         {                                /* its reduction (down from the top, 0 .. 24 dB), the peak held */
-            int32_t h = (int32_t)(brk_clampf(grdb[b], 0.0f, 24.0f) * (34.0f / 24.0f) + 0.5f);
-            int32_t hh = (int32_t)(brk_clampf(ui.mb_hold[b], 0.0f, 24.0f) * (34.0f / 24.0f) + 0.5f);
-            cv_rect(x0 + 46, by, 5, 34, C_BLOCK);
+            int32_t h = (int32_t)(brk_clampf(grdb[b], 0.0f, 24.0f) * ((float)MB_CB / 24.0f) + 0.5f);
+            int32_t hh = (int32_t)(brk_clampf(ui.mb_hold[b], 0.0f, 24.0f) * ((float)MB_CB / 24.0f) + 0.5f);
+            cv_rect(mx + 9, by, 6, MB_CB, C_BLOCK);
             if (h > 0)
-                cv_rect(x0 + 46, by, 5, h, C_HI);
+                cv_rect(mx + 9, by, 6, h, C_HI);
             if (hh > 1)
-                cv_rect(x0 + 46, by + hh - 1, 5, 1, C_WHITE);
-        }
-        ratio_text(e[b].ratio, t);       /* its ratio, threshold and gain as they act */
-        cv_text(x0 + 54, by - 1, &FONT_T, t, e[b].ratio > 1.001f ? col : C_DIM);
-        if (e[b].ratio > 1.001f) {
-            int_text((int32_t)(e[b].thr - 0.5f), t);
-            cv_text(x0 + 54, by + 11, &FONT_T, t, C_GRAY);
-        }
-        {
-            float gdb = brk_mb_db24(m->gain[b]);
-            if (gdb > 0.05f || gdb < -0.05f) {
-                signed_tenths(gdb, "", t);
-                cv_text(x0 + 54, by + 23, &FONT_T, t, C_GRAY);
-            }
+                cv_rect(mx + 9, by + hh - 1, 6, 1, C_WHITE);
         }
     }
     cv_blit(0, 140);
@@ -1042,7 +1101,15 @@ static float x_plot(uint32_t t, int32_t x, const float *p, const float *xx, uint
 }
 
 /* a slot focused (not an MB COMP): above, its parts and its picture; below, the chain (the slot lit), its modulator's
- * cycle (where it is now, what it moves) and its level in and out */
+ * cycle (where it is now, what it moves) and its level in and out. AFFINE (2x): the chain's effects by short names
+ * (the tabs name the one focused in full), the help sentences gone */
+static const char *fx_chain_name(uint32_t k)   /* (a chain's box, 56 px at 2x) */
+{
+    static const char *const S[BRK_NFXT] = {"-", "FILTER", "CRNCH", "DRIVE", "PUNCH", "FLANG", "RING",
+                                            "TREM", "VERB", "DELAY", "EQ", "TAPE", "MBC", "CLIP"};
+    uint32_t r = mb_preset(k);
+    return r == 3u ? "M MBC" : eq_magic_is(k) ? "M EQ" : S[fx_sl(k)->type % BRK_NFXT];
+}
 static void draw_xview(uint32_t now)
 {
     uint32_t k = fx_foc(), t = fx_sl(k)->type, i, shape;
@@ -1057,14 +1124,13 @@ static void draw_xview(uint32_t now)
     for (i = 0; i < 4u; i++)             /* the settings as the modulator leaves them (as set while it is off) */
         p[i] = sl->on ? m.p[i] : i < 3u ? sl->p[i] : sl->mix;
     cv_begin(240, 52, C_BLACK);
-    fx_chips(XP_NAME, NXP, ui.fx_page, 40, sl->on ? "ON" : "BYPASS", sl->on ? C_HI : C_DIM);
+    fx_chips(XP_NAME, NXP, ui.fx_page, 46, t == FXT_EMPTY ? 0 : sl->on ? "ON" : "BYPASS", sl->on ? C_HI : C_DIM);
     {
-    int32_t mid = 32, amp = 19;          /* (KICK FX 0.9.2-0.9.28 lower, its section's parts under it; 0.9.29: FX1, FX2
-                                          * sections of their own, the slot's parts in the row above, as the chain's) */
+    int32_t mid = 33, amp = 17;          /* (the picture under the parts: rows 16 .. 50) */
     for (x = 0; x < 240; x += 4)         /* the middle (the tones), 0 dB (the responses) */
         cv_rect(x, mid, 2, 1, C_LINE);
-    if (t == FXT_EMPTY)
-        cv_text(6, mid - 6, &FONT_T, "EMPTY: PRESETS PUTS AN EFFECT HERE", C_GRAY);
+    if (t == FXT_EMPTY)                  /* (one line: what puts an effect here) */
+        fxv_text(120 - text_w(&FONT_T, "EMPTY: TURN PRESETS") / 2, mid - 12, "EMPTY: TURN PRESETS", C_GRAY);
     for (x = 0; t != FXT_EMPTY && x < 240; x++) {
         float in, base, v = x_plot(t, x, p, xx, now, &in, &base);
         y = mid - (int32_t)(brk_clampf(v, -1.0f, 1.0f) * (float)amp);
@@ -1080,45 +1146,47 @@ static void draw_xview(uint32_t now)
     cv_blit(0, 88);
     cv_begin(240, 52, C_BLACK);
     for (i = 0; i < 4u; i++) {           /* the chain: each slot's effect, this one lit */
-        uint32_t j = i;
         const brk_fxslot_t *o;
+        const char *s;
         if (i >= fx_nslots())
             break;                       /* (BEGINNER: the chain's two) */
-        o = fx_sl(j);
-        nm[0] = 0;
-        text_cat(nm, SLOT_NUM[i]);
-        text_cat(nm, " ");
-        text_cat(nm, o->type ? fx_name(j) : "-");
-        cv_rect(2 + (int32_t)i * 60, 0, 56, 11, j == k ? C_HI : C_BLOCK);
-        cv_text(5 + (int32_t)i * 60, 0, &FONT_T, nm, j == k ? C_BLACK : o->on ? C_GRAY : C_DIM);
+        o = fx_sl(i);
+        s = fx_chain_name(i);
+        cv_rect(2 + (int32_t)i * 60, 0, 56, FX_CHIP_H, i == k ? C_HI : C_BLOCK);
+        fxv_text(2 + (int32_t)i * 60 + (56 - text_w(&FONT_T, s)) / 2, 2, s,
+                 i == k ? C_BLACK : o->on && o->type ? C_GRAY : C_DIM);
     }
-    cv_rect(0, 14, 176, 38, C_BLOCK);    /* the modulator: its cycle, where it is, what it moves */
+    cv_rect(0, 16, 178, 36, C_BLOCK);    /* the modulator: what it moves, its cycle under, where it is */
     shape = brk_idx(xx[FXX_SHAPE], BRK_MOD_SHAPES);
-    if (t == FXT_EMPTY || (depth > -0.01f && depth < 0.01f))
-        cv_text(6, 26, &FONT_T, "MOD OFF  (ALGORITHM: MOD)", C_DIM);
+    if (t == FXT_EMPTY)
+        ;
+    else if (depth > -0.01f && depth < 0.01f)
+        fxv_text(89 - text_w(&FONT_T, "MOD OFF") / 2, 29, "MOD OFF", C_DIM);
     else {
-        for (x = 0; shape < MOD_SH && x < 176; x++) {
-            y = 33 - (int32_t)(brk_mod_wave(shape, (float)x * (1.0f / 176.0f)) * 14.0f);
+        int32_t mid = 39, amp = 9;       /* (rows 30 .. 48, under the name) */
+        for (x = 0; shape < MOD_SH && x < 178; x++) {
+            y = mid - (int32_t)(brk_mod_wave(shape, (float)x * (1.0f / 178.0f)) * (float)amp);
             if (x)
                 cv_line(x - 1, py, x, y, MB_DIM[1]);
             py = y;
         }
-        x = shape < MOD_SH ? (int32_t)(m.ph * 176.0f) : 88;
-        y = 33 - (int32_t)((shape == MOD_ENV ? 2.0f * m.mod - 1.0f : m.mod) * 14.0f);
-        cv_rect(x, 14, 1, 38, C_GRAY);
+        x = shape < MOD_SH ? (int32_t)(m.ph * 178.0f) : 89;
+        y = mid - (int32_t)((shape == MOD_ENV ? 2.0f * m.mod - 1.0f : m.mod) * (float)amp);
+        cv_rect(x, 30, 1, 22, C_GRAY);
         cv_rect(x - 2, y - 2, 5, 5, C_WHITE);
         nm[0] = 0;
         text_cat(nm, "> ");
-        text_cat(nm, base_param_name(k, (int)brk_idx(xx[FXX_TARGET], 4u)));
-        cv_text(4, 14, &FONT_T, nm, MB_COL[1]);
+        text_cat(nm, fx_short(base_param_name(k, (int)brk_idx(xx[FXX_TARGET], 4u))));
+        fxv_text(4, 18, nm, MB_COL[1]);
     }
     for (i = 0; i < 2u; i++) {           /* its level in and out (-48 .. 0 dB) */
         float lv = i ? m.out : m.in;
-        int32_t h = lv > 0.0039f ? (int32_t)((6.0206f * brk_log2f(lv) + 48.0f) * (26.0f / 48.0f)) : 0;
-        h = h > 26 ? 26 : h;             /* (over 0 dB: full) */
-        cv_rect(186 + (int32_t)i * 28, 14, 12, 26, C_BLOCK);
-        cv_rect(186 + (int32_t)i * 28, 40 - h, 12, h, i ? col : C_GRAY);
-        cv_text(184 + (int32_t)i * 26, 40, &FONT_T, i ? "OUT" : "IN", C_GRAY);
+        int32_t h = lv > 0.0039f ? (int32_t)((6.0206f * brk_log2f(lv) + 48.0f) * (24.0f / 48.0f)) : 0;
+        int32_t mx = 188 + (int32_t)i * 30;
+        h = h > 24 ? 24 : h;             /* (over 0 dB: full) */
+        cv_rect(mx, 16, 12, 24, C_BLOCK);
+        cv_rect(mx, 40 - h, 12, h, i ? col : C_GRAY);
+        fxv_text(mx + 6 - text_w(&FONT_T, i ? "OUT" : "IN") / 2, 42, i ? "OUT" : "IN", C_GRAY);
     }
     cv_blit(0, 140);
 }

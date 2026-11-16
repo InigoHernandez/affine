@@ -51,8 +51,11 @@ static void cdj_picture(const brk_status_t *st, uint32_t w, int32_t top)
                 cv_rect(0, 0, (int32_t)(done * 240u / total), 3, C_HI);
             if (din > 0 && din <= 8) {
                 char d[16] = "DROP IN ";
+                int32_t dw;
                 int_text(din, d + 8);
-                cv_text(234 - text_w(&FONT_XS, d), 6, &FONT_XS, d, din <= 1 ? C_WHITE : C_AMB);
+                dw = text_w(&FONT_XS, d);
+                cv_rect(230 - dw, 5, dw + 6, 15, C_BLACK);   /* (AFFINE, 2x: on a ground of its own, over the track) */
+                cv_text(233 - dw, 6, &FONT_XS, d, din <= 1 ? C_WHITE : C_AMB);
             }
         }
     }
@@ -62,6 +65,7 @@ static void cdj_picture(const brk_status_t *st, uint32_t w, int32_t top)
         text_cat(t, ".");
         int_text(s16 / 4 + 1, u);
         text_cat(t, u);
+        cv_rect(0, 5, text_w(&FONT_XS, t) + 7, 15, C_BLACK);   /* (AFFINE, 2x: on a ground of its own) */
         cv_text(4, 6, &FONT_XS, t, C_WHITE);
     }
 }
