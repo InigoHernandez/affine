@@ -1,0 +1,163 @@
+# AFFINE (16 Nov 2026, the owner: "all the performance FX would be nice to be recorded if the rec button is active"):
+# REC on, playing, a black key held: each step it is held over takes its function or combo (the last pressed), from
+# the step its press lands on; steps with nothing held keep theirs (overdub). Played back, a step's code acts as its key
+# held over it (a run of one code one hold), merged with what is held. SEQ's grid marks the steps recorded. Kept with
+# SAVE (its own store object, OBJ_FREE0), carried by copy and paste, cleared with the pattern (SEL + REC); stopped,
+# step by step, a black key writes the step shown. Another firmware's store: nothing recorded.
+# At 170 BPM a 16th is 88.2 ms, the pattern (OLDSKOO 160, two bars) 32 of them, 2823.5 ms. fxr_lo / fxr_hi: the steps
+# recorded (1-16, 17-32, a bit each), fxr_c the first one's code, rplay the code playing (-1 none).
+#   app/build/host/affine_host tests/scenarios/punchrec.txt app/build/scenarios
+wait 4200
+press FX
+wait 100
+tap OCT+
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 300
+expect row 3
+tap PLAY
+wait 1000
+tap REC
+wait 100
+expect rec 1
+# BUZZ (key 2) held 350 ms: steps 20-23
+wait 400
+key b1 down
+wait 350
+key b1 up
+wait 300
+expect fxr_lo 0
+expect fxr_hi 120
+expect fxr_c 33
+# then REV VERB (key 3) a little later, the BUZZ kept: steps 31, 32 and round to 1
+wait 300
+key b2 down
+wait 260
+key b2 up
+wait 100
+tap REC
+wait 100
+expect rec 0
+expect fxr_lo 1
+expect fxr_hi 49272
+expect fxr_c 34
+# played back, nothing held: BUZZ on its steps (its roll, 4 bits), then nothing, then REV VERB
+wait 1475
+expect rplay 33
+expect cmb 33
+expect psx_held 4
+expect pads 4
+expect cmb_lit 2
+leds
+shot punch_rec_home.png
+wait 600
+expect rplay -1
+expect cmb 0
+expect psx_held 0
+expect pads 0
+wait 300
+expect rplay 34
+expect psx_held 1
+expect pads 8
+# merged with what is held: BUZZ's steps again, STUTTER (key 1) held over them: both rolls, the filter, the crush
+wait 1800
+key b0 down
+wait 150
+expect rplay 33
+expect psx_held 4
+expect fheld 33286
+expect cmb 32
+key b0 up
+wait 50
+expect fheld 32772
+expect cmb 33
+tap SEQ
+wait 400
+shot punch_rec_seq.png
+tap PLAY
+wait 300
+expect rplay -1
+expect pads 0
+tap HOME
+wait 300
+# kept: SAVE, reboot
+tap SAVE
+wait 300
+reboot
+wait 4200
+expect fxr_lo 1
+expect fxr_hi 49272
+tap PLAY
+wait 10
+expect rplay 34
+wait 1750
+expect rplay 33
+expect psx_held 4
+tap PLAY
+wait 300
+# copied to P2 with the pattern (SEL + SEQ, P2, SEL + SEQ), back to P1
+press SEL
+tap SEQ
+release SEL
+wait 200
+turn PRESET 1 10
+wait 300
+expect pattern 1
+expect fxr_hi 0
+press SEL
+tap SEQ
+release SEL
+wait 200
+expect fxr_lo 1
+expect fxr_hi 49272
+tap HOME
+wait 200
+turn PRESET -1 10
+wait 300
+expect pattern 0
+# stopped, REC: a black key writes the step shown (step 1: GLITCH over REV VERB), then the next
+tap REC
+wait 100
+key b5 down
+wait 50
+key b5 up
+wait 100
+expect fxr_c 37
+key b9 down
+wait 50
+key b9 up
+wait 100
+expect fxr_lo 3
+tap REC
+wait 100
+# cleared with the pattern (SEL + REC)
+press SEL
+tap REC
+release SEL
+wait 200
+expect fxr_lo 0
+expect fxr_hi 0
+turn PRESET 1 10
+wait 300
+expect fxr_hi 49272
+turn PRESET -1 10
+wait 300
+# another firmware's store: nothing recorded (P2's records there, not read); a SAVE then writes nothing over them
+store_foreign
+reboot
+wait 4200
+expect fxr_lo 0
+expect fxr_hi 0
+turn PRESET 1 10
+wait 300
+expect fxr_hi 0
+tap SAVE
+wait 300
+reboot
+wait 4200
+turn PRESET 1 10
+wait 300
+expect fxr_hi 0
+expect fxr_lo 0

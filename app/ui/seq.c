@@ -122,6 +122,7 @@ static pat_t undo_pat;
 static uint8_t undo_kn[13];              /* (LOAF BREAKER: its kick notes kept apart, pats.kn; its drums' HITS) */
 static uint8_t undo_steps[STEPB_N];
 static uint16_t undo_dx[6];              /* (0.9.30: its drums' bars 3 and 4) */
+static uint8_t undo_fx[PAT_STEPS];       /* (AFFINE: its black keys recorded) */
 static uint8_t undo_idx = 0xFFu, undo_what;
 static uint32_t undo_t;
 static void undo_mark(uint32_t what)     /* what: which change (UNDO_*), a burst of the same one is one */
@@ -137,6 +138,8 @@ static void undo_mark(uint32_t what)     /* what: which change (UNDO_*), a burst
             undo_steps[k] = steps.b[undo_idx][k];
         for (k = 0; k < 6u; k++)
             undo_dx[k] = dx.b[set.pgrp % NGRP][undo_idx][k];
+        for (k = 0; k < PAT_STEPS; k++)
+            undo_fx[k] = fxr_pat(undo_idx)[k];
     }
     undo_t = now;
 }
@@ -168,6 +171,12 @@ static void undo_swap(void)
             dx.b[set.pgrp % NGRP][undo_idx][k] = undo_dx[k];
             undo_dx[k] = b;
         }
+        for (k = 0; k < PAT_STEPS; k++) {
+            uint8_t b = fxr_pat(undo_idx)[k];
+            fxr_pat(undo_idx)[k] = undo_fx[k];
+            undo_fx[k] = b;
+        }
+        fxr_dirty = 1u;
     }
     undo_t = 0u;                         /* (the next change takes a fresh copy) */
     if (undo_idx == set.pattern % NPAT)
@@ -182,6 +191,7 @@ static void undo_swap(void)
 static pat_t clip_pat;
 static uint8_t clip_kn[13], clip_steps[STEPB_N];
 static uint16_t clip_dx[6];
+static uint8_t clip_fx[PAT_STEPS];       /* (AFFINE: its black keys recorded) */
 static int8_t clip_from = -1;            /* the pattern copied, -1 none */
 static void pat_copy_paste(void)
 {
@@ -195,6 +205,8 @@ static void pat_copy_paste(void)
             clip_steps[k] = steps.b[cur][k];
         for (k = 0; k < 6u; k++)
             clip_dx[k] = dx.b[set.pgrp % NGRP][cur][k];
+        for (k = 0; k < PAT_STEPS; k++)
+            clip_fx[k] = fxr_pat(cur)[k];
         clip_from = (int8_t)all;
         int_text((int32_t)all + 1, t + 1);
         app_say("COPIED", t);
@@ -208,6 +220,9 @@ static void pat_copy_paste(void)
         steps.b[cur][k] = clip_steps[k];
     for (k = 0; k < 6u; k++)
         dx.b[set.pgrp % NGRP][cur][k] = clip_dx[k];
+    for (k = 0; k < PAT_STEPS; k++)
+        fxr_pat(cur)[k] = clip_fx[k];
+    fxr_dirty = 1u;
     pat_apply();
     set_dirty = 1u;
     {
@@ -272,6 +287,22 @@ static void rec_slice(uint32_t s)
         app_say("REC STEP", t);
         ui.redraw |= RG_BLOCKS;
     }
+}
+static void rec_fx_step(uint32_t c)      /* AFFINE: REC stopped, a black key pressed: its code on the step shown, then
+                                          * the next (as rec_slice) */
+{
+    char t[12], u[4];
+    uint32_t n = pat_len(), k = rec_step % n;
+    fxr_pat(set.pattern)[k] = (uint8_t)(c + 1u);
+    fxr_dirty = 1u;
+    set_dirty = 1u;
+    rec_step = (uint8_t)((k + 1u) % n);
+    int_text((int32_t)rec_step + 1, t);
+    int_text((int32_t)n, u);
+    text_cat(t, " / ");
+    text_cat(t, u);
+    app_say("REC STEP", t);
+    ui.redraw |= RG_BLOCKS;
 }
 /* LOAF BREAKER: REC stopped, step by step: OCT+ a REST (the step left as it is, on to the next), OCT- a step back */
 static void rec_move(int32_t d)
@@ -564,6 +595,10 @@ static void seq_clear(int mode)
                 p->st[k][1] = 0u;
                 p->st[k][2] &= 0xF8u;    /* (bits 3-7: the MELODY's, 0.200-0.208) */
             }
+    if (mode != 1)                       /* (AFFINE: the black keys recorded: with the pattern, or the break's steps) */
+        fxr_clear(set.pattern, 0u, PAT_STEPS);
+    else if (ui.seq_lane < SL_KICK)      /* (its half, with that half's steps) */
+        fxr_clear(set.pattern, ui.seq_lane * 16u, 16u);
     if (!mode) {
         for (k = SL_KICK; k < NSEQL; k++)
             sl_set(p, k, 0u);
@@ -927,6 +962,11 @@ static void seq_picture(int32_t top)
                     cv_rect(x + 1, y + ch / 2, w - 2, 1, now ? C_BLACK : C_HI);
                 if (p->st[k][2] & 7u && ch >= 6)   /* reversed or ratcheted: a mark */
                     cv_rect(x + 2, y + ch - 2, w - 4, 1, now ? C_BLACK : C_AMB);
+                if (bk_code_ok(fxr_pat(set.pattern)[k])) {   /* AFFINE: a black key recorded: a hot bar under the
+                                          * step, joined to the next one recorded with the same (one hold) */
+                    uint32_t v2 = fxr_pat(set.pattern)[k], nx = i < 15u ? fxr_pat(set.pattern)[k + 1u] : 0u;
+                    cv_rect(x, y + ch, w + (nx == v2 ? 1 : 0), 2, C_HI);
+                }
                 continue;
             }
             c = at == (int32_t)i ? C_WHITE : m >> i & 1u ? (picked ? C_BLOCK_HI : C_AMB) : (i & 3u) ? C_BLOCK : C_LINE;

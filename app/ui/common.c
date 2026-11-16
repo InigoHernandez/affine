@@ -258,7 +258,26 @@ static const char *const BKF_NAME[BKF_N] = {"R8", "R16", "R32", "REV", "FRZ", "H
 static const char *const BKF_LONG[BKF_N] = {"ROLL 1/8", "ROLL 1/16", "ROLL 1/32", "REVERSE", "FREEZE", "HALF SPEED",
                                             "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "ARP (OVERLAY)",
                                             "BOOM OFF", "VERB THROW", "SKIP", "CRUSH"};
-static const char *const BKP_NAME[BKP_N] = {"AFFINE", "CHOPPAH", "CUSTOM"};
+static const char *const BKP_NAME[BKP_N] = {"AFFINE", "CHOPPAH", "CUSTOM", "PUNCH"};
+/* AFFINE (16 Nov 2026): the black keys' rows, FX + OCT- / OCT+ round them (and K1 PRESET on ARP › BLACK KEYS): AFFINE,
+ * PUNCH, CUSTOM (CHOPPAH out of the round, its saves still played: as AFFINE's place) */
+static const uint8_t BK_ROWS[3] = {BKP_AFFINE, BKP_PUNCH, BKP_CUSTOM};
+static uint32_t bk_row_pos(uint32_t p) { return p == BKP_PUNCH ? 1u : p == BKP_CUSTOM ? 2u : 0u; }
+static const char *bk_long(uint32_t c)   /* a function's or a combo's name, as the header and the page say it */
+{
+    return c < BKF_N ? BKF_LONG[c] : BKC(c) ? BKC_T[c - BKC_0].name : "";
+}
+static const char *bk_tag(uint32_t c)    /* (its three letters: the foot's EFFECT) */
+{
+    return c < BKF_N ? BKF_NAME[c] : BKC(c) ? BKC_T[c - BKC_0].tag : "";
+}
+static uint32_t bk_code_step(uint32_t c, int32_t d)   /* the next code a key takes (CUSTOM): every function, then the
+                                          * eleven combos, round */
+{
+    uint32_t i = c < BKF_N ? c : BKC(c) ? BKF_N + (c - BKC_0) : 0u, n = BKF_N + BKC_N;
+    i = (i + (uint32_t)(d > 0 ? 1 : (int32_t)n - 1)) % n;
+    return i < BKF_N ? i : BKC_0 + (i - BKF_N);
+}
 static const uint8_t WK[16] = PLAT_WHITE_KEYS, BK[11] = PLAT_BLACK_KEYS;
 /* LOAF BREAKER: what the TUTORIAL (tutor.c) watches, counted where it happens: white keys pressed, black keys pressed
  * (a bit each), drum steps set on SEQ, SAVEs, HOME, the OVERLAY page's effects */

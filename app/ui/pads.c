@@ -163,6 +163,12 @@ static void roll_key(uint32_t pad, int down, int sel)   /* a roll pad down or up
 }
 static int roll_lit(uint32_t pad) { return roll_held == pad && kroll; }   /* (its light, rolling the kick alone) */
 static uint8_t half_lat;                 /* LOAF BREAKER: HALF SPEED latched on (its LATCH: K3) */
+static uint16_t bk_mute;                 /* AFFINE: black keys (bit j) silent until let go: held through a change of the
+                                          * row, or pressed with FX held (to give them a function, main.c bk_assign) */
+static uint8_t arp_rec;                  /* AFFINE: the pattern plays an ARP key recorded: the ARP key touched last's
+                                          * effect (ovl.c ovl_pad_bits) */
+static uint8_t rp_code;                  /* AFFINE: the pattern's recorded black key playing, its code + 1 (0 none) */
+static uint8_t kil_mom;                  /* AFFINE: BOOM quiet from a combo or the pattern (not a KIL key): back with it */
 static uint16_t pad_latched;             /* (0.9.26: REVERSE, FREEZE, GATE, RANDOM latched on, bit by pad) */
 static const char *const FTHRU_NAME[3] = {"BREAK", "DRUMS", "BOTH"};
 /* what K1-K4 tune while a pad is held, by pad (brk.h PAD_*); 0: that knob does nothing for it. (AFFINE, 2x: the foot's
@@ -582,6 +588,7 @@ static void fx_slice(int32_t s, int32_t x, int32_t w, float h, uint16_t c)
     }
 }
 
+static int bkf_lit(uint32_t f, const brk_status_t *st);   /* (below) */
 /* the held pad's picture: what it does to the break, moving with it, and its settings */
 static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t top)
 {
@@ -593,6 +600,29 @@ static void draw_fx_band(int pad, const brk_status_t *st, uint32_t now, int32_t 
     cv_begin(240, FX_BAND, C_BLACK);
     cv_oy = -top;                        /* (this band's rows of the picture) */
     t[0] = 0;
+    if (BKC(pad)) {                      /* AFFINE: a PUNCH combo: its name (3x), the functions it holds together, each
+                                          * lit while it sounds, the beats held at the right */
+        uint32_t m = bk_fmask((uint32_t)pad), k, n = 0u;
+        int32_t x = 6;
+        snd_text(6, 3, "PUNCH", 2, C_GRAY, 0, top);
+        int_text((int32_t)(held * (uint32_t)set.tempo_x10 / 600000u) + 1, t);
+        text_cat(t, " BEAT");
+        snd_text(234, 3, t, 2, C_GRAY, 1, top);
+        snd_text(6, 22, BKC_T[(uint32_t)pad - BKC_0].name, 3, C_HI, 0, top);
+        for (k = 0; k < BKF_N; k++)
+            if (m >> k & 1u) {
+                int on = bkf_lit(k, st), w = 70;
+                cv_rect(x, 56, w, 28, on ? C_HI : C_BLOCK);
+                snd_text(x + w / 2, 65, BKF_NAME[k], 2, on ? C_BLACK : C_GRAY, 2, top);
+                x += w + 6;
+                n++;
+            }
+        (void)n;
+        (void)s;
+        cv_oy = 0;
+        cv_blit(0, FX_Y + (uint32_t)top);
+        return;
+    }
     if (pad <= PAD_ROLL32 && (roll_sel || set.pads.rsv[0] % 3u))   /* (LOAF BREAKER: THRU BOOM or BOTH, or SEL) */
         text_cat(t, roll_sel || set.pads.rsv[0] % 3u == 1u ? "BOOM " : "ALL ");
     text_cat(t, PAD_TITLE[pad]);

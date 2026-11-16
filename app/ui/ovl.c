@@ -17,6 +17,8 @@ static uint32_t ovl_pad_bits(void)       /* the ARP keys' effects on (0.9.45: ea
     for (j = 0; j < 11u; j++)
         if (arpk_on(j))
             m |= 1u << arpk_fx(j);
+    if (arp_rec && !(set.ovl_pad & 32u)) /* (AFFINE: an ARP key recorded in the pattern) */
+        m |= 1u << arpk_fx(arpk_focus());
     return m;
 }
 static void ovl_push(void)
@@ -66,15 +68,19 @@ static void ovl_keys(uint32_t keys, uint32_t kdn)   /* every input: the white ke
     ovl_push();
 }
 /* ------------------------------------------------ BLACK KEYS (LOAF BREAKER) --- */
-/* LOAF BREAKER (11 Nov 2026, FLEXOR): ARP's second tab, EXPERT's: the black keys' layout. K1 the PRESET (CHOPPAH,
- * FLEXOR LAYOUT, CUSTOM), K2 the KEY (or a black key pressed: it picks itself, nothing played), K3 its EFFECT (any of
- * CHOPPAH's and FLEXOR LAYOUT's, BKF_*; on a preset, K3 makes a CUSTOM of it first). (MORE, a third: gone for
+/* LOAF BREAKER (11 Nov 2026, FLEXOR): ARP's second tab, EXPERT's: the black keys' layout. K1 the PRESET (AFFINE: the
+ * rows AFFINE, PUNCH, CUSTOM), K2 the KEY (or a black key pressed: it picks itself, nothing played), K3 its EFFECT (any
+ * function, BKF_*, then the PUNCH combos; on a preset, K3 makes a CUSTOM of it first). (MORE, a third: gone for
  * now, 0.259, FLEXOR) */
 static void bk_release_all(void)         /* (the layout changes: whatever a key had on lets go) */
 {
-    uint32_t i;
+    uint32_t i, keys = plat_keys();
     for (i = 0; i < BRK_NPADS; i++)
         brk_pad((int)i, 0);
+    for (i = 0; i < 11u; i++)            /* (AFFINE: a key held through it: silent until let go) */
+        if (keys >> BK[i] & 1u)
+            bk_mute |= (uint16_t)(1u << i);
+    kil_mom = 0u;
     roll_held = 0xFFu;
     roll_sel = 0u;
     kroll = 0u;
@@ -90,7 +96,7 @@ static void bk_say(void)
 {
     char t[24] = "KEY ";
     int_text((int32_t)ui.bk_sel % 11 + 1, t + 4);
-    app_say(t, BKF_LONG[bk_fn(ui.bk_sel)]);
+    app_say(t, bk_long(bk_fn(ui.bk_sel)));
 }
 static void bk_pick(uint32_t j)          /* a black key pressed on BLACK KEYS */
 {
@@ -107,7 +113,7 @@ static void bk_value(int i, char *t)
         int_text((int32_t)ui.bk_sel % 11 + 1, t);
     else if (i == 2)                     /* (AFFINE, 2x: its short name, EFFECT HLF, whole in the foot's 108 px; the
                                           * page shows BKF_LONG large, the header says it) */
-        text_cat(t, BKF_NAME[bk_fn(ui.bk_sel) % BKF_N]);
+        text_cat(t, bk_tag(bk_fn(ui.bk_sel)));
     else if (bk_fn(ui.bk_sel) == BKF_ARP)  /* (0.9.45: K4, an ARP key's own effect) */
         text_cat(t, OVL_NAME[arpk_fx(ui.bk_sel)]);
 }
@@ -117,8 +123,8 @@ static void bk_turn(int i, int32_t d)
     uint32_t j;
     if (set.novice)
         return;
-    if (i == 0) {
-        uint32_t p = (uint32_t)clamp((int32_t)bk_preset() + dir, 0, BKP_N - 1);
+    if (i == 0) {                        /* (AFFINE: the rows AFFINE, PUNCH, CUSTOM; CHOPPAH out of them) */
+        uint32_t p = BK_ROWS[clamp((int32_t)bk_row_pos(bk_preset()) + dir, 0, 2)];
         if (p == bk_preset())
             return;
         bk_release_all();
@@ -130,7 +136,7 @@ static void bk_turn(int i, int32_t d)
         ui.redraw |= RG_BLOCKS | RG_FOOT;
         return;
     } else if (i == 2) {
-        uint32_t f = (bk_fn(ui.bk_sel) + (uint32_t)(dir > 0 ? 1 : BKF_N - 1)) % BKF_N;
+        uint32_t f = bk_code_step(bk_fn(ui.bk_sel), dir);   /* (AFFINE: then the PUNCH combos) */
         if (bk_preset() != BKP_CUSTOM) { /* (a preset: its copy, CUSTOM, then the key) */
             for (j = 0; j < 11u; j++)
                 set.bkeys.bk[2u + j] = (uint8_t)bk_fn(j);
@@ -153,8 +159,9 @@ static void bk_turn(int i, int32_t d)
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
 /* the BLACK KEYS tab: the eleven keys as the FM-1 has them (3, 2, 3, 2, 1), their numbers (2x), the one edited lit,
- * under each a line, amber where its function is not CHOPPAH's; under them that key's function large (3x), and a line
- * of help. (AFFINE, 2x: the functions' short names in the keys gone, too wide; the preset: the foot's K1) */
+ * under each a line (AFFINE: amber under a PUNCH combo); under them that key's function or combo large (3x), and a
+ * line of help (a combo: what it holds). (AFFINE, 2x: the functions' short names in the keys gone, too wide; the row:
+ * the foot's K1) */
 static void draw_bk(void)
 {
     static const uint8_t GRP[11] = {0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 4};
@@ -166,9 +173,9 @@ static void draw_bk(void)
         cv_oy = -top;
         for (j = 0; j < 11u; j++) {
             int32_t x = 5 + (int32_t)j * 20 + (int32_t)GRP[j] * 3;
-            int sel = j == ui.bk_sel % 11u, chop = bk_fn(j) == BK_LAY[j];
+            int sel = j == ui.bk_sel % 11u, cmb = BKC(bk_fn(j));   /* (AFFINE: amber under a PUNCH combo) */
             cv_rect(x, 6, 18, 28, sel ? C_HI : C_BLOCK);
-            cv_rect(x, 36, 18, 2, sel ? C_WHITE : chop ? C_LINE : C_AMB);
+            cv_rect(x, 36, 18, 2, sel ? C_WHITE : cmb ? C_AMB : C_LINE);
             t[0] = 0;
             int_text((int32_t)j + 1, t);
             snd_text(x + 9, 15, t, 2, sel ? C_BLACK : C_GRAY, 2, top);
@@ -177,8 +184,20 @@ static void draw_bk(void)
             int32_t w = snd_text(6, 52, "ARP ", 3, C_HI, 0, top);
             snd_text(6 + w, 52, OVL_NAME[arpk_fx(ui.bk_sel)], 3, C_WHITE, 0, top);
         } else
-            snd_text(6, 52, BKF_LONG[f], 3, C_HI, 0, top);
-        snd_text(6, 84, p == BKP_CUSTOM ? "PRESS A KEY TO PICK IT" : "K3 MAKES A CUSTOM COPY", 2, C_DIM, 0, top);
+            snd_text(6, 52, bk_long(f), 3, C_HI, 0, top);
+        if (BKC(f)) {                    /* (AFFINE: a combo: what it holds together, R16 + FLT) */
+            uint32_t m = bk_fmask(f), k;
+            char r[24];
+            r[0] = 0;
+            for (k = 0; k < BKF_N; k++)
+                if (m >> k & 1u) {
+                    if (r[0])
+                        text_cat(r, " + ");
+                    text_cat(r, BKF_NAME[k]);
+                }
+            snd_text(6, 84, r, 2, C_AMB, 0, top);
+        } else
+            snd_text(6, 84, p == BKP_CUSTOM ? "PRESS A KEY TO PICK IT" : "K3 MAKES A CUSTOM COPY", 2, C_DIM, 0, top);
         cv_oy = 0;
         cv_blit(0, 88u + (uint32_t)top);
     }
