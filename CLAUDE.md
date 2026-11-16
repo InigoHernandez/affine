@@ -102,7 +102,8 @@ file in `web/firmware/` and the installer in `web/install/` (fm1-base's, themed 
 `.fwsc` whose digest matches the site's. The Hub (`../FIRMWARE-HUB-HANDBOOK.md`): `fmhub.json` and `docs/hub/` are
 ready, the mail waits for the tests on a real FM-1; its resume of an interrupted update wants `FM-1_9NN`, which
 AFFINE's identity is not (the owner's call). 0.1: 2026-11-16 at the owner's word ("publish"), before any FM-1 had
-run it (sha 98eb4c10).
+run it (sha 98eb4c10). 0.2: 2026-11-16 on the site's installer only (the owner: "upload for instaling fast"),
+untested on an FM-1 (sha aa1b17ac); no tag or GitHub release for it yet.
 
 ## Layout
 
