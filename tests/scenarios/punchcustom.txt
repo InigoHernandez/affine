@@ -1,0 +1,150 @@
+# AFFINE (16 Nov 2026, the owner: "this should be an easy approach"): CUSTOM made easy. FX held, a black key held, any
+# knob (K1-K4, SELECT, ALGORITHM, PRESETS): that key's function, every function then the eleven PUNCH combos, round.
+# On another row the first turn copies it into CUSTOM and switches to it (ROW C), then the key changes. FX let go:
+# done, no page, no fader; the key silent until let go. ARP › BLACK KEYS shows the rows (PUNCH, CUSTOM) and each key's
+# function or combo, K1 PRESET round AFFINE, PUNCH, CUSTOM. (The simulator starts on CUSTOM: FX + OCT+ to AFFINE.)
+#   app/build/host/affine_host tests/scenarios/punchcustom.txt app/build/scenarios
+wait 4200
+press FX
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 300
+expect row 0
+expect bk_mute 0
+# on AFFINE (key 5 HALF SPEED): FX + key 5 + K1 right: CUSTOM, a copy of AFFINE, key 5 the next function (VINYL BREAK)
+press FX
+wait 100
+key b4 down
+wait 200
+expect bk_mute 16
+expect pads 0
+turn K1 1 10
+wait 200
+expect row 2
+expect bk_key 4
+expect bk_fn 6
+shot punch_custom_rowc.png
+wait 800
+shot punch_custom_key.png
+# on through the functions into the combos: K2, ALGORITHM, PRESETS, SELECT all turn it
+turn K2 10 10
+wait 100
+expect bk_fn 32
+turn ALGO 9 10
+wait 100
+expect bk_fn 41
+turn PRESET 1 10
+wait 100
+expect bk_fn 42
+turn SELECT -1 10
+wait 100
+expect bk_fn 41
+expect pads 0
+key b4 up
+wait 100
+release FX
+wait 300
+expect page 0
+expect fx_wet 100
+expect row 2
+expect bk_mute 0
+# played: key 5 is SHATTER now, the others AFFINE's (key 4 REVERSE)
+tap PLAY
+wait 600
+key b4 down
+wait 300
+expect cmb 41
+expect psx_held 6
+expect pads 256
+key b4 up
+wait 200
+expect psx_held 0
+key b3 down
+wait 200
+expect pads 8
+key b3 up
+wait 200
+tap PLAY
+wait 200
+# on CUSTOM already: no copy, the key alone
+press FX
+wait 100
+key b0 down
+wait 100
+turn K3 -1 10
+wait 100
+expect row 2
+expect bk_key 0
+expect bk_fn 42
+key b0 up
+release FX
+wait 300
+expect page 0
+# the page: CUSTOM, key 5 SHATTER (what it holds under it), then PUNCH, then K1 round (AFFINE, PUNCH, CUSTOM)
+tap ARP
+wait 300
+turn SELECT 1 10
+wait 300
+expect opage 1
+key b4 down
+wait 100
+key b4 up
+wait 200
+expect bk_key 4
+expect bk_fn 41
+shot punch_bk_custom.png
+turn K1 -1 10
+wait 300
+expect row 3
+key b10 down
+wait 100
+key b10 up
+wait 200
+expect bk_fn 42
+shot punch_bk_punch.png
+turn K1 -1 10
+wait 200
+expect row 0
+turn K1 1 10
+wait 200
+expect row 3
+turn K1 1 10
+wait 200
+expect row 2
+turn K1 1 10
+wait 200
+expect row 2
+# K3 on PUNCH: a CUSTOM copy of it, the key the combo after
+turn K1 -1 10
+wait 200
+expect row 3
+key b2 down
+wait 100
+key b2 up
+wait 200
+turn K3 1 10
+wait 200
+expect row 2
+expect bk_key 2
+expect bk_fn 35
+key b3 down
+wait 100
+key b3 up
+wait 200
+expect bk_fn 35
+tap SAVE
+wait 300
+reboot
+wait 4200
+expect row 2
+tap ARP
+wait 300
+turn SELECT 1 10
+wait 300
+key b2 down
+wait 100
+key b2 up
+wait 200
+expect bk_fn 35

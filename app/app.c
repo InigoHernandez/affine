@@ -164,7 +164,18 @@ static settings_t set;
  * the FLEXOR LAYOUT gone with the hardcore kick) */
 enum { BKF_ARP = BRK_NPADS, BKF_KIL, BKF_VRB, BKF_SKP, BKF_CRS, BKF_N };   /* (AFFINE: VRB the mix thrown into SPU
                                           * VERB, SKP the disc slipping, CRS the bits dropped, each while held) */
-enum { BKP_AFFINE, BKP_CHOPPAH, BKP_CUSTOM, BKP_N };   /* (AFFINE's first: a new FM-1's) */
+enum { BKP_AFFINE, BKP_CHOPPAH, BKP_CUSTOM, BKP_PUNCH, BKP_N };   /* (AFFINE's first: a new FM-1's. The values are saved
+                                          * (bk[1]): AFFINE 16 Nov 2026 adds PUNCH at the end; CHOPPAH leaves the rows'
+                                          * cycle (FX + OCT, K1 PRESET) but a save holding it still plays its layout) */
+/* AFFINE (16 Nov 2026, the owner): the PUNCH row, eleven fixed combos, each several of the functions above held
+ * together with its own settings while held (an EP-133 punch-in's way: a signature, not editable). Codes 32..42:
+ * bk_fn gives them on the PUNCH row, and CUSTOM may hold them too (bk[2 + j]). BKC_T below: each one's functions and
+ * settings; never saved, applied to copies (pads_push, fx_send) while one is held or plays from the pattern */
+#define BKC_0 32u
+#define BKC_N 11u
+#define BKC(c) ((uint32_t)(c) - BKC_0 < BKC_N)
+enum { CB_STUTTER, CB_BUZZ, CB_REVVERB, CB_SLOWMO, CB_TAPESTOP, CB_GLITCH, CB_WASH, CB_CHOP, CB_DUBECHO, CB_SHATTER,
+       CB_DROPOUT };
 #define BK_TAG 0xB4u
 #define BK_VIEW 14u                      /* (bk[14]: HOME's VIEW, 0 the waveform, 1 the slices, 0.9.2) */
 #define BK_BHALF 13u                     /* (bk[13]: BREAK TIME, 0 NORMAL, 1 HALF: the break at half the tempo, 0.256) */
@@ -195,14 +206,16 @@ static uint32_t bk_preset(void)          /* the preset in use (0.9.23, FLEXOR: B
         return BKP_AFFINE;
     return set.bkeys.bk[1];
 }
-static uint32_t bk_fn(uint32_t j)        /* black key j's (0..10) function */
+static uint32_t bk_fn(uint32_t j)        /* black key j's (0..10) function (AFFINE: or its PUNCH combo, BKC_0..) */
 {
-    uint32_t f;
+    uint32_t f, p = bk_preset();
     j %= 11u;
-    if (bk_preset() != BKP_CUSTOM)
-        return bk_preset() == BKP_AFFINE ? BK_LAY_AFF[j] : BK_LAY[j];
+    if (p == BKP_PUNCH)
+        return BKC_0 + j;
+    if (p != BKP_CUSTOM)
+        return p == BKP_AFFINE ? BK_LAY_AFF[j] : BK_LAY[j];
     f = set.bkeys.bk[2u + j];
-    return f < BKF_N ? f : BK_LAY_AFF[j];
+    return f < BKF_N || BKC(f) ? f : BK_LAY_AFF[j];   /* (a code it doesn't know: AFFINE's) */
 }
 static void bk_defaults(void)
 {
@@ -360,16 +373,122 @@ static void psx_apply(void)
         b.crush = 0.86f;
     psx_bus_set(&b);
 }
+/* AFFINE: the PUNCH row's combos (BKC_0 + CB_*): each one's functions (bit BKF_*), its name (10 at most) and three
+ * letters (the foot's EFFECT), and its settings while it sounds: only those of the functions it has (a key of the
+ * same function held beside it plays them too). Rates: brk.h BRK_ROLL_DIVS (1 1/8, 2 1/16, 3 1/32), BRK_GATE_DIVS
+ * (1 1/16), brk_fx.h BRK_DUB_DIVS (1 3/16). The filter: -100 low-pass .. 100 high-pass, its resonance and speed x100
+ * (speed 0: ~0.6 s to get there, 50: ~40 ms). Tuned on the simulator's renders (build/review/sounds/affine-punch-tour) */
+#define BF(f) (1u << (f))
+typedef struct {
+    const char *name, *tag;
+    uint16_t fm;                         /* its functions */
+    uint8_t roll, roll2;                 /* its roll's rate; after a beat held (STUTTER), 0 none */
+    int8_t flt;                          /* the FILTER's target, x100 */
+    uint8_t fres, fspd;                  /* its resonance, its speed, x100 */
+    uint8_t rnd, rndp;                   /* RANDOM: the chance a step jumps x100, its pitch (semitones) */
+    uint8_t gdiv, glen;                  /* GATE: its rate, its open part x100 */
+    uint8_t frz;                         /* FREEZE: its loop (0 the slice, 1 a half ..) */
+    uint8_t stop4;                       /* VINYL BREAK: beats down, x4 */
+    uint8_t half, mt;                    /* HALF SPEED: its speed x100; 1: the pitch drops with it (master tempo off) */
+    uint8_t ddiv, dfb, dtone, dmix;      /* DUB: its time, feedback, tone, mix x100 */
+} bkc_t;
+static const bkc_t BKC_T[BKC_N] = {   /* each: its functions; then roll, then | filter target, res, speed |
+                                       * random %, st | gate rate, open | freeze | stop | half, mt | dub time,
+                                       * feedback, tone, mix */
+    {"STUTTER", "STU", BF(PAD_ROLL16) | BF(PAD_FILTER),
+     2, 3,  66, 45, 2,  0, 0,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"BUZZ", "BUZ", BF(PAD_ROLL32) | BF(BKF_CRS),
+     3, 0,  0, 0, 0,  0, 0,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"REV VERB", "RVB", BF(PAD_REVERSE) | BF(BKF_VRB),
+     0, 0,  0, 0, 0,  0, 0,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"SLOW MO", "SLO", BF(PAD_HALF) | BF(PAD_FILTER),
+     0, 0,  -45, 30, 10,  0, 0,  0, 0,  0,  0,  50, 1,  0, 0, 0, 0},
+    {"TAPE STOP", "TPS", BF(PAD_TAPESTOP) | BF(BKF_VRB),
+     0, 0,  0, 0, 0,  0, 0,  0, 0,  0,  8,  0, 0,  0, 0, 0, 0},
+    {"GLITCH", "GLT", BF(BKF_SKP) | BF(PAD_RANDOM),
+     0, 0,  0, 0, 0,  50, 0,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"WASH", "WSH", BF(PAD_FREEZE) | BF(BKF_VRB) | BF(PAD_FILTER),
+     0, 0,  -62, 20, 5,  0, 0,  0, 0,  1,  0,  0, 0,  0, 0, 0, 0},
+    {"CHOP", "CHP", BF(PAD_GATE) | BF(BKF_CRS),
+     0, 0,  0, 0, 0,  0, 0,  1, 50,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"DUB ECHO", "ECH", BF(PAD_ROLL8) | BF(PAD_DUB),
+     1, 0,  0, 0, 0,  0, 0,  0, 0,  0,  0,  0, 0,  1, 60, 45, 60},
+    {"SHATTER", "SHT", BF(PAD_RANDOM) | BF(BKF_CRS) | BF(BKF_SKP),
+     0, 0,  0, 0, 0,  100, 7,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+    {"DROP OUT", "DRP", BF(BKF_KIL) | BF(PAD_FILTER),
+     0, 0,  50, 25, 50,  0, 0,  0, 0,  0,  0,  0, 0,  0, 0, 0, 0},
+};
+#define BF_ROLLS (BF(PAD_ROLL8) | BF(PAD_ROLL16) | BF(PAD_ROLL32))
+static uint32_t bk_fmask(uint32_t c)     /* a function's or a combo's functions, bit BKF_* (none: 0) */
+{
+    return c < BKF_N ? 1u << c : BKC(c) ? BKC_T[c - BKC_0].fm : 0u;
+}
+static uint8_t cmb_on;                   /* the combo whose settings the engine has now (BKC_0 + CB_*), 0 none */
+static uint8_t cmb_fast;                 /* (STUTTER held a beat: its roll at its second rate) */
+static void pads_push(void)              /* the pads' settings to the engine: the player's, a combo's over them */
+{
+    brk_padset_t p = set.pads;
+    if (BKC(cmb_on)) {
+        const bkc_t *c = &BKC_T[cmb_on - BKC_0];
+        if (c->fm & BF_ROLLS) {          /* (the three rolls' rates: the combo has one of them) */
+            p.roll_div[0] = p.roll_div[1] = p.roll_div[2] = cmb_fast && c->roll2 ? c->roll2 : c->roll;
+            p.roll_level = 100u;
+            p.roll_decay = 0.0f;
+            p.roll_pitch = 0.0f;
+        }
+        if (c->fm & BF(PAD_REVERSE))
+            p.rev_speed = 1.0f;
+        if (c->fm & BF(PAD_FREEZE)) {
+            p.frz_len = c->frz;
+            p.frz_pitch = 0.0f;
+        }
+        if (c->fm & BF(PAD_HALF))
+            p.half_speed = (float)c->half * 0.01f;
+        if (c->fm & BF(PAD_TAPESTOP)) {
+            p.stop_beats = (float)c->stop4 * 0.25f;
+            p.spin_steps = 1.0f;
+        }
+        if (c->fm & BF(PAD_GATE)) {
+            p.gate_div = c->gdiv;
+            p.gate_len = (float)c->glen * 0.01f;
+        }
+        if (c->fm & BF(PAD_RANDOM)) {
+            p.rnd_amount = (float)c->rnd * 0.01f;
+            p.rnd_pitch = (float)c->rndp;
+        }
+    }
+    brk_padset(&p);
+    brk_half_master(BKC(cmb_on) && (BKC_T[cmb_on - BKC_0].fm & BF(PAD_HALF)) && BKC_T[cmb_on - BKC_0].mt ? 0
+                    : !(set.half_mt_off & 1u));
+}
+static void fx_send(void)                /* the FX chain's settings to the engine (BEGINNER's two slots; a combo's
+                                          * FILTER and DUB over the player's) */
+{
+    brk_fx_t f = set.fx;
+    uint32_t k;
+    if (set.novice)                      /* (LOAF BREAKER, 0.229: BEGINNER's chain two slots, the others muted) */
+        for (k = 2u; k < BRK_FX_SLOTS; k++)
+            f.slot[k].on = 0u;
+    if (BKC(cmb_on)) {
+        const bkc_t *c = &BKC_T[cmb_on - BKC_0];
+        if (c->fm & BF(PAD_FILTER)) {
+            f.flt_target = (float)c->flt * 0.01f;
+            f.flt_res = (float)c->fres * 0.01f;
+            f.flt_speed = (float)c->fspd * 0.01f;
+        }
+        if (c->fm & BF(PAD_DUB)) {
+            f.dub_div = c->ddiv;
+            f.dub_fb = (float)c->dfb * 0.01f;
+            f.dub_tone = (float)c->dtone * 0.01f;
+            f.dub_mix = (float)c->dmix * 0.01f;
+        }
+    }
+    brk_fx_set(&f);
+}
 static void fx_apply(void)
 {
     uint32_t k;
-    if (set.novice) {                    /* (LOAF BREAKER, 0.229: BEGINNER's chain two slots, the others muted) */
-        brk_fx_t f = set.fx;
-        for (k = 2u; k < BRK_FX_SLOTS; k++)
-            f.slot[k].on = 0u;
-        brk_fx_set(&f);
-    } else
-        brk_fx_set(&set.fx);
+    fx_send();
     brk_fx_flt_thru(bk_fthru());         /* (the FILTER key's THRU, 0.9.26) */
     psx_apply();                         /* (AFFINE: the PSX bus, with the VERB key's throw as it is now) */
     for (k = 0; k < BRK_FX_SLOTS; k++) {
@@ -403,9 +522,8 @@ static void settings_apply(void)
     brk_gen(&set.gen);
     fx_apply();
     set.pads.roll_pitch = 0.0f;          /* LOAF BREAKER: the rolls' pitch gone (an older save's: off) */
-    brk_padset(&set.pads);
+    pads_push();                         /* (AFFINE: a PUNCH combo's over them while it sounds; HALF's master tempo) */
     brk_pitch_mode(pitch_keeps(), (float)(set.grain_ms ? set.grain_ms : 30u));
-    brk_half_master(!(set.half_mt_off & 1u));
     brk_vinyl((set.vinyl & 3u) != 2u);
     brk_gate((float)(set.gate ? set.gate : 100u) * 0.01f);
     brk_snap(SNAP_SL[snap_index()]);
@@ -539,6 +657,36 @@ static steps_t steps PLAT_POOL;
 #define NGRP 4u
 #define NPAT_ALL (NPAT * NGRP)
 #define KH_SIZE (sizeof pats.kn + sizeof pats.hits)
+/* AFFINE (16 Nov 2026, the owner: "all the performance FX would be nice to be recorded if the rec button is active"):
+ * the black keys recorded with REC, a byte a step of every pattern (64 x 32): 0 none, else the function or the combo
+ * held over that step + 1 (BKF_* 0..15, BKC_0 + CB_* 32..42). Playing, a step's code acts as its key held over it.
+ * Its own store object, OBJ_FREE0 (0xB6000, kept free for motion recording), written with the patterns (SAVE, a group
+ * left: grp_save) when it changed since; read at boot from AFFINE's own store only (another firmware's: none) */
+#define FXR_MAGIC 0x31525846u            /* "FXR1" */
+typedef struct {
+    uint32_t magic;
+    uint8_t s[NPAT_ALL][PAT_STEPS];
+} fxrec_t;                               /* 2052 bytes */
+_Static_assert(sizeof(fxrec_t) <= 3840u, "a store object holds 3840 bytes");
+static fxrec_t fxr PLAT_POOL;
+static uint8_t fxr_dirty;                /* (changed since it was last written) */
+static uint8_t *fxr_pat(uint32_t pi) { return fxr.s[(set.pgrp % NGRP * NPAT + pi % NPAT) % NPAT_ALL]; }   /* (pattern
+                                          * pi of the group in RAM: its 32 steps) */
+static void fxr_clear(uint32_t pi, uint32_t from, uint32_t n)   /* its steps from, n of them, none */
+{
+    uint8_t *r = fxr_pat(pi);
+    uint32_t k;
+    for (k = from; k < from + n && k < PAT_STEPS; k++)
+        if (r[k]) {
+            r[k] = 0u;
+            fxr_dirty = 1u;
+        }
+}
+static int fxr_save(void) { return plat_store_save(OBJ_FREE0, &fxr, sizeof fxr) == 0; }
+static uint32_t bk_code_ok(uint32_t v)   /* a step's byte as it plays: a code + 1 there is, else 0 */
+{
+    return v && (v - 1u < BKF_N || BKC(v - 1u)) ? v : 0u;
+}
 /* (0.9.30: the snare's, hat's, clap's bars 3 and 4, every group's: dx_of below) */
 #define DX_MAGIC 0x31435844u             /* "DXC1" */
 typedef struct {
@@ -581,8 +729,10 @@ static int grp_save(void)                /* the group in RAM to its objects: 1 d
              plat_store_save(OBJ_KG0 + g, pats.kn, KH_SIZE) == 0 &&
              plat_store_save(OBJ_SG0 + g, steps.b, sizeof steps.b) == 0 &&   /* (LOAF BREAKER, 0.209: OBJ_NG0 + g, the
                                           * MELODY's notes, no more) */
-             plat_store_save(OBJ_DX, &dx, sizeof dx) == 0;   /* (0.9.30: the drums' bars 3 and 4, every group's) */
+             plat_store_save(OBJ_DX, &dx, sizeof dx) == 0 &&   /* (0.9.30: the drums' bars 3 and 4, every group's) */
+             (!fxr_dirty || fxr_save());   /* (AFFINE: the black keys recorded, every pattern's) */
     if (ok) {
+        fxr_dirty = 0u;
         grp_sum = grp_hash();
         grp_new = 0u;
         dx_old = 0u;                     /* (OBJ_DX written: lengths of 64 kept from now on) */
@@ -1284,6 +1434,15 @@ void app_init(void)
         dx.magic = DX_MAGIC;
         dx_old = 1u;
         dx_lens();
+    }
+    {                                    /* AFFINE: the black keys recorded; another firmware's store: none (and one
+                                          * AFFINE left there before it: written over with nothing at the next SAVE) */
+        int ok = plat_store_load(OBJ_FREE0, &fxr, sizeof fxr) == (int)sizeof fxr && fxr.magic == FXR_MAGIC;
+        fxr_dirty = (uint8_t)(ok && !ours);
+        if (!ok || !ours) {
+            memset(&fxr, 0, sizeof fxr);
+            fxr.magic = FXR_MAGIC;
+        }
     }
     int ssz = plat_store_load(OBJ_STEP, &steps, sizeof steps), sok;
     sok = ours && (ssz == (int)sizeof steps || ssz == (int)STEPS_SIZE_OLD) && steps.magic == STEPS_MAGIC;

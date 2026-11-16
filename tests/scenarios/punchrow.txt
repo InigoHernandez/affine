@@ -1,0 +1,185 @@
+# AFFINE (16 Nov 2026, the owner): the black keys' rows AFFINE (0), PUNCH (3), CUSTOM (2). FX held, OCT+ the next row,
+# OCT- the one before, round; the header says it; no page, no FX fader, no pitch. FX held 0.7 s alone toggles the
+# fader at its release (no more while held). Then each PUNCH key held: its functions together (fheld, bit BKF_*), the
+# pads it holds (pads, bit PAD_*), the PSX bus's keys (psx_held: VRB 1, SKP 2, CRS 4), BOOM quiet (kil), its settings
+# in (cmb 32..42), its key lit (cmb_lit, bit CB_*), all let go with it. (The simulator starts on CUSTOM.)
+#   app/build/host/affine_host tests/scenarios/punchrow.txt app/build/scenarios
+wait 4200
+expect row 2
+expect page 0
+expect fx_wet 100
+expect pitch 0
+press FX
+wait 100
+tap OCT+
+wait 100
+expect row 0
+tap OCT+
+wait 100
+expect row 3
+shot punch_row_b.png
+tap OCT+
+wait 100
+expect row 2
+tap OCT+
+wait 100
+expect row 0
+tap OCT-
+wait 100
+expect row 2
+tap OCT-
+wait 100
+expect row 3
+wait 900
+release FX
+wait 300
+expect row 3
+expect page 0
+expect fx_wet 100
+expect pitch 0
+# OCT alone still pitches the break
+tap OCT+
+wait 200
+expect pitch 1
+tap OCT-
+wait 200
+expect pitch 0
+# FX held 0.8 s alone: the fader at its release, not before
+press FX
+wait 800
+expect fx_wet 100
+release FX
+wait 200
+expect fx_wet 0
+expect page 0
+press FX
+wait 800
+release FX
+wait 200
+expect fx_wet 100
+# FX tapped: EFFECTS, as ever
+tap FX
+wait 300
+expect page 2
+tap HOME
+wait 300
+expect page 0
+# the PUNCH keys, one by one, playing
+tap PLAY
+wait 600
+key b0 down
+wait 200
+expect fheld 514
+expect pads 514
+expect cmb 32
+expect cmb_lit 1
+expect roll_div 2
+wait 500
+expect roll_div 3
+expect dj_now >20
+shot punch_home_stutter.png
+key b0 up
+wait 300
+expect fheld 0
+expect pads 0
+expect cmb 0
+expect rdiv0 1
+key b1 down
+wait 300
+expect fheld 32772
+expect pads 4
+expect psx_held 4
+expect roll_div 3
+expect cmb 33
+key b1 up
+wait 300
+expect psx_held 0
+key b2 down
+wait 300
+expect fheld 8200
+expect pads 8
+expect psx_held 1
+key b2 up
+wait 300
+key b3 down
+wait 600
+expect fheld 544
+expect pads 544
+expect dj_now <-20
+shot punch_home_slowmo.png
+key b3 up
+wait 300
+expect pads 0
+key b4 down
+wait 300
+expect fheld 8256
+expect pads 64
+expect psx_held 1
+shot punch_home_tapestop.png
+key b4 up
+wait 1500
+key b5 down
+wait 300
+expect fheld 16640
+expect pads 256
+expect psx_held 2
+key b5 up
+wait 300
+key b6 down
+wait 300
+expect fheld 8720
+expect pads 528
+expect psx_held 1
+key b6 up
+wait 300
+key b7 down
+wait 300
+expect fheld 32896
+expect pads 128
+expect psx_held 4
+key b7 up
+wait 300
+key b8 down
+wait 300
+expect fheld 1025
+expect pads 1025
+expect roll_div 1
+key b8 up
+wait 300
+key b9 down
+wait 300
+expect fheld 49408
+expect pads 256
+expect psx_held 6
+key b9 up
+wait 300
+key b10 down
+wait 300
+expect fheld 4608
+expect pads 512
+expect kil 1
+expect dj_now >30
+shot punch_home_dropout.png
+key b10 up
+wait 300
+expect kil 0
+expect pads 0
+expect psx_held 0
+expect cmb 0
+# on another page (the MIXER): the combo's picture in the blocks' place, what it holds in the foot
+tap LFO
+wait 300
+expect page 5
+key b6 down
+wait 500
+expect cmb 38
+shot punch_mix_wash.png
+key b6 up
+wait 300
+key b10 down
+wait 400
+shot punch_mix_dropout.png
+key b10 up
+wait 300
+tap PLAY
+wait 300

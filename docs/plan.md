@@ -70,6 +70,28 @@ The owner's ask: super performative. What it means on the FM-1:
 5. **Scenes A/B and MORPH.** Two snapshots of the gestures and the FX chain. HOME's second page: K4 MORPH glides
    between them, PRESETS + a white key stores one.
 
+### The black keys' rows, PUNCH, CUSTOM, REC (built 2026-11-16, branch `punch`)
+
+The owner's decisions (2026-11-16): **rows** of black-key effects, three for now: AFFINE (row A, the layout above),
+PUNCH (row B), CUSTOM (row C). FX held + OCT+ the next row, OCT- the one before, round; the header says "ROW B /
+PUNCH" (no page, no FX fader, no pitch). The FX fader's toggle moved to FX's release (held 0.7 s alone). The rows
+are `bk[1]`'s saved values: AFFINE 0, CHOPPAH 1 (out of the round, a save holding it still plays it), CUSTOM 2,
+PUNCH 3 (`BK_ROWS`, common.c). ARP › BLACK KEYS' K1 goes AFFINE, PUNCH, CUSTOM.
+
+- **PUNCH**: eleven fixed combos (an EP-133 punch-in's way: a signature, not editable), each several of the functions
+  held together with its own settings while it sounds, never saved (copies to the engine: `pads_push`, `fx_send` in
+  app.c; the table `BKC_T`, codes 32..42): STUTTER (roll 1/16, 1/32 after a beat, the filter rising to a high-pass),
+  BUZZ (roll 1/32 + crush), REV VERB (reverse + verb throw), SLOW MO (half speed an octave down + low-pass), TAPE STOP
+  (vinyl break + verb throw), GLITCH (skip + random), WASH (freeze + verb throw + low-pass), CHOP (gate 1/16 + crush),
+  DUB ECHO (roll 1/8 + dub), SHATTER (random + crush + skip), DROP OUT (BOOM quiet + high-pass). Heard:
+  `build/review/sounds/affine-punch-tour.wav` (its times beside it).
+- **CUSTOM, made easy**: FX held, a black key held, any knob: that key steps through every function, then the
+  combos (CUSTOM may hold both). On another row the first turn copies it into CUSTOM (ROW C). FX let go: done.
+- **REC records the black keys** (the motion record's first part, 4. above): playing, each step reached while one is
+  held takes its code (the last pressed), quantised as the slices; played back as held over those steps, merged with
+  what is held. 64 x 32 bytes in OBJ_FREE0 ("FXR1", 2052 B), written with the patterns, read from AFFINE's own store
+  only. SEQ's grid marks the steps recorded (a bar under the step). The other three free objects stay for the gestures.
+
 ### The PSX bus (built, 6a2a425)
 
 LOAF's chain runs per sample from RAM, where nothing may call out; the PSX effects work on blocks. So they sit on a
@@ -126,7 +148,8 @@ first AFFINE build, read while playing.
    font (small labels 1x, names and values 2x), AFFINE's five skins (POLYGON first), the foot as HOME's panel,
    AFFINE's title on the boot, the start screen and RESET ALL. Still: page bodies to 2x one by one, the update
    screen (felucca-bsp's today).
-7. **Motion record and scenes.**
+7. **Motion record and scenes.** The black keys recorded with REC and the PUNCH row (2026-11-16, branch `punch`);
+   still: the four gestures recorded, scenes A/B.
 8. **Device:** the owner's FM-1 test, the CPU meter read; then the manual, the hub kit.
 9. **The site** (done 2026-11-16, live on GitHub Pages): MONO2K's structure in POLYGON, the firmware in the page,
    the installer. Still: the import page restyled (LOAF's `app/site/import.html`), a manual.

@@ -70,12 +70,12 @@ wait 100
 key b0 up
 wait 300
 expect arp_bits 0
-# back to a preset: CHOPPAH
+# back to a preset: CHOPPAH (AFFINE: out of K1's rows since 16 Nov 2026; a save holding it still plays it: bk_row 1)
 tap ARP
 wait 200
 turn SELECT 1 10
 wait 200
-turn K1 -1 10
+bk_row 1
 wait 200
 expect bk_pre 1
 tap HOME

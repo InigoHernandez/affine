@@ -1,0 +1,84 @@
+# AFFINE (16 Nov 2026): the PUNCH row heard, for the owner: the break (OLDSKOO 160 at 170 BPM, a BOOM on every beat)
+# one bar dry, then each PUNCH key held one bar, in turn (keys 1-11), then a bar dry: punch_tour.wav, copied to
+# build/review/sounds/affine-punch-tour.wav with its times (tools: the levels measured there). A key goes down 20 ms
+# before its bar (a roll arms for the next 16th) and up 20 ms before the next. MASTER full (MAX OUT -3 dB).
+#   app/build/host/affine_host tests/scenarios/punchtour.txt app/build/scenarios
+wait 4200
+press FX
+wait 100
+tap OCT+
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 300
+expect row 3
+tap SEQ
+wait 300
+expect seq_lane 2
+tapkey w0
+tapkey w4
+tapkey w8
+tapkey w12
+turn ALGO 1 10
+wait 200
+expect seq_lane 3
+tapkey w0
+tapkey w4
+tapkey w8
+tapkey w12
+tap HOME
+wait 500
+expect page 0
+master 4096
+wav punch_tour.wav
+wait 200
+tap PLAY
+wait 1312
+key b0 down
+wait 1410
+key b0 up
+wait 1409
+key b1 down
+wait 1410
+key b1 up
+wait 1410
+key b2 down
+wait 1410
+key b2 up
+wait 1409
+key b3 down
+wait 1410
+key b3 up
+wait 1410
+key b4 down
+wait 1410
+key b4 up
+wait 1409
+key b5 down
+wait 1410
+key b5 up
+wait 1410
+key b6 down
+wait 1410
+key b6 up
+wait 1409
+key b7 down
+wait 1410
+key b7 up
+wait 1410
+key b8 down
+wait 1410
+key b8 up
+wait 1410
+key b9 down
+wait 1409
+key b9 up
+wait 1410
+key b10 down
+wait 1410
+key b10 up
+wait 1630
+wavstop
+tap PLAY
+wait 200

@@ -1,4 +1,4 @@
-# LOAF BREAKER (11 Nov 2026; AFFINE: the presets AFFINE 0, CHOPPAH 1, CUSTOM 2): ARP's tabs, ARP EFFECTS, BLACK KEYS (EXPERT; MORE gone for now, 0.259). BLACK KEYS: K1 the preset (CHOPPAH,
+# LOAF BREAKER (11 Nov 2026; AFFINE: the presets AFFINE 0, CHOPPAH 1, CUSTOM 2, PUNCH 3): ARP's tabs, ARP EFFECTS, BLACK KEYS (EXPERT; MORE gone for now, 0.259). BLACK KEYS: K1 the preset (CHOPPAH,
 # CUSTOM; AFFINE: FLEXOR LAYOUT gone), K2 the key (or a black key pressed: it picks itself), K3 its effect (a preset: a
 # CUSTOM copy first). CHOPPAH's FREEZE and DUB back on its keys. (The simulator starts on a CUSTOM layout, LOAF BREAKER's
 # FLEXOR LAYOUT's keys; an FM-1 on CHOPPAH.)
@@ -13,7 +13,20 @@ turn SELECT 1 10
 wait 300
 expect opage 1
 shot a_blackkeys.png
+# AFFINE (16 Nov 2026): K1's rows AFFINE, PUNCH, CUSTOM (CHOPPAH out of them; a save holding it still plays it)
 turn K1 -1 10
+wait 200
+expect bk_pre 3
+turn K1 -1 10
+wait 200
+expect bk_pre 0
+turn K1 -1 10
+wait 200
+expect bk_pre 0
+turn K1 2 10
+wait 200
+expect bk_pre 2
+bk_row 1
 wait 200
 expect bk_pre 1
 key b4 down
@@ -62,7 +75,7 @@ wait 200
 turn SELECT 1 10
 wait 200
 expect opage 1
-turn K1 -1 10
+bk_row 1
 wait 200
 expect bk_pre 1
 tap HOME

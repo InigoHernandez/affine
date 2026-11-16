@@ -114,6 +114,58 @@ static void home_gest_text(int i, char *t, int compact)
     }
 }
 
+/* AFFINE: a PUNCH combo held, the foot's four cells: its functions (their three letters) and what each does now,
+ * read only (a signature: no knob changes it). i: 0..3; 0 past its functions */
+static const char *cmb_cell(uint32_t c, int i, char *t)
+{
+    const bkc_t *b;
+    uint32_t m, k;
+    int n = 0;
+    t[0] = 0;
+    if (!BKC(c))
+        return 0;
+    b = &BKC_T[c - BKC_0];
+    m = b->fm;
+    for (k = 0; k < BKF_N; k++) {
+        if (!(m >> k & 1u))
+            continue;
+        if (n++ != i)
+            continue;
+        if (k <= PAD_ROLL32)
+            text_cat(t, BRK_ROLL_DIV_NAME[(cmb_on == c && cmb_fast && b->roll2 ? b->roll2 : b->roll) % BRK_ROLL_DIVS]);
+        else if (k == PAD_FREEZE)
+            text_cat(t, FRZ_LEN_NAME[b->frz & 3u]);
+        else if (k == PAD_HALF)
+            text_cat(t, b->mt ? "1/2 -12" : "1/2");
+        else if (k == PAD_GATE)
+            text_cat(t, BRK_GATE_DIV_NAME[b->gdiv % BRK_GATE_DIVS]);
+        else if (k == PAD_RANDOM) {
+            int_text(b->rnd, t);
+            text_cat(t, "%");
+        } else if (k == PAD_FILTER) {    /* (where it goes: "HP 850", "LP 1.6K", the unit off to fit the cell) */
+            uint32_t e;
+            dj_text((float)b->flt * 0.01f, t);
+            e = text_n(t);
+            if (e > 2u && t[e - 1u] == 'Z' && t[e - 2u] == 'H')
+                t[e - 2u] = 0;
+        }
+        else if (k == PAD_DUB)
+            text_cat(t, BRK_DUB_DIV_NAME[b->ddiv % BRK_DUB_DIVS]);
+        else if (k == PAD_TAPESTOP || k == PAD_REVERSE)
+            text_cat(t, "ON");
+        else if (k == BKF_KIL)
+            text_cat(t, "QUIET");
+        else if (k == BKF_VRB)
+            text_cat(t, VERB_SHORT[set.psx.vtype % PSXV_N]);
+        else if (k == BKF_SKP)
+            text_cat(t, SKIP_DIV_NAME[set.psx.skdiv & 3u]);
+        else if (k == BKF_CRS)
+            text_cat(t, "4 BIT");
+        return BKF_NAME[k];
+    }
+    return 0;
+}
+
 /* AFFINE: HOME drawn whole in the POLYGON look (app/ui/aff.c): the header, the floor, the gem, the panel of the four
  * knobs as they are now (the gestures; a pad or a key held: its own settings) */
 /* AFFINE: the POLYGON pages (HOME, PSX) draw the whole screen each frame. The FM-1's main loop shares its core with
@@ -156,7 +208,10 @@ static void home_draw(const brk_status_t *st, uint32_t now)
     h.playing = st->playing;
     h.t_ms = now;
     h.kick_ms = kick_ms;
-    h.pad = ui.shown >= 0 && ui.shown < (int32_t)BKF_N ? BKF_LONG[ui.shown] : ui.shown >= 100 ? "KEY HELD" : 0;
+    h.pad = ui.shown >= 0 && ui.shown < (int32_t)BKF_N ? BKF_LONG[ui.shown] : BKC(ui.shown) ?
+            BKC_T[ui.shown - (int32_t)BKC_0].name : ui.shown >= 100 ? "KEY HELD" : 0;   /* (a PUNCH combo: its name) */
+    if (!h.pad && rp_code && BKC(rp_code - 1u))   /* (one the pattern plays) */
+        h.pad = BKC_T[rp_code - 1u - BKC_0].name;
     if (!h.pad)                          /* (AFFINE's keys and KIL: their names while held) */
         h.pad = crush_held ? "CRUSH" : skip_held ? "SKIP" : verb_held ? "VERB THROW" : kick_hold ? "BOOM OFF" : 0;
     if (now < ui.msg_until) {            /* (app_say's message, for its moment) */
@@ -180,6 +235,9 @@ static void home_draw(const brk_status_t *st, uint32_t now)
         } else if (ui.kil_focus && i == 0) {
             h.gl[i] = "LATCH";
             text_cat(t, set.half_mt_off & 4u ? "ON" : "OFF");
+        } else if (BKC(ui.shown)) {      /* (AFFINE: a PUNCH combo: what it holds) */
+            const char *cn = cmb_cell((uint32_t)ui.shown, (int)i, t);
+            h.gl[i] = cn ? cn : "";
         } else if (ui.shown >= 0) {
             const char *pn = pad_knob_name(ui.shown, (int)i);
             if (pn) {
@@ -349,6 +407,8 @@ static void reset_all(void)
     if (n_bank)
         set.brk = (uint8_t)n_synth;      /* the bank's first break */
     pat_defaults();
+    memset(fxr.s, 0, sizeof fxr.s);      /* (AFFINE: the black keys recorded: none) */
+    fxr_dirty = 1u;
     if (ble_was_off)
         plat_ble_enable(1);              /* (Bluetooth MIDI on again, as at the start) */
     break_ask(set.brk);
@@ -419,6 +479,359 @@ static void rec_toggle(void)
     ui.redraw |= RG_HEAD | RG_BLOCKS;
 }
 
+/* ------------------------------------------------------------ the black keys (AFFINE, 16 Nov 2026) --- */
+/* Each pass: what the black keys hold, as functions (bit BKF_*): fk the keys of a function, fm what holds them for a
+ * moment (the PUNCH combos' keys, the pattern's recorded keys), fh all; the pads go down and up on their changes, so two
+ * keys (or a key and a combo) sharing a function behave as one held. Keys in bk_mute play nothing until let go */
+typedef struct { uint16_t fk, fm, fh; } bkm_t;
+static bkm_t bkm, bkm_was;
+static uint32_t bk_ord[11], bk_ord_n;    /* (each key's press counted: the last pressed wins) */
+static uint32_t bk_hold;                 /* the code of the last key pressed still held (BKF_*, BKC_0..), 0xFF none */
+static uint32_t bk_cmb_want;             /* the combo whose settings the engine should have (0 none) */
+static uint16_t cmb_act;                 /* combos sounding, bit CB_* (their keys lit) */
+static int16_t rp_step = -2;             /* (the step it came from) */
+static uint16_t rp_gap;                  /* (a change of code: the functions both have let go a moment: retriggered) */
+static uint32_t rp_gap_t, cmb_t;         /* (since; the combo's settings since) */
+static uint8_t asg_key = 0xFFu;          /* FX + a black key: the key a knob gives a function (bk_assign) */
+static uint32_t asg_say_t;               /* (ROW C said: the key's function said after it) */
+static uint8_t oct_eaten;                /* OCT pressed with FX held (the rows): no pitch until both are let go */
+static int16_t rw_step = -1, rw_seen = -1;   /* REC: the step a hold wrote last; the step seen */
+static uint8_t rw_old, rw_from, rw_code = 0xFFu;   /* (what that step had; the hold's first step; its code) */
+static void bk_scan(uint32_t keys, uint32_t kdn, uint32_t kup, uint32_t btn, uint32_t *kdn_live, uint32_t *kup_live)
+{
+    uint32_t j, dl = 0u, ul = 0u;
+    for (j = 0; j < 11u; j++) {
+        uint32_t kb = 1u << BK[j], mb = 1u << j;
+        if (kup & kb) {
+            if (!(bk_mute & mb))
+                ul |= kb;
+            bk_mute &= (uint16_t)~mb;
+        }
+        if (kdn & kb) {
+            bk_ord[j] = ++bk_ord_n;
+            if (ui.page == PG_OVL && ui.opage == 1u) {   /* (ARP › BLACK KEYS: it picks itself, plays nothing) */
+                bk_mute |= (uint16_t)mb;
+                bk_pick(j);
+            } else if (btn & 1u << B_FX) {   /* FX held: the key to give a function (a knob turned), not played */
+                char t[12] = "KEY ";
+                bk_mute |= (uint16_t)mb;
+                asg_key = (uint8_t)j;
+                asg_say_t = 0u;
+                if (ui.fx_hold)
+                    ui.fx_turned = 1u;   /* (FX let go: no page, no fader) */
+                int_text((int32_t)j + 1, t + 4);
+                app_say(t, bk_long(bk_fn(j)));
+            } else
+                dl |= kb;
+        }
+    }
+    *kdn_live = dl;
+    *kup_live = ul;
+}
+static void bk_masks(uint32_t keys, const brk_status_t *st, uint32_t now)
+{
+    uint32_t j, fk = 0u, fc = 0u, fr = 0u, best = 0u, cbest = 0u, hc = 0xFFu, cc = 0u, rc = 0u, rn = 0u, mc, mn;
+    uint16_t act = 0u;
+    for (j = 0; j < 11u; j++) {          /* the keys held, as functions; the last pressed */
+        uint32_t c;
+        if (!(keys >> BK[j] & 1u) || bk_mute >> j & 1u)
+            continue;
+        c = bk_fn(j);
+        if (c < BKF_N)
+            fk |= 1u << c;
+        else if (BKC(c)) {
+            fc |= bk_fmask(c);
+            act |= (uint16_t)(1u << (c - BKC_0));
+            if (bk_ord[j] >= cbest) {
+                cbest = bk_ord[j];
+                cc = c;
+            }
+        }
+        if (bk_ord[j] >= best) {
+            best = bk_ord[j];
+            hc = c;
+        }
+    }
+    bk_hold = hc;
+    if (st->playing && st->step >= 0 && !(ui.rec && hc != 0xFFu)) {   /* the pattern's recorded keys (REC writing a
+                                          * hold over them: not) */
+        const uint8_t *r = fxr_pat(set.pattern);
+        uint32_t n = pat_len(), k = (uint32_t)st->step % n;
+        rc = bk_code_ok(r[k]);
+        if (st->phase > 0.5f)            /* (the next step's too, for its roll: a roll pad down arms it for the next step) */
+            rn = bk_code_ok(r[(k + 1u) % n]);
+    }
+    if (st->step != rp_step) {           /* a new step: a change of code retriggers what both have */
+        if (rc && rp_code && rc != rp_code) {
+            rp_gap = (uint16_t)(bk_fmask(rc - 1u) & bk_fmask(rp_code - 1u) & ~BF_ROLLS);
+            rp_gap_t = now;
+        }
+        rp_step = (int16_t)st->step;
+    }
+    rp_code = (uint8_t)rc;
+    mc = rc ? bk_fmask(rc - 1u) : 0u;
+    mn = rn ? bk_fmask(rn - 1u) : 0u;
+    fr = (mc & ~BF_ROLLS) | ((mc | mn) & BF_ROLLS);
+    if (rc && rn && rc != rn && st->phase < 0.75f)   /* (a roll both have: let go, then down again for the next step) */
+        fr &= ~(mc & mn & BF_ROLLS);
+    if (rp_gap && now - rp_gap_t < 8u)   /* (8 ms: a render block sees it let go) */
+        fr &= ~(uint32_t)rp_gap;
+    if (rc && BKC(rc - 1u))
+        act |= (uint16_t)(1u << (rc - 1u - BKC_0));
+    cmb_act = act;
+    bk_cmb_want = cc ? cc : rc && BKC(rc - 1u) ? rc - 1u : !rc && rn && BKC(rn - 1u) ? rn - 1u : 0u;
+    bkm.fk = (uint16_t)fk;
+    bkm.fm = (uint16_t)(fc | fr);
+    bkm.fh = (uint16_t)(fk | fc | fr);
+}
+static void bk_focus(int32_t f, uint32_t now)
+{
+    ui.pad_focus = (int8_t)f;
+    ui.pad_since = now;
+}
+/* the black keys played: the pads on their functions' changes (a LATCH key toggles; a combo or the pattern holds it
+ * for its moment), the ARP keys each its own, KIL, the PSX bus's keys, a combo's settings while it sounds */
+static void bk_play(uint32_t keys, uint32_t kdn_live, uint32_t kup_live, uint32_t btn, uint32_t now)
+{
+    uint32_t fh = bkm.fh, fk = bkm.fk, fm = bkm.fm, i, j;
+    uint32_t fd = fh & ~(uint32_t)bkm_was.fh, fu = bkm_was.fh & ~fh, kd = fk & ~(uint32_t)bkm_was.fk;
+    uint32_t md = fm & ~(uint32_t)bkm_was.fm, mu = bkm_was.fm & ~fm, live = keys;
+    for (j = 0; j < 11u; j++)
+        if (bk_mute >> j & 1u)
+            live &= ~(1u << BK[j]);
+    if (bk_cmb_want != cmb_on) {         /* a combo's settings in (or the player's back) before its pads go down */
+        cmb_on = (uint8_t)bk_cmb_want;
+        cmb_fast = 0u;
+        cmb_t = now;
+        pads_push();
+        fx_send();
+    } else if (BKC(cmb_on) && BKC_T[cmb_on - BKC_0].roll2 && !cmb_fast &&
+               now - cmb_t >= 600000u / (set.tempo_x10 ? set.tempo_x10 : 1700u)) {   /* (STUTTER held a beat: faster) */
+        cmb_fast = 1u;
+        pads_push();
+    }
+    for (i = 0; i < BRK_NPADS; i++) {    /* black keys: the pads, held; the last one pressed has the screen (LOAF
+                                          * BREAKER: on the keys the layout gives them, app.c bk_fn) */
+        uint32_t b = 1u << i;
+        if (i <= PAD_ROLL32) {           /* LOAF BREAKER: the rolls, through their THRU (the break, BOOM, both) */
+            if (fd & b) {
+                int sel = (btn & 1u << B_SEL) && (kd & b);
+                roll_key(i, 1, sel);     /* (SEL + the pad: BOOM alone, this press) */
+                if (sel)
+                    ui.tap_combo = 1u;   /* (no SEL click) */
+                if (kd & b)
+                    bk_focus((int32_t)i, now);
+            }
+            if (fu & b)
+                roll_key(i, 0, 0);
+            continue;
+        }
+        if (lat_bit(i) >= 0 && bk_lat() >> lat_bit(i) & 1u) {   /* (0.9.26, FLEXOR: REVERSE, FREEZE, GATE, RANDOM's
+                                          * K4 LATCH: a press on, a press off; a combo holds it a moment) */
+            if (kd & b) {
+                pad_latched ^= (uint16_t)b;
+                brk_pad((int)i, (pad_latched & b) || (fm & b));
+                bk_focus((int32_t)i, now);
+                app_say(PAD_TITLE[i], pad_latched >> i & 1u ? "LATCHED" : "OFF");
+            } else if (md & b)
+                brk_pad((int)i, 1);
+            else if (mu & b)
+                brk_pad((int)i, (pad_latched >> i) & 1u);
+            continue;
+        }
+        if (pad_latched >> i & 1u && !(fh & b)) {   /* (its LATCH turned off, let go: off) */
+            pad_latched &= (uint16_t)~b;
+            brk_pad((int)i, 0);
+            continue;
+        }
+        if (i == PAD_HALF && set.half_mt_off & 2u) {   /* LOAF BREAKER: HALF SPEED's LATCH: a press on, a press
+                                          * off (its knobs while held, as ever) */
+            if (kd & b) {
+                half_lat ^= 1u;
+                brk_pad((int)i, half_lat || (fm & b));
+                bk_focus((int32_t)i, now);
+                app_say("HALF SPEED", half_lat ? "LATCHED" : "OFF");
+            } else if (md & b)
+                brk_pad((int)i, 1);
+            else if (mu & b)
+                brk_pad((int)i, half_lat);
+            continue;
+        }
+        if (i == PAD_HALF && half_lat && !(fh & b)) {   /* (LATCH turned off, let go: off) */
+            half_lat = 0u;
+            brk_pad((int)i, 0);
+            continue;
+        }
+        if (fd & b) {
+            brk_pad((int)i, 1);
+            if (kd & b)
+                bk_focus((int32_t)i, now);
+        }
+        if ((fu & b) && !(i == PAD_HALF && half_lat))
+            brk_pad((int)i, 0);
+    }
+    for (i = 0; i < 11u; i++) {          /* GLOUPI BREAKS: the ARP key, an OVERLAY effect (ovl.c); 0.9.45, FLEXOR:
+                                          * each ARP key its own, several at once */
+        uint32_t kb = 1u << BK[i], c = bk_fn(i);
+        if (c == BKF_ARP) {
+            if (kdn_live & kb) {
+                ovl_pad_key(i, 1);
+                bk_focus(BKF_ARP, now);
+            } else if ((kup_live & kb) && !(keys & kb))
+                ovl_pad_key(i, 0);
+        } else if (BKC(c) && (kdn_live & kb))
+            bk_focus((int32_t)c, now);   /* (AFFINE: a combo pressed: the screen names it) */
+    }
+    if ((uint32_t)arp_rec != ((fm & ~fk) >> BKF_ARP & 1u)) {   /* (AFFINE: an ARP key recorded in the pattern) */
+        arp_rec = (uint8_t)((fm & ~fk) >> BKF_ARP & 1u);
+        ovl_push();
+    }
+    if (kd & 1u << BKF_KIL) {            /* LOAF BREAKER: KIL held: the sequencer's kicks quiet; let go: back. Its
+                                          * LATCH (K1 while held): a press quiet, the next back */
+        ui.kil_focus = 1u;
+        kick_hold = set.half_mt_off & 4u ? (uint8_t)!kick_hold : 1u;
+        kil_mom = 0u;
+        app_say("BOOM", kick_hold ? (set.half_mt_off & 4u ? "QUIET (KIL LATCHED)" : "QUIET (KIL)") : "BACK");
+        ui.redraw |= RG_FOOT;
+    } else {
+        if (!(fk & 1u << BKF_KIL) && ui.kil_focus) {
+            ui.kil_focus = 0u;
+            ui.redraw |= RG_FOOT;
+        }
+        if (!(fh & 1u << BKF_KIL) && kick_hold && (kil_mom || !(set.half_mt_off & 4u))) {   /* (let go, no LATCH: back;
+                                          * a combo's or the pattern's: back with it) */
+            kick_hold = 0u;
+            if (!kil_mom)
+                app_say("BOOM", "BACK");
+            kil_mom = 0u;
+            ui.redraw |= RG_FOOT;
+        }
+    }
+    if ((md & 1u << BKF_KIL) && !kick_hold) {   /* (AFFINE: a combo's or the pattern's KIL: quiet for its moment) */
+        kick_hold = 1u;
+        kil_mom = 1u;
+    }
+    {                                    /* AFFINE: VRB, SKP, CRS: the PSX bus pushed while held (psx_apply) */
+        uint8_t v = (uint8_t)(fh >> BKF_VRB & 1u), sk = (uint8_t)(fh >> BKF_SKP & 1u), cr = (uint8_t)(fh >> BKF_CRS & 1u);
+        if (v != verb_held || sk != skip_held || cr != crush_held) {
+            if (kd >> BKF_VRB & 1u)      /* (a key's, said; a combo names itself) */
+                app_say("VERB THROW", VERB_SHORT[set.psx.vtype % PSXV_N]);
+            else if (kd >> BKF_SKP & 1u)
+                app_say("SKIP", SKIP_DIV_NAME[set.psx.skdiv & 3u]);
+            else if (kd >> BKF_CRS & 1u)
+                app_say("CRUSH", "4 BIT");
+            verb_held = v;
+            skip_held = sk;
+            crush_held = cr;
+            psx_apply();
+            ui.redraw |= RG_FOOT;
+        }
+    }
+    if (ui.pad_focus >= 0 && !(live & PAD_BIT(ui.pad_focus))) {   /* let go: another pad (or combo) still held, or none */
+        uint32_t best = 0u;
+        ui.pad_focus = -1;
+        for (j = 0; j < 11u; j++) {
+            uint32_t c = bk_fn(j);
+            if ((live >> BK[j] & 1u) && (c <= BKF_ARP || BKC(c)) && bk_ord[j] >= best) {
+                best = bk_ord[j];
+                ui.pad_focus = (int8_t)c;
+            }
+        }
+    }
+    bkm_was = bkm;
+}
+/* REC and the black keys: playing, each step reached while one is held takes its code (the last pressed), from the
+ * step its press lands on (rec_at: the next past the middle); let go before a step's middle, that step not (as a
+ * press). Stopped, step by step: a black key pressed writes the step shown, then the next (as the white keys) */
+static void bk_rec_write(uint32_t k, uint32_t c)
+{
+    uint8_t *r = fxr_pat(set.pattern);
+    k %= PAT_STEPS;
+    rw_old = r[k];
+    r[k] = (uint8_t)(c + 1u);
+    rw_step = (int16_t)k;
+    fxr_dirty = 1u;
+    set_dirty = 1u;
+    ui.redraw |= RG_BLOCKS;
+}
+static void bk_record(const brk_status_t *st, uint32_t kdn_live)
+{
+    uint32_t hc = bk_hold, j;
+    if (!ui.rec) {
+        rw_step = -1;
+        rw_code = 0xFFu;
+        return;
+    }
+    if (!st->playing) {
+        for (j = 0; j < 11u; j++)
+            if (kdn_live >> BK[j] & 1u)
+                rec_fx_step(bk_fn(j));
+        rw_step = -1;
+        rw_code = 0xFFu;
+        return;
+    }
+    if (hc != 0xFFu && hc != rw_code) {  /* a key down (or the last let go, another still held): from where it lands */
+        uint32_t k = rec_at(pat_len(), 0);
+        bk_rec_write(k, hc);
+        rw_from = (uint8_t)k;
+        rw_seen = (int16_t)st->step;
+    } else if (hc != 0xFFu && st->step >= 0 && st->step != rw_seen) {   /* held into a step */
+        uint32_t k = (uint32_t)st->step % pat_len();
+        rw_seen = (int16_t)st->step;
+        if ((int32_t)k != rw_step)
+            bk_rec_write(k, hc);
+    } else if (hc == 0xFFu && rw_code != 0xFFu) {   /* let go before this step's middle: the step not held */
+        if (rw_step >= 0 && st->step == rw_step && rw_step != rw_from && st->phase < 0.5f)
+            fxr_pat(set.pattern)[rw_step] = rw_old;
+        rw_step = -1;
+    }
+    rw_code = (uint8_t)hc;
+}
+static void bk_assign_say(void)
+{
+    char t[12] = "KEY ";
+    int_text((int32_t)asg_key % 11 + 1, t + 4);
+    app_say(t, bk_long(bk_fn(asg_key % 11u)));
+}
+/* FX held, a black key held, any knob: that key's function, every function then the combos (a row other than CUSTOM:
+ * copied into CUSTOM first, CUSTOM in use). FX let go: done (no page, no fader) */
+static void bk_assign(int32_t d, uint32_t now)
+{
+    uint32_t j = asg_key % 11u, c = bk_fn(j), k, n = (uint32_t)(d < 0 ? -d : d);
+    int sw = 0;
+    if (bk_preset() != BKP_CUSTOM) {
+        for (k = 0; k < 11u; k++)
+            set.bkeys.bk[2u + k] = (uint8_t)bk_fn(k);
+        set.bkeys.bk[1] = BKP_CUSTOM;
+        sw = 1;
+    }
+    for (k = 0; k < (n > 4u ? 4u : n); k++)
+        c = bk_code_step(c, d);
+    bk_release_all();
+    set.bkeys.bk[2u + j] = (uint8_t)c;
+    ui.bk_sel = (uint8_t)j;
+    set_dirty = 1u;
+    if (sw) {                            /* (the row said first, the key's function after it) */
+        app_say("ROW C", BKP_NAME[BKP_CUSTOM]);
+        asg_say_t = now | 1u;
+    } else {
+        asg_say_t = 0u;
+        bk_assign_say();
+    }
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
+static void bk_row_turn(int32_t d)       /* FX + OCT+ / OCT-: the next row, or the one before, round */
+{
+    uint32_t pos = (bk_row_pos(bk_preset()) + (d > 0 ? 1u : 2u)) % 3u;
+    char t[8] = "ROW A";
+    bk_release_all();
+    set.bkeys.bk[1] = BK_ROWS[pos];
+    set_dirty = 1u;
+    t[4] = (char)('A' + pos);
+    app_say(t, BKP_NAME[BK_ROWS[pos]]);
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
+
 static void input(void)
 {
     uint32_t keys = plat_keys(), btn = plat_buttons(), now = plat_ms(), i, sel_now = btn >> B_SEL & 1u;
@@ -445,6 +858,11 @@ static void input(void)
             tut_padn++;
         }
     int k;
+    uint32_t kdn_live, kup_live;         /* (AFFINE: the black keys that play: not those FX holds to give a function) */
+    brk_status_t bst;
+    brk_status(&bst);
+    bk_scan(keys, kdn, kup, btn, &kdn_live, &kup_live);
+    bk_masks(keys, &bst, now);
     if (keys != ui.keys || btn != ui.btn)
         ui.touched = 1u;                 /* (read here too between frames: app_input_only) */
     if (ui.lobo_t || demo.on) {          /* RESET ALL's screen or the demo up: a press only ends it (app_frame) */
@@ -452,8 +870,9 @@ static void input(void)
             if (kup >> WK[i] & 1u)
                 brk_key((int)i, 0);
         for (i = 0; i < BRK_NPADS; i++)
-            if ((kup & PAD_BIT(i)))
+            if ((bkm_was.fh & ~bkm.fh) >> i & 1u)
                 brk_pad((int)i, 0);
+        bkm_was = bkm;
         for (k = 0; k < NE; k++)
             if (plat_enc(k))
                 ui.touched = 1u;
@@ -468,6 +887,7 @@ static void input(void)
             d += plat_enc(k);
         if (!ui.intro)
             ask_input(kdn, bdn, d);
+        bkm_was = bkm;                   /* (AFFINE: a black key held through it plays only when pressed again) */
         ui.keys = keys;
         ui.btn = btn;
         return;
@@ -563,119 +983,15 @@ static void input(void)
                     ui.key_since = now;
                 }
     }
-    if (ui.page == PG_OVL && ui.opage == 1u) {   /* LOAF BREAKER: ARP › BLACK KEYS: a black key picks itself (what
-                                          * was held lets go as ever; nothing new starts) */
-        for (i = 0; i < 11u; i++)
-            if (kdn >> BK[i] & 1u)
-                bk_pick(i);
+    if (ui.page == PG_OVL && ui.opage == 1u)   /* LOAF BREAKER: ARP › BLACK KEYS: a black key picks itself (bk_scan:
+                                          * what was held lets go as ever; nothing new starts) */
         for (i = 0; i < 11u; i++)
             kdn &= ~(1u << BK[i]);
-    }
-    for (i = 0; i < BRK_NPADS; i++) {    /* black keys: the pads, held; the last one pressed has the screen (LOAF
-                                          * BREAKER: on the keys the layout gives them, app.c bk_fn) */
-        if (i <= PAD_ROLL32) {           /* LOAF BREAKER: the rolls, through their THRU (the break, BOOM, both) */
-            if ((kdn & PAD_BIT(i))) {
-                roll_key(i, 1, (btn & 1u << B_SEL) != 0u);   /* (SEL + the pad: BOOM alone, this press) */
-                if (btn & 1u << B_SEL)
-                    ui.tap_combo = 1u;   /* (no SEL click) */
-                ui.pad_focus = (int8_t)i;
-                ui.pad_since = now;
-            }
-            if ((kup & PAD_BIT(i)) && !(keys & PAD_BIT(i)))
-                roll_key(i, 0, 0);
-            continue;
-        }
-        if (lat_bit(i) >= 0 && bk_lat() >> lat_bit(i) & 1u) {   /* (0.9.26, FLEXOR: REVERSE, FREEZE, GATE, RANDOM's
-                                          * K4 LATCH: a press on, a press off) */
-            if ((kdn & PAD_BIT(i))) {
-                pad_latched ^= (uint16_t)(1u << i);
-                brk_pad((int)i, pad_latched >> i & 1u);
-                ui.pad_focus = (int8_t)i;
-                ui.pad_since = now;
-                app_say(PAD_TITLE[i], pad_latched >> i & 1u ? "LATCHED" : "OFF");
-            }
-            continue;
-        }
-        if (pad_latched >> i & 1u && !(keys & PAD_BIT(i))) {   /* (its LATCH turned off, let go: off) */
-            pad_latched &= (uint16_t)~(1u << i);
-            brk_pad((int)i, 0);
-            continue;
-        }
-        if (i == PAD_HALF && set.half_mt_off & 2u) {   /* LOAF BREAKER: HALF SPEED's LATCH: a press on, a press
-                                          * off (its knobs while held, as ever) */
-            if ((kdn & PAD_BIT(i))) {
-                half_lat ^= 1u;
-                brk_pad((int)i, half_lat);
-                ui.pad_focus = (int8_t)i;
-                ui.pad_since = now;
-                app_say("HALF SPEED", half_lat ? "LATCHED" : "OFF");
-            }
-            continue;
-        }
-        if (i == PAD_HALF && half_lat && !((keys & PAD_BIT(i)))) {   /* (LATCH turned off, let go: off) */
-            half_lat = 0u;
-            brk_pad((int)i, 0);
-            continue;
-        }
-        if ((kdn & PAD_BIT(i))) {
-            brk_pad((int)i, 1);
-            ui.pad_focus = (int8_t)i;
-            ui.pad_since = now;
-        }
-        if ((kup & PAD_BIT(i)) && !(keys & PAD_BIT(i)) && !(i == PAD_HALF && half_lat))
-            brk_pad((int)i, 0);
-    }
-    for (i = 0; i < 11u; i++) {          /* GLOUPI BREAKS: the ARP key, an OVERLAY effect (ovl.c); 0.9.45, FLEXOR:
-                                          * each ARP key its own, several at once */
-        uint32_t kb = 1u << BK[i];
-        if (bk_fn(i) != BKF_ARP)
-            continue;
-        if (kdn & kb) {
-            ovl_pad_key(i, 1);
-            ui.pad_focus = (int8_t)BKF_ARP;
-            ui.pad_since = now;
-        } else if ((kup & kb) && !(keys & kb))
-            ovl_pad_key(i, 0);
-    }
-    if (kdn & PAD_BIT(BKF_KIL)) {        /* LOAF BREAKER: KIL held: the sequencer's kicks quiet; let go: back. Its
-                                          * LATCH (K1 while held): a press quiet, the next back */
-        ui.kil_focus = 1u;
-        kick_hold = set.half_mt_off & 4u ? (uint8_t)!kick_hold : 1u;
-        app_say("BOOM", kick_hold ? (set.half_mt_off & 4u ? "QUIET (KIL LATCHED)" : "QUIET (KIL)") : "BACK");
-        ui.redraw |= RG_FOOT;
-    } else if (!(keys & PAD_BIT(BKF_KIL))) {
-        if (ui.kil_focus) {
-            ui.kil_focus = 0u;
-            ui.redraw |= RG_FOOT;
-        }
-        if (kick_hold && !(set.half_mt_off & 4u)) {   /* (let go, no LATCH: back) */
-            kick_hold = 0u;
-            app_say("BOOM", "BACK");
-            ui.redraw |= RG_FOOT;
-        }
-    }
-    {                                    /* AFFINE: VRB, SKP, CRS: the PSX bus pushed while held (psx_apply) */
-        uint8_t v = (uint8_t)((keys & PAD_BIT(BKF_VRB)) != 0u), sk = (uint8_t)((keys & PAD_BIT(BKF_SKP)) != 0u),
-                cr = (uint8_t)((keys & PAD_BIT(BKF_CRS)) != 0u);
-        if (v != verb_held || sk != skip_held || cr != crush_held) {
-            if (v && !verb_held)
-                app_say("VERB THROW", VERB_SHORT[set.psx.vtype % PSXV_N]);
-            else if (sk && !skip_held)
-                app_say("SKIP", SKIP_DIV_NAME[set.psx.skdiv & 3u]);
-            else if (cr && !crush_held)
-                app_say("CRUSH", "4 BIT");
-            verb_held = v;
-            skip_held = sk;
-            crush_held = cr;
-            psx_apply();
-            ui.redraw |= RG_FOOT;
-        }
-    }
-    if (ui.pad_focus >= 0 && !((keys & PAD_BIT(ui.pad_focus)))) {   /* let go: another pad still held, or none */
-        ui.pad_focus = -1;
-        for (i = 0; i <= BKF_ARP; i++)
-            if ((keys & PAD_BIT(i)))
-                ui.pad_focus = (int8_t)i;
+    bk_play(keys, kdn_live, kup_live, btn, now);   /* AFFINE: the black keys, as functions (bk_masks) */
+    bk_record(&bst, kdn_live);           /* (and REC: into the pattern) */
+    if (asg_say_t && now - asg_say_t >= 700u) {   /* (FX + a key: ROW C said, then the key's function) */
+        asg_say_t = 0u;
+        bk_assign_say();
     }
     if (bdn & 1u << B_PLAY) {
         brk_status_t st;
@@ -944,18 +1260,25 @@ static void input(void)
         ui.fx_open = (uint8_t)(ui.page != PG_FX);
         fxl_t = now;
     }
-    if (ui.fx_hold && !ui.fx_turned && btn & 1u << B_FX && now - fxl_t >= 700u) {   /* LOAF BREAKER: FX held: the
-                                          * effects' fader all off, or all on */
-        set.fx.wet = set.fx.wet > 0.001f ? 0.0f : 1.0f;
-        changed();
-        app_say("FX FADER", set.fx.wet > 0.0f ? "100%" : "0%");
-        ui.fx_turned = 1u;               /* (no slot, no page at its release) */
-        ui.redraw |= RG_BLOCKS | RG_FOOT;
+    if (btn & 1u << B_FX && bdn & (1u << B_OCTDN | 1u << B_OCTUP)) {   /* AFFINE: FX + OCT+ / OCT-: the black keys'
+                                          * next row, or the one before (AFFINE, PUNCH, CUSTOM, round); no pitch */
+        bk_row_turn(bdn & 1u << B_OCTUP ? 1 : -1);
+        oct_eaten = 1u;
+        if (ui.fx_hold)
+            ui.fx_turned = 1u;           /* (FX let go: no page, no fader) */
     }
+    if (ui.fx_hold && ((bdn & ~(1u << B_FX)) || kdn))
+        ui.fx_turned = 1u;               /* (AFFINE: anything else touched while FX is held: not FX alone) */
     if (ui.fx_hold && !(btn & 1u << B_FX)) {   /* FX let go: alone, the page or the slot's next part; with ALGORITHM turned, a
-                                          * move */
+                                          * move. AFFINE: held 0.7 s alone, at its release, the effects' fader all off, or
+                                          * all on (LOAF BREAKER's while held: FX + OCT, FX + a black key never toggle it) */
         ui.fx_hold = 0u;
-        if (!ui.fx_turned) {
+        if (!ui.fx_turned && now - fxl_t >= 700u) {
+            set.fx.wet = set.fx.wet > 0.001f ? 0.0f : 1.0f;
+            changed();
+            app_say("FX FADER", set.fx.wet > 0.0f ? "100%" : "0%");
+            ui.redraw |= RG_BLOCKS | RG_FOOT;
+        } else if (!ui.fx_turned) {
             if (ui.fx_open) {
                 ui.page = PG_FX;
                 page_say();
@@ -1018,7 +1341,11 @@ static void input(void)
     }
     /* OCT- / OCT+: pitch in semitones, repeating faster while held; both: back to 0. LOAF BREAKER: REC stopped (step by
      * step), OCT+ a REST (the step kept, the next one), OCT- a step back */
-    if (ui.rec && !playing_now()) {
+    if (oct_eaten && !(btn & (1u << B_OCTDN | 1u << B_OCTUP)))
+        oct_eaten = 0u;
+    if (oct_eaten || btn & 1u << B_FX)
+        ;                                /* (AFFINE: FX + OCT is the black keys' row, above: no pitch, no step) */
+    else if (ui.rec && !playing_now()) {
         if (bdn & 1u << B_OCTUP)
             rec_move(1);
         if (bdn & 1u << B_OCTDN)
@@ -1055,6 +1382,10 @@ static void input(void)
             ui.tap_combo = 1u;           /* (SEL + a knob is no tap) */
         if (ui.fx_hold)
             ui.fx_turned = 1u;           /* (FX + a knob: not the next part) */
+        if (btn & 1u << B_FX && asg_key < 11u && (keys >> BK[asg_key] & 1u) && (bk_mute >> asg_key & 1u)) {
+            bk_assign(d, now);           /* AFFINE: FX + a black key held + any knob: that key's function (CUSTOM) */
+            continue;
+        }
         if (!(btn & 1u << B_SEL))
             ui.help = 0u;                /* (a knob closes the card) */
         if (k == EN_SELECT && btn & 1u << B_SEL) {   /* LOAF BREAKER: SEL + SELECT, on any page: the drums' filter
@@ -1299,6 +1630,9 @@ static void leds(void)
     for (i = 0; i < 11u; i++)            /* (0.9.45: each ARP key lit on its own) */
         if (arpk_on(i))
             k |= 1u << BK[i];
+    for (i = 0; i < BKC_N; i++)          /* (AFFINE: a PUNCH combo's keys lit while it sounds, held or recorded) */
+        if (cmb_act >> i & 1u)
+            k |= bkf_mask(BKC_0 + i);
     if (build_p >= 0.0f) {               /* LOAF BREAKER: the build: the white keys fill up left to right (TEST: the next
                                           * one blinking, faster as it builds) */
         uint32_t n = 1u + (uint32_t)(build_p * 15.0f), per = 220u - (uint32_t)(build_p * 180.0f);
@@ -1743,6 +2077,11 @@ static void draw_foot(const brk_status_t *st)
         } else if (ui.kil_focus && i == 0u) {   /* KIL held: K1 its LATCH */
             name = "LATCH";
             text_cat(t, set.half_mt_off & 4u ? "ON" : "OFF");
+            nc = C_HI;
+        } else if (BKC(ui.shown)) {      /* (AFFINE: a PUNCH combo: what it holds, read only) */
+            name = cmb_cell((uint32_t)ui.shown, (int)i, t);
+            if (!name)
+                continue;
             nc = C_HI;
         } else if (ui.shown >= 0) {      /* a pad held: its own settings */
             name = pad_knob_name(ui.shown, (int)i);
@@ -3227,6 +3566,20 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
         bta_sim_on = 1u;
         return 1;
     }
+    if (!strcmp(cmd, "bk_row")) {        /* bk_row N: the black keys' row as a save holds it (1: CHOPPAH's, out of the
+                                          * rows' round since 16 Nov 2026 but played as saved) */
+        bk_release_all();
+        set.bkeys.bk[1] = (uint8_t)atoi(a);
+        return 1;
+    }
+    if (!strcmp(cmd, "store_foreign")) { /* store_foreign: the settings saved under another firmware's magic (LOAF
+                                          * BREAKER's "CHP7"), the rest of the store left: a reboot reads none of it */
+        static settings_t fs;
+        fs = set;
+        fs.magic = 0x37504843u;
+        (void)plat_store_save(OBJ_SETTINGS, &fs, SET_SAVED);
+        return 1;
+    }
     if (!strcmp(cmd, "expect_bpm")) {    /* expect_bpm LO HI (whole BPM): the tempo the engine plays at */
         int32_t x100 = (int32_t)(brk_get_tempo() * 100.0f + 0.5f), bad = x100 < atoi(a) * 100 || x100 > atoi(b) * 100;
         host_fails += bad ? 1 : 0;
@@ -3254,7 +3607,13 @@ int app_expect(const char *what, int *got)
                                     "bhalf", "wiped", "skin", "bstut", "bgapm", "pads", "padlat", "fthru", "key",
                                     "key_n", "klen0", "rdiv0", "n_user", "n_breaks", "brk_dj", "rthru",
                                     "arp_bits", "bk_arpfx", "kit", "psmp", "gate", "crush", "redux", "send", "vtype",
-                                    "codec", "skchance"};   /* (AFFINE: the gate, the PSX bus, x100) */
+                                    "codec", "skchance", "row", "fheld", "psx_held", "kil", "cmb", "fx_wet",
+                                    "pitch", "fxr_lo", "fxr_hi", "fxr_c", "rplay", "dj_now", "roll_div", "rec",
+                                    "bk_mute", "cmb_lit"};   /* (AFFINE: the gate, the PSX bus, x100; the black keys'
+                                          * row, the functions held (bit BKF_*), VRB SKP CRS held (bits 0-2), BOOM
+                                          * quiet, the combo's settings in, the FX fader, the pitch, the steps recorded
+                                          * (1-16, 17-32), the first one's code (-1 none), the code playing (-1 none),
+                                          * the DJ filter now x100, the roll's rate, REC, keys silent, combos lit) */
     int v[sizeof W / sizeof W[0]];
     uint32_t i, n = 0u;
     v[n++] = ui.page;
@@ -3387,6 +3746,42 @@ int app_expect(const char *what, int *got)
     v[n++] = set.psx.vtype;
     v[n++] = set.psx.codec;
     v[n++] = (int)(set.psx.skchance * 100.0f + 0.5f);
+    v[n++] = (int)bk_preset();
+    v[n++] = bkm.fh;
+    v[n++] = verb_held | skip_held << 1 | crush_held << 2;
+    v[n++] = kick_hold;
+    v[n++] = cmb_on;
+    v[n++] = (int)(set.fx.wet * 100.0f + 0.5f);
+    v[n++] = set.pitch;
+    {
+        const uint8_t *r = fxr_pat(set.pattern);
+        int lo = 0, hi = 0, c = -1;
+        for (i = 0; i < PAT_STEPS; i++)
+            if (bk_code_ok(r[i])) {
+                if (i < 16u)
+                    lo |= 1 << i;
+                else
+                    hi |= 1 << (i - 16u);
+                if (c < 0)
+                    c = r[i] - 1;
+            }
+        v[n++] = lo;
+        v[n++] = hi;
+        v[n++] = c;
+    }
+    v[n++] = rp_code ? rp_code - 1 : -1;
+    {
+        float dj = brk_fx_dj_now();
+        v[n++] = (int)(dj * 100.0f + (dj < 0.0f ? -0.5f : 0.5f));
+    }
+    {
+        brk_status_t rs;
+        brk_status(&rs);
+        v[n++] = rs.roll_div;
+    }
+    v[n++] = ui.rec;
+    v[n++] = bk_mute;
+    v[n++] = cmb_act;
     for (i = 0; i < n; i++)
         if (!strcmp(what, W[i])) {
             *got = v[i];
