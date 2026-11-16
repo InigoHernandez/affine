@@ -268,12 +268,26 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 .tile span { font: var(--label); text-transform: uppercase; color: var(--gray); }
 .tile.hot { background: var(--hot); border-color: var(--hot); }
 .tile.hot b, .tile.hot span { color: var(--bg); }
-:is(.todo li, .tile)::after {
-  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: 0; pointer-events: none; background: var(--g-up) 0 100% / 4px 100% repeat-x;
-  image-rendering: pixelated; transition: height 280ms steps(7);
+/* a card answers like a polygon (the owner: "more polygon", and the hover must never hide the words): it tilts toward
+ * you in steps, as the FM-1's frames come, its border lights, a facet in its corner (inside the padding, clear of the
+ * words) turns hot, and the logo's slanted speed stripes sweep across behind the words */
+:is(.todo li, .tile) { transition: transform 200ms steps(4), border-color 0s 100ms; }
+:is(.todo li, .tile):hover { transform: perspective(700px) rotateX(6deg) rotateY(-8deg) translateY(-2px); border-color: var(--hot); }
+.tile::before, .todo li > h4::after {     /* (the corner's facet: inside the padding) */
+  content: ""; position: absolute; top: 0; right: 0; width: 14px; height: 14px; pointer-events: none;
+  background: var(--line); clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
-:is(.todo li, .tile):hover::after { height: 40%; }
-.tile.hot::after { display: none; }
+:is(.tile:hover::before, .todo li:hover > h4::after) { background: var(--hot); }
+.tile.hot::before { background: var(--bg); }
+:is(.todo li, .tile)::after {
+  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 0 38%, var(--stripe) 38% 42%, transparent 42% 45%, var(--stripe) 45% 49%,
+    transparent 49% 52%, var(--stripe) 52% 56%, transparent 56%) 140% 0 / 260% 100% no-repeat;
+  --stripe: color-mix(in srgb, var(--hot) 22%, transparent);
+}
+:is(.todo li, .tile):hover::after { background-position: -40% 0; transition: background-position 520ms steps(10); }
+.tile.hot::after { --stripe: color-mix(in srgb, var(--bg) 22%, transparent); }
+.tile.hot:hover { border-color: var(--ink); }
 
 /* 03 perform: the eleven black keys as the FM-1 has them, one held at a time; its screen beside */
 .perf { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); row-gap: var(--s3); align-items: start; }
