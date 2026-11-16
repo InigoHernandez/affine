@@ -28,10 +28,33 @@ void psx_verb_process(const float *inl, const float *inr, float *outl, float *ou
  * (a Nuttall window: psx-spx describes the console's table as one); XA: XA-ADPCM, four predictors, at 37.8 or
  * 18.9 kHz. bits: 4 as the console (8 for XA's 8-bit mode); fewer is AFFINE's (2..3, grittier) */
 typedef struct { float rate; uint32_t bits, filter, xa, stereo; } psx_codec_p;   /* filter 0 auto, 1..5 one forced */
-void psx_grit_set(float rate, uint32_t bits, uint32_t filter);   /* rate 11025..44100 Hz */
+void psx_grit_set(float rate, uint32_t bits, uint32_t filter);   /* rate 2000..44100 Hz (the PSX page: 11025..) */
+/* mix 0..1: the dry under it is delayed by the stage's latency (psx_color_latency), so a part mix never combs */
 void psx_grit_process(float *l, float *r, uint32_t n, float mix);
 void psx_xa_set(uint32_t half_rate, uint32_t bits8, uint32_t stereo);   /* half_rate: 18.9 kHz, else 37.8 */
 void psx_xa_process(float *l, float *r, uint32_t n, float mix);
+
+/* ---- the colour stage: GRIT's path grown into the PS1's sample sound (AFFINE's). The input taken down to a rate
+ * (FILTERED: band-limited first, as the console's samples were prepared; RAW: no anti-alias filter, the aliases kept as
+ * some games had them), each 28 samples through the SPU-ADPCM round trip (ADPCM; off: 16-bit PCM at that rate), played
+ * back at 44.1 kHz through the four-point interpolator. CRUNCH 0..1 spoils the encoder's choices, unit by unit, still
+ * level-adaptive: fewer predictors (5 -> 2), no simulation, up to 2 shifts coarser, the finest shift 12 -> 4 (quiet
+ * tails turn to grain), the residual truncated toward zero (codec SNR at 11.025 kHz on a break: 29 dB at 0, 18 at 0.5,
+ * 13 at 1; quiet tails down to 3). Every change is continuous: a rate change glides (the latency moves at most 6
+ * samples a block, a quarter tone of pitch for 25-110 ms), RAW and the mix ease over a block, the dry crossfades to a
+ * new latency. The defaults are GRIT as it always was (rate GRIT: psx_grit_set's; FILTERED; ADPCM; CRUNCH 0) */
+enum { PSXC_RATE_GRIT, PSXC_RATE_44K, PSXC_RATE_22K, PSXC_RATE_11K, PSXC_RATE_8K, PSXC_RATES };
+extern const char *const PSXC_RATE_NAME[PSXC_RATES];
+extern const float PSXC_RATE_HZ[PSXC_RATES];    /* 44100, 22050, 11025 ("PS1"), 8000; 0 for GRIT (psx_grit_set's) */
+void psx_color_set(uint32_t rate, uint32_t raw, uint32_t adpcm, float crunch);   /* main loop; words read a block */
+/* the latency now, 44.1 kHz samples: the playback 32 codec samples behind the newest (a unit, 28, and the
+ * interpolator's reach), the fractional sampling's one, the anti-alias filter's delay (FILTERED). 44.1 kHz ~33,
+ * 22.05 ~67, 11.025 ~133, 8 kHz ~182 (RAW: 1.5 .. 5 less) */
+float psx_color_latency(void);
+/* offline (tests, pictures): units x 28 samples through the SPU-ADPCM round trip as the stage runs it (the history
+ * from 0, CRUNCH's dice from the stage's seed) */
+void psx_adpcm_roundtrip(const int16_t *in, int16_t *out, uint32_t units, uint32_t bits, uint32_t filter,
+                         float crunch);
 
 /* ---- CRUSH: bit depth 16..1 (bits, fractional: the steps glide), the way the bits go, and a bit flipped */
 enum { CRUSH_TRUNC, CRUSH_ROUND, CRUSH_DITHER, CRUSH_MODES };
