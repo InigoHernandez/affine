@@ -105,8 +105,9 @@ static void bk_value(int i, char *t)
         text_cat(t, BKP_NAME[bk_preset()]);
     else if (i == 1)
         int_text((int32_t)ui.bk_sel % 11 + 1, t);
-    else if (i == 2)
-        text_cat(t, BKF_LONG[bk_fn(ui.bk_sel)]);
+    else if (i == 2)                     /* (AFFINE, 2x: its short name, EFFECT HLF, whole in the foot's 108 px; the
+                                          * page shows BKF_LONG large, the header says it) */
+        text_cat(t, BKF_NAME[bk_fn(ui.bk_sel) % BKF_N]);
     else if (bk_fn(ui.bk_sel) == BKF_ARP)  /* (0.9.45: K4, an ARP key's own effect) */
         text_cat(t, OVL_NAME[arpk_fx(ui.bk_sel)]);
 }
@@ -151,42 +152,35 @@ static void bk_turn(int i, int32_t d)
     set_dirty = 1u;
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-/* the BLACK KEYS tab: the eleven keys as the FM-1 has them (3, 2, 3, 2, 1), each with its function, the one edited
- * lit; under them that key and its effect, the preset */
+/* the BLACK KEYS tab: the eleven keys as the FM-1 has them (3, 2, 3, 2, 1), their numbers (2x), the one edited lit,
+ * under each a line, amber where its function is not CHOPPAH's; under them that key's function large (3x), and a line
+ * of help. (AFFINE, 2x: the functions' short names in the keys gone, too wide; the preset: the foot's K1) */
 static void draw_bk(void)
 {
     static const uint8_t GRP[11] = {0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 4};
-    uint32_t band, j, p = bk_preset();
-    char t[24];
-    for (band = 0; band < 2u; band++) {
-        cv_begin(240, 52, C_BLACK);
-        cv_oy = -(int32_t)band * 52;
+    uint32_t band, j, p = bk_preset(), f = bk_fn(ui.bk_sel);
+    char t[8];
+    for (band = 0; band < 2u; band++) {  /* (rows 88..131, the keys; 132..191, the function) */
+        int32_t top = band ? 44 : 0;
+        cv_begin(240, band ? 60u : 44u, C_BLACK);
+        cv_oy = -top;
         for (j = 0; j < 11u; j++) {
-            uint32_t f = bk_fn(j);
-            int32_t x = 4 + (int32_t)j * 19 + (int32_t)GRP[j] * 6;
-            int sel = j == ui.bk_sel % 11u, chop = f == BK_LAY[j];
-            cv_rect(x, 6, 17, 30, sel ? C_WHITE : chop ? C_LINE : C_AMB);
-            cv_rect(x + 1, 7, 15, 28, sel ? C_HI : C_BLOCK);
+            int32_t x = 5 + (int32_t)j * 20 + (int32_t)GRP[j] * 3;
+            int sel = j == ui.bk_sel % 11u, chop = bk_fn(j) == BK_LAY[j];
+            cv_rect(x, 6, 18, 28, sel ? C_HI : C_BLOCK);
+            cv_rect(x, 36, 18, 2, sel ? C_WHITE : chop ? C_LINE : C_AMB);
             t[0] = 0;
             int_text((int32_t)j + 1, t);
-            cv_text(x + (17 - text_w(&FONT_T, t)) / 2, 9, &FONT_T, t, sel ? C_BLACK : C_DIM);
-            cv_text(x + (17 - text_w(&FONT_T, BKF_NAME[f])) / 2, 23, &FONT_T, BKF_NAME[f], sel ? C_BLACK : C_WHITE);
+            snd_text(x + 9, 15, t, 2, sel ? C_BLACK : C_GRAY, 2, top);
         }
-        t[0] = 0;
-        text_cat(t, "KEY ");
-        int_text((int32_t)ui.bk_sel % 11 + 1, t + 4);
-        cv_text(6, 40, &FONT_XS, t, C_GRAY);
-        if (bk_fn(ui.bk_sel) == BKF_ARP) {   /* (0.9.45: an ARP key with its own effect, K4) */
-            cv_text(6, 50, &FONT_B, "ARP", C_HI);
-            cv_text(6 + text_w(&FONT_B, "ARP "), 50, &FONT_B, OVL_NAME[arpk_fx(ui.bk_sel)], C_WHITE);
+        if (f == BKF_ARP) {              /* (0.9.45: an ARP key with its own effect, K4) */
+            int32_t w = snd_text(6, 52, "ARP ", 3, C_HI, 0, top);
+            snd_text(6 + w, 52, OVL_NAME[arpk_fx(ui.bk_sel)], 3, C_WHITE, 0, top);
         } else
-            cv_text(6, 50, &FONT_B, BKF_LONG[bk_fn(ui.bk_sel)], C_HI);
-        cv_text(6, 72, &FONT_XS, "PRESET", C_GRAY);
-        cv_text(234 - text_w(&FONT_B, BKP_NAME[p]), 68, &FONT_B, BKP_NAME[p], p == BKP_CUSTOM ? C_AMB : C_WHITE);
-        cv_text(6, 86, &FONT_XS, p == BKP_CUSTOM ? "A BLACK KEY PICKS ITSELF" : "K3: A CUSTOM COPY, THAT KEY CHANGED",
-                C_DIM);
+            snd_text(6, 52, BKF_LONG[f], 3, C_HI, 0, top);
+        snd_text(6, 84, p == BKP_CUSTOM ? "PRESS A KEY TO PICK IT" : "K3 MAKES A CUSTOM COPY", 2, C_DIM, 0, top);
         cv_oy = 0;
-        cv_blit(0, 88u + band * 52u);
+        cv_blit(0, 88u + (uint32_t)top);
     }
 }
 
@@ -239,8 +233,9 @@ static void ovl_turn(int i, int32_t d)
     ui.redraw |= RG_BLOCKS;
 }
 
-/* the OVERLAY page's strip: sixteen cards in key order, four by four; one sounding lit, one latched outlined amber,
- * the one K1 tunes outlined white; each with a bar of its amount and its key */
+/* the OVERLAY page's strip: the sixteen effects in key order, a row each (2x): 1-8 on the left, 9-16 on the right,
+ * its key, its name, a bar of its amount; one sounding lit, one latched outlined amber, the one K1 tunes outlined
+ * white. (AFFINE, 2x: LOAF's four by four cards held no 2x name beside its key) */
 static void draw_ovl(void)
 {
     uint32_t band, i, on = ovl_sounding() | ovl_held | ovl_latched | ovl_pad_bits();
@@ -249,19 +244,22 @@ static void draw_ovl(void)
         draw_bk();
         return;
     }
-    for (band = 0; band < 2u; band++) {
+    for (band = 0; band < 2u; band++) {  /* (rows 88..139: keys 1-4 and 9-12; 140..191: 5-8 and 13-16) */
         cv_begin(240, 52, C_BLACK);
-        for (i = band * 8u; i < band * 8u + 8u; i++) {
-            int32_t x = 1 + (int32_t)(i % 4u) * 60, y = (int32_t)((i / 4u) & 1u) * 26;
-            int lit = on >> i & 1u, lat = ovl_latched >> i & 1u, sel = i == ovl_last;
-            cv_rect(x, y, 57, 24, lit ? C_HI : lat ? C_AMB : sel ? C_WHITE : C_LINE);
-            cv_rect(x + 1, y + 1, 55, 22, lit ? C_HI : C_BLOCK);
+        for (i = 0; i < 16u; i++) {
+            int32_t x = 1 + (int32_t)(i / 8u) * 120, y = (int32_t)(i % 8u) * 13 - (int32_t)band * 52;
+            int lit = on >> i & 1u, lat = ovl_latched >> i & 1u, sel = i == ovl_last, ol = !lit && (lat || sel);
+            if (y < 0 || y >= 52)
+                continue;
+            if (ol)
+                cv_rect(x, y, 118, 12, lat ? C_AMB : C_WHITE);
+            cv_rect(x + ol, y + ol, 118 - 2 * ol, 12 - 2 * ol, lit ? C_HI : C_BLOCK);
             t[0] = 0;
             int_text((int32_t)i + 1, t);
-            cv_text(x + 4, y + 1, &FONT_XS, OVL_NAME[i], lit ? C_BLACK : sel ? C_HI : C_GRAY);
-            cv_text(x + 54 - text_w(&FONT_T, t), y + 12, &FONT_T, t, lit ? C_BLACK : C_DIM);   /* its key */
-            cv_rect(x + 4, y + 18, 34, 2, lit ? C_BLOCK_HI : C_LINE);                         /* its amount */
-            cv_rect(x + 4, y + 18, (int32_t)set.ovl_amt[i] * 34 / 100, 2, lit ? C_BLACK : lat ? C_AMB : C_GRAY);
+            snd_text(x + 21, y + 1, t, 2, lit ? C_BLACK : C_DIM, 1, 0);                        /* its key */
+            snd_text(x + 27, y + 1, OVL_NAME[i], 2, lit ? C_BLACK : sel ? C_HI : C_GRAY, 0, 0);
+            cv_rect(x + 94, y + 4, 20, 4, lit ? C_BLOCK_HI : C_LINE);                         /* its amount */
+            cv_rect(x + 94, y + 4, (int32_t)set.ovl_amt[i] * 20 / 100, 4, lit ? C_BLACK : lat ? C_AMB : C_GRAY);
         }
         cv_blit(0, 88u + band * 52u);
     }

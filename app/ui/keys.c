@@ -3,8 +3,11 @@
  * app.c's unity: included there in order.) */
 
 /* ------------------------------------------------- the white keys' own loops --- */
-static const char *const KEY_KNOB[4] = {"LENGTH", "PITCH", "START", "MODE"};
-static const char *const SLX_KNOB[4] = {"EFFECT", "AMOUNT", "TONE", "LEVEL"};
+static const char *const KEY_KNOB[4] = {"LEN", "PITCH", "START", "MODE"};   /* (AFFINE, 2x: the foot's, LENGTH and
+                                          * EFFECT short there: snd_long) */
+static const char *const SLX_KNOB[4] = {"FX", "AMOUNT", "TONE", "LEVEL"};
+static const char *const KEY_MODE_S[BRK_KEY_MODES] = {"LOOP", "P-PONG", "REV", "1-SHOT"};   /* (2x: MODE's in the
+                                          * foot's 108 px; the header says BRK_KEY_MODE_NAME) */
 static const char *const SLX_TAG[BRK_SLX] = {"", "LP", "HP", "CR", "DR", "RM", "EC", "VB"};
 
 /* a key's other layer (a key held, FX): its slice's own effect, amount, tone (the filters' resonance, RING's mix)
@@ -42,7 +45,7 @@ static void slx_knob_turn(int key, int k, int32_t d)
         return;
     ui.key_turned = 1u;
     slx_knob_value(key, k, t);
-    app_say(SLX_KNOB[k], t);
+    app_say(snd_long(SLX_KNOB[k]), t);
     changed();
 }
 #define KEY_SHOW_MS 160u                 /* a key held this long (or a knob turned) takes the strip: taps don't */
@@ -103,7 +106,7 @@ static void key_knob_value(int key, int k, char *t)
     } else if (k == 2)
         pct_text((float)ks->start / 16.0f, t);
     else
-        text_cat(t, BRK_KEY_MODE_NAME[ks->mode % BRK_KEY_MODES]);
+        text_cat(t, KEY_MODE_S[ks->mode % BRK_KEY_MODES]);
 }
 
 static void key_knob_turn(int key, int k, int32_t d)
@@ -130,8 +133,12 @@ static void key_knob_turn(int key, int k, int32_t d)
         return;
     ui.key_turned = 1u;
     key_knob_value(key, k, t);
+    if (k == 3) {                        /* (the header: MODE's whole name) */
+        t[0] = 0;
+        text_cat(t, BRK_KEY_MODE_NAME[ks->mode % BRK_KEY_MODES]);
+    }
     n[0] = 0;
-    text_cat(n, KEY_KNOB[k]);
+    text_cat(n, snd_long(KEY_KNOB[k]));
     app_say(n, t);
     changed();
 }
@@ -162,11 +169,10 @@ static void key_window(const brk_break_t *b, int key, float *lo, float *w)   /* 
 static void draw_key_band(int key, const brk_status_t *st, uint32_t now, int32_t top)
 {
     const brk_break_t *b = brk_get_break();
-    const brk_keyset_t *ks = &set.keys[key & 15];
     char t[24], v[16];
     float lo, w, ph;
     uint32_t c, sig, len;
-    int32_t px = -1, x, live;
+    int32_t px = -1, live;
     (void)now;
     cv_begin(240, FX_BAND, C_BLACK);
     cv_oy = -top;                        /* (this band's rows of the picture) */
@@ -202,34 +208,14 @@ static void draw_key_band(int key, const brk_status_t *st, uint32_t now, int32_t
         if (rel >= 0.0f && rel < w)
             px = (int32_t)(rel / w * (float)KW_N);
     }
-    /* the title: KEY 5, its length and mode; on the right its pitch */
+    /* the title: KEY 5 (FX: its slice's effect layer); its length, pitch, start, mode, effect: the foot's (2x) */
     t[0] = 0;
     text_cat(t, "KEY ");
     int_text(key + 1, v);
     text_cat(t, v);
-    text_cat(t, " ");
-    if (ui.key_layer) {                  /* the effect layer: the slice's effect */
-        const brk_slicefx_t *sf = &set.slx[key & 15];
-        text_cat(t, "FX");
-        x = cv_text(6, 0, &FONT_B, t, C_HI);
-        t[0] = 0;
-        text_cat(t, BRK_SLX_NAME[sf->type < BRK_SLX ? sf->type : 0]);
-        if (sf->level < 100u) {
-            text_cat(t, "  LEVEL ");
-            pct_text((float)sf->level * 0.01f, v);
-            text_cat(t, v);
-        }
-        cv_text(x + 8, 4, &FONT_XS, t, sf->type ? C_AMB : C_GRAY);
-    } else {
-        sixteenths_text(BRK_KEY_SLICES[ks->len % BRK_KEY_LENS] * key_sps(b), v);
-        text_cat(t, v);
-        x = cv_text(6, 0, &FONT_B, t, C_HI);
-        cv_text(x + 8, 4, &FONT_XS, BRK_KEY_MODE_NAME[ks->mode % BRK_KEY_MODES], C_GRAY);
-    }
-    if (ks->pitch) {
-        key_knob_value(key, 1, v);
-        cv_text(234 - text_w(&FONT_T, v), 2, &FONT_T, v, C_AMB);
-    }
+    if (ui.key_layer)
+        text_cat(t, " FX");
+    snd_text(6, 3, t, 2, C_HI, 0, top);
     /* the window: played this repeat lit (from the right when backwards), the rest dim */
     for (c = 0; c < KW_N; c++) {
         int32_t h = key_px[c];

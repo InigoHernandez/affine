@@ -9,7 +9,8 @@
 static const uint8_t BOOM_PRE[BOOM_PRESETS] = {KICK_PRESET_808, KICK_PRESET_JUNGLE, KICK_PRESET_DUB, KICK_PRESET_TIGHT};
 #define BOOM_PARTS 2u
 static const char *const BOOM_PART[BOOM_PARTS] = {"BOOM", "SHAPE"};
-static const char *const BOOM_KNOB[BOOM_PARTS][4] = {{"PRESET", "TUNE", "DECAY", "LEVEL"},
+static const char *const BOOM_KNOB[BOOM_PARTS][4] = {{"PRE", "TUNE", "DEC", "LEVEL"},   /* (AFFINE, 2x: the foot's,
+                                          * PRESET and DECAY short there: snd_long) */
                                                      {"PUNCH", "CLICK", "DRIVE", "TONE"}};
 #define BOOM_NOTE_LO 23                  /* (TUNE: B0 .. F2 as MIDI notes, the SUB's 30..90 Hz) */
 #define BOOM_NOTE_HI 41
@@ -130,7 +131,7 @@ static void kick_knob_turn(int i, int32_t d)
     else                                 /* TUNE: a semitone a detent */
         boom_note_set(clamp(boom_note() + (d > 0 ? 1 : -1), BOOM_NOTE_LO, BOOM_NOTE_HI));
     kick_value(i, t);
-    app_say(kick_knob_name(i), t);
+    app_say(snd_long(kick_knob_name(i)), t);
     ui.redraw |= RG_BLOCKS | RG_FOOT;
     changed_kick();
 }
@@ -163,22 +164,22 @@ static void draw_drums(const brk_status_t *st)
             for (c = 0; c < DW; c++)
                 pk = drum_px[i][c] > pk ? drum_px[i][c] : pk;
             for (c = 0; c < DW && pk; c++)
-                drum_px[i][c] = (uint8_t)(drum_px[i][c] * 30u / pk);
+                drum_px[i][c] = (uint8_t)(drum_px[i][c] * 28u / pk);
         }
     }
     cv_begin(240, 52, C_BLACK);
-    for (i = 0; i < NDRUMS; i++) {
-        int32_t x = 1 + (int32_t)i * 48;
+    for (i = 0; i < NDRUMS; i++) {       /* (AFFINE, 2x: a box 58 wide, its name over its hit, its key under it) */
+        int32_t x = 1 + (int32_t)i * 60;
         int sel = i == ui.einst, hit = (st->playing && st->bar64 >= 0 &&
             (drum_now[i][st->bar64 >> 4 & 3] >> (st->bar64 & 15) & 1u)) ||
             (ui.aud_d == i && plat_ms() - ui.aud_t < 150u);   /* (LOAF BREAKER: or just played on its key) */
         char kn[2] = {(char)('1' + i), 0};
         uint16_t ink = hit ? C_BLACK : sel ? C_HI : C_GRAY;
-        cv_rect(x, 2, 46, 48, sel ? C_WHITE : C_LINE);
-        cv_rect(x + 1, 3, 44, 46, hit ? C_BLOCK_HI : C_BLACK);
-        cv_text(x + 5, 4, &FONT_T, DRUM_NAME[i], hit ? C_BLACK : sel ? C_HI : C_GRAY);
+        cv_rect(x, 2, 58, 48, sel ? C_WHITE : C_LINE);
+        cv_rect(x + 1, 3, 56, 46, hit ? C_BLOCK_HI : C_BLACK);
+        snd_text(x + 5, 7, DRUM_NAME[i], 2, hit ? C_BLACK : sel ? C_HI : C_GRAY, 0, 0);
         if (!st->playing)                /* (its key, to play it: stopped) */
-            cv_text(x + 42 - text_w(&FONT_T, kn), 37, &FONT_T, kn, hit ? C_BLACK : C_DIM);
+            snd_text(x + 53, 37, kn, 2, hit ? C_BLACK : C_DIM, 1, 0);
         cv_rect(x + 5, 33, DW, 1, hit ? C_BLACK : C_LINE);   /* the centre line, the hit mirrored about it */
         for (c = 0; c < DW; c++)
             if (drum_px[i][c])
@@ -187,74 +188,64 @@ static void draw_drums(const brk_status_t *st)
     cv_blit(0, 140);
 }
 
-/* BOOM's page (y 44..191): its hit drawn large over its level (its window the SUB's decay and a third, the decay
- * marked in amber), its preset, its note; the four sounds along the bottom (stopped: keys 1-4 play them); under it the
- * part's knobs as cards (the drums' big view's look) */
+/* the four sounds along the bottom of BOOM's page and the drums' big view (the picture's rows 124..141; the screen's
+ * 168..185, over the foot's): the one edited lit, the one just played on its key bright; stopped, its key (1-4) at
+ * the right. Their names as the tabs have them (2x) */
+#define DRUM_ROW_Y 124
+static void drum_row(const brk_status_t *st, uint32_t ed, int32_t top)
+{
+    static const char *const TAG[NDRUMS] = {"BOOM", "SN", "HH", "CP"};
+    uint32_t i;
+    for (i = 0; i < NDRUMS; i++) {
+        int32_t x = 1 + (int32_t)i * 60;
+        int sel = i == ed, hit = ui.aud_d == i && plat_ms() - ui.aud_t < 150u;
+        cv_rect(x, DRUM_ROW_Y, 58, 18, hit ? C_HI : sel ? C_BLOCK_HI : C_BLOCK);
+        snd_text(x + 4, DRUM_ROW_Y + 4, TAG[i], 2, hit ? C_BLACK : sel ? C_WHITE : C_GRAY, 0, top);
+        if (!st->playing) {
+            char kn[2] = {(char)('1' + i), 0};
+            snd_text(x + 55, DRUM_ROW_Y + 4, kn, 2, hit ? C_BLACK : C_DIM, 1, top);
+        }
+    }
+}
+
+/* BOOM's page (y 44..191; AFFINE, 2x): BOOM and its preset over its hit drawn large (its level dim, its wave over
+ * it; its window the SUB's decay and a third, the decay marked by an amber line), the four sounds along the bottom
+ * (stopped: keys 1-4 play them). Its knobs' names and values: the foot's (LOAF's cards gone with them) */
 #define KV_W 232u
+#define KV_MID 68                        /* the hit's centre line (the picture's rows: the screen's 44 on) */
+#define KV_H 42u                         /* and its height either side */
 static uint8_t kv_px[KV_W];              /* the hit's level, column by column */
 static int8_t kv_wave[KV_W];             /* and its wave (the pitch falling: the cycles stretching) */
 static uint32_t kv_sig = 1u, kv_t, kv_ms = 1000u;
 static uint8_t kv_pend;                  /* (a change not drawn yet: main.c draws it 100 ms on) */
+static void hit_picture(const uint8_t *px, const int8_t *wave, uint32_t n, float dms, uint32_t ms)
+{                                        /* (BOOM's and the drums': the level, the wave, the decay's line; 0: none) */
+    uint32_t i;
+    int32_t dx = 4 + (int32_t)(dms / (float)ms * (float)n);
+    cv_rect(4, KV_MID, (int32_t)n, 1, C_LINE);   /* (the middle) */
+    for (i = 0; i < n; i++) {
+        int32_t h = px ? px[i] : 0, w = wave ? wave[i] : 0;
+        if (h)
+            cv_rect(4 + (int32_t)i, KV_MID - h, 1, 2 * h + 1, C_BLOCK);
+        if (w > 0)
+            cv_rect(4 + (int32_t)i, KV_MID - w, 1, w, C_HI);
+        else if (w < 0)
+            cv_rect(4 + (int32_t)i, KV_MID + 1, 1, -w, C_HI);
+    }
+    if (dx < 4 + (int32_t)n) {           /* its DECAY, where it has gone (-40 dB) */
+        int32_t y;
+        for (y = KV_MID - (int32_t)KV_H - 6; y < KV_MID + (int32_t)KV_H + 8; y += 4)
+            cv_rect(dx, y, 1, 2, C_AMB);
+    }
+}
 static void boom_picture(const brk_status_t *st, int32_t top)
 {
-    uint32_t i;
-    float dms = kick_decay_ms(KL_SUB, set.kick.l[KL_SUB].decay);
-    int32_t dx = 4 + (int32_t)(dms / (float)kv_ms * (float)KV_W);
-    char t[24];
     cv_oy = -top;
-    cv_rect(4, 50, KV_W, 1, C_LINE);     /* (the middle) */
-    for (i = 0; i < KV_W; i++) {         /* the hit: its level (dim, mirrored), its wave over it */
-        int32_t h = kv_px[i], w = kv_wave[i];
-        if (h)
-            cv_rect(4 + (int32_t)i, 50 - h, 1, 2 * h + 1, C_BLOCK);
-        if (w > 0)
-            cv_rect(4 + (int32_t)i, 50 - w, 1, w, C_HI);
-        else if (w < 0)
-            cv_rect(4 + (int32_t)i, 51, 1, -w, C_HI);
-    }
-    if (dx < 4 + (int32_t)KV_W) {        /* its DECAY, where it has gone (-40 dB) */
-        int32_t y;
-        for (y = 18; y < 84; y += 4)
-            cv_rect(dx, y, 1, 2, C_AMB);
-        int_text((int32_t)(dms + 0.5f), t);
-        text_cat(t, " MS");
-        cv_text(dx + 3 < 200 ? dx + 3 : dx - 3 - text_w(&FONT_XS, t), 72, &FONT_XS, t, C_AMB);
-    }
-    t[0] = 0;                            /* BOOM 808, its note and Hz */
-    text_cat(t, "BOOM ");
-    text_cat(t, boom_pre_name());
-    cv_text(6, 2, &FONT_B, t, C_WHITE);
-    note_name(boom_note() - 48, t);
-    text_cat(t, "  ");
-    hz_text(boom_hz(), t + text_n(t));
-    cv_text(234 - text_w(&FONT_XS, t), 4, &FONT_XS, t, C_AMB);
-    for (i = 0; i < NDRUMS; i++) {       /* the four sounds, BOOM lit (stopped: key i + 1 plays it) */
-        int32_t x = 4 + (int32_t)i * 59;
-        int sel = i == DR_KICK, hit = ui.aud_d == i && plat_ms() - ui.aud_t < 150u;
-        cv_rect(x, 87, 55, 12, hit ? C_HI : sel ? C_BLOCK_HI : C_BLOCK);
-        cv_text(x + 3, 88, &FONT_T, DRUM_NAME[i], hit ? C_BLACK : sel ? C_WHITE : C_GRAY);
-        if (!st->playing) {
-            char kn[2] = {(char)('1' + i), 0};
-            cv_text(x + 52 - text_w(&FONT_T, kn), 88, &FONT_T, kn, hit ? C_BLACK : C_DIM);
-        }
-    }
+    hit_picture(kv_px, kv_wave, KV_W, kick_decay_ms(KL_SUB, set.kick.l[KL_SUB].decay), kv_ms);
+    snd_text(6, 4, "BOOM", 2, C_WHITE, 0, top);   /* BOOM, its preset */
+    snd_text(234, 4, boom_pre_name(), 2, C_AMB, 1, top);
+    drum_row(st, DR_KICK, top);
     cv_oy = 0;
-}
-static void boom_cards(void)             /* the part's four knobs: its name, its value large, its bar */
-{
-    uint32_t i;
-    char t[16];
-    cv_begin(240, 48, C_BLACK);
-    for (i = 0; i < 4u; i++) {
-        int32_t x = 2 + (int32_t)i * 60;
-        cv_rect(x, 0, 56, 46, C_BLOCK);
-        cv_text(x + 4, 3, &FONT_XS, kick_knob_name((int)i), C_GRAY);
-        kick_value((int)i, t);
-        cv_text(x + 4, 16, text_w(&FONT_B, t) <= 50 ? &FONT_B : &FONT_XS, t, C_WHITE);
-        cv_rect(x + 4, 38, 48, 3, C_BLACK);
-        cv_rect(x + 4, 38, (int32_t)(48.0f * brk_clampf(kick_knob_f((int)i), 0.0f, 1.0f) + 0.5f), 3, C_HI);
-    }
-    cv_blit(0, 144);
 }
 static void draw_kick(const brk_status_t *st)
 {
@@ -268,21 +259,20 @@ static void draw_kick(const brk_status_t *st)
         kv_t = plat_ms();
         kv_pend = 0u;
         kv_ms = (uint32_t)brk_clampf(kick_decay_ms(KL_SUB, set.kick.l[KL_SUB].decay) * 1.3f, 150.0f, 1600.0f);
-        kick_wave(&set.kick, kv_wave, KV_W, kv_ms, 34u);   /* (one pass: a column's level is its wave's size) */
+        kick_wave(&set.kick, kv_wave, KV_W, kv_ms, KV_H);   /* (one pass: a column's level is its wave's size) */
         for (top = 0; top < KV_W; top++) {
             kv_px[top] = (uint8_t)(kv_wave[top] < 0 ? -kv_wave[top] : kv_wave[top]);
             pk = kv_px[top] > pk ? kv_px[top] : pk;
         }
         for (top = 0; pk && top < KV_W; top++) {   /* (as tall as it goes) */
-            kv_px[top] = (uint8_t)((uint32_t)kv_px[top] * 34u / pk);
-            kv_wave[top] = (int8_t)((int32_t)kv_wave[top] * 34 / (int32_t)pk);
+            kv_px[top] = (uint8_t)((uint32_t)kv_px[top] * KV_H / pk);
+            kv_wave[top] = (int8_t)((int32_t)kv_wave[top] * (int32_t)KV_H / (int32_t)pk);
         }
     }
-    for (top = 0; top < 100u; top += 60u) {   /* (y 44..143, strips of 60 rows) */
-        uint32_t h = 100u - top < 60u ? 100u - top : 60u;
+    for (top = 0; top < 148u; top += 60u) {   /* (y 44..191, strips of 60 rows) */
+        uint32_t h = 148u - top < 60u ? 148u - top : 60u;
         cv_begin(240, h, C_BLACK);
         boom_picture(st, (int32_t)top);
         cv_blit(0, 44u + top);
     }
-    boom_cards();
 }
