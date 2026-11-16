@@ -406,7 +406,9 @@ static void reset_all(void)
     settings_defaults();
     if (n_bank)
         set.brk = (uint8_t)n_synth;      /* the bank's first break */
-    pat_defaults();
+    pat_defaults();                      /* (AFFINE, 16 Nov 2026: the drum steps' own settings too, steps.b) */
+    memset(dx.b, 0, sizeof dx.b);        /* (AFFINE, 16 Nov 2026: every group's snare, hat, clap bars 3 and 4, not the
+                                          * group in RAM's alone: written below as they were) */
     memset(fxr.s, 0, sizeof fxr.s);      /* (AFFINE: the black keys recorded: none) */
     fxr_dirty = 1u;
     if (ble_was_off)

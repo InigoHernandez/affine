@@ -931,6 +931,9 @@ static void pat_defaults(void)
         for (k = 0; k < NDRUMS_SAVED; k++)
             pats.hits[i][k] = 0u;
     }
+    memset(steps.b, 0, sizeof steps.b);  /* (AFFINE, 16 Nov 2026: the drum steps' own HITS, CHANCE, NUDGE, and the track
+                                          * items' breaks, with them: RESET ALL wrote the old ones into every group) */
+    memset(steps.tb, 0, sizeof steps.tb);
 }
 /* GLOUPI BREAKS: the kick over four bars (64 steps), bar b (0..3) 16 bits: lane[LANE_KICK], kick2, and bars 3 and 4
  * in the spare bytes of steps 0-3 (st[0..3][3], low byte first) */
