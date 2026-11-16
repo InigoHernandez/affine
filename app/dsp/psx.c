@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 /* AFFINE's PS1-era effects (psx.h). AFFINE's own code; the hardware's documented numbers come from psx-spx
- * (https://psx-spx.consoledev.net/: "SPU Reverb Examples", "Reverb Buffer Resampling", "CDROM XA-ADPCM"). */
+ * (https://psx-spx.consoledev.net/: "SPU Reverb Examples", "Reverb Buffer Resampling", "CDROM XA-ADPCM",
+ * "4-Point Gaussian Interpolation"). */
 #include "psx.h"
 #include "brk_math.h"
 
@@ -241,30 +242,189 @@ void psx_verb_process(const float *inl, const float *inr, float *outl, float *ou
 /* ======================================================================================= SPU GRIT and XA --- */
 /* the predictors (psx-spx, "XA-ADPCM": pos_xa_adpcm_table, neg_xa_adpcm_table; SPU-ADPCM has five, XA four) */
 static const int16_t PRED[5][2] = {{0, 0}, {60, 0}, {115, -52}, {98, -55}, {122, -60}};
-/* the interpolator: a four-term Nuttall window over four samples (psx-spx describes the console's "gaussian" table
- * as a four-term cosine window of the Nuttall family, normalised to 255/256): AFFINE computes its own from Nuttall's
- * coefficients (1981) at init. NUT[i] = w(i / 256), i = 0..512 (x = 0..2 samples from the centre) */
-static int16_t NUT[513];
-BRK_COLD static void nut_init(void)
+/* the interpolator: the SPU's four-point "gaussian" table, its 512 values as psx-spx lists them ("Sound Processing
+ * Unit (SPU)", "4-Point Gaussian Interpolation": documented numbers, copied from its text). With i the 8-bit fraction
+ * between the older and the old of four samples: out = gauss[0FFh - i] x oldest + gauss[1FFh - i] x older +
+ * gauss[100h + i] x old + gauss[000h + i] x new, each product SAR 15. Each four sum to 7F7Fh..7F81h, never past 8000h
+ * (psx-spx). AFFINE computed a four-term Nuttall window here before (within 55 of 59B3h everywhere: the sound moved
+ * 56-61 dB under the signal) */
+const int16_t PSX_GAUSS[512] = {
+    -0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,
+    0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x001,0x001,0x001,0x001,0x002,0x002,0x002,0x003,0x003,
+    0x003,0x004,0x004,0x005,0x005,0x006,0x007,0x007,0x008,0x009,0x009,0x00A,0x00B,0x00C,0x00D,0x00E,
+    0x00F,0x010,0x011,0x012,0x013,0x015,0x016,0x018,0x019,0x01B,0x01C,0x01E,0x020,0x021,0x023,0x025,
+    0x027,0x029,0x02C,0x02E,0x030,0x033,0x035,0x038,0x03A,0x03D,0x040,0x043,0x046,0x049,0x04D,0x050,
+    0x054,0x057,0x05B,0x05F,0x063,0x067,0x06B,0x06F,0x074,0x078,0x07D,0x082,0x087,0x08C,0x091,0x096,
+    0x09C,0x0A1,0x0A7,0x0AD,0x0B3,0x0BA,0x0C0,0x0C7,0x0CD,0x0D4,0x0DB,0x0E3,0x0EA,0x0F2,0x0FA,0x101,
+    0x10A,0x112,0x11B,0x123,0x12C,0x135,0x13F,0x148,0x152,0x15C,0x166,0x171,0x17B,0x186,0x191,0x19C,
+    0x1A8,0x1B4,0x1C0,0x1CC,0x1D9,0x1E5,0x1F2,0x200,0x20D,0x21B,0x229,0x237,0x246,0x255,0x264,0x273,
+    0x283,0x293,0x2A3,0x2B4,0x2C4,0x2D6,0x2E7,0x2F9,0x30B,0x31D,0x330,0x343,0x356,0x36A,0x37E,0x392,
+    0x3A7,0x3BC,0x3D1,0x3E7,0x3FC,0x413,0x42A,0x441,0x458,0x470,0x488,0x4A0,0x4B9,0x4D2,0x4EC,0x506,
+    0x520,0x53B,0x556,0x572,0x58E,0x5AA,0x5C7,0x5E4,0x601,0x61F,0x63E,0x65C,0x67C,0x69B,0x6BB,0x6DC,
+    0x6FD,0x71E,0x740,0x762,0x784,0x7A7,0x7CB,0x7EF,0x813,0x838,0x85D,0x883,0x8A9,0x8D0,0x8F7,0x91E,
+    0x946,0x96F,0x998,0x9C1,0x9EB,0xA16,0xA40,0xA6C,0xA98,0xAC4,0xAF1,0xB1E,0xB4C,0xB7A,0xBA9,0xBD8,
+    0xC07,0xC38,0xC68,0xC99,0xCCB,0xCFD,0xD30,0xD63,0xD97,0xDCB,0xE00,0xE35,0xE6B,0xEA1,0xED7,0xF0F,
+    0xF46,0xF7F,0xFB7,0xFF1,0x102A,0x1065,0x109F,0x10DB,0x1116,0x1153,0x118F,0x11CD,0x120B,0x1249,0x1288,0x12C7,
+    0x1307,0x1347,0x1388,0x13C9,0x140B,0x144D,0x1490,0x14D4,0x1517,0x155C,0x15A0,0x15E6,0x162C,0x1672,0x16B9,0x1700,
+    0x1747,0x1790,0x17D8,0x1821,0x186B,0x18B5,0x1900,0x194B,0x1996,0x19E2,0x1A2E,0x1A7B,0x1AC8,0x1B16,0x1B64,0x1BB3,
+    0x1C02,0x1C51,0x1CA1,0x1CF1,0x1D42,0x1D93,0x1DE5,0x1E37,0x1E89,0x1EDC,0x1F2F,0x1F82,0x1FD6,0x202A,0x207F,0x20D4,
+    0x2129,0x217F,0x21D5,0x222C,0x2282,0x22DA,0x2331,0x2389,0x23E1,0x2439,0x2492,0x24EB,0x2545,0x259E,0x25F8,0x2653,
+    0x26AD,0x2708,0x2763,0x27BE,0x281A,0x2876,0x28D2,0x292E,0x298B,0x29E7,0x2A44,0x2AA1,0x2AFF,0x2B5C,0x2BBA,0x2C18,
+    0x2C76,0x2CD4,0x2D33,0x2D91,0x2DF0,0x2E4F,0x2EAE,0x2F0D,0x2F6C,0x2FCC,0x302B,0x308B,0x30EA,0x314A,0x31AA,0x3209,
+    0x3269,0x32C9,0x3329,0x3389,0x33E9,0x3449,0x34A9,0x3509,0x3569,0x35C9,0x3629,0x3689,0x36E8,0x3748,0x37A8,0x3807,
+    0x3867,0x38C6,0x3926,0x3985,0x39E4,0x3A43,0x3AA2,0x3B00,0x3B5F,0x3BBD,0x3C1B,0x3C79,0x3CD7,0x3D35,0x3D92,0x3DEF,
+    0x3E4C,0x3EA9,0x3F05,0x3F62,0x3FBD,0x4019,0x4074,0x40D0,0x412A,0x4185,0x41DF,0x4239,0x4292,0x42EB,0x4344,0x439C,
+    0x43F4,0x444C,0x44A3,0x44FA,0x4550,0x45A6,0x45FC,0x4651,0x46A6,0x46FA,0x474E,0x47A1,0x47F4,0x4846,0x4898,0x48E9,
+    0x493A,0x498A,0x49D9,0x4A29,0x4A77,0x4AC5,0x4B13,0x4B5F,0x4BAC,0x4BF7,0x4C42,0x4C8D,0x4CD7,0x4D20,0x4D68,0x4DB0,
+    0x4DF7,0x4E3E,0x4E84,0x4EC9,0x4F0E,0x4F52,0x4F95,0x4FD7,0x5019,0x505A,0x509A,0x50DA,0x5118,0x5156,0x5194,0x51D0,
+    0x520C,0x5247,0x5281,0x52BA,0x52F3,0x532A,0x5361,0x5397,0x53CC,0x5401,0x5434,0x5467,0x5499,0x54CA,0x54FA,0x5529,
+    0x5558,0x5585,0x55B2,0x55DE,0x5609,0x5632,0x565B,0x5684,0x56AB,0x56D1,0x56F6,0x571B,0x573E,0x5761,0x5782,0x57A3,
+    0x57C3,0x57E2,0x57FF,0x581C,0x5838,0x5853,0x586D,0x5886,0x589E,0x58B5,0x58CB,0x58E0,0x58F4,0x5907,0x5919,0x592A,
+    0x593A,0x5949,0x5958,0x5965,0x5971,0x597C,0x5986,0x598F,0x5997,0x599E,0x59A4,0x59A9,0x59AD,0x59B0,0x59B2,0x59B3,
+};
+
+/* ---- the encoder (SPU-ADPCM and XA-ADPCM): one unit of 28 samples encoded and decoded at once ---- */
+/* the encoder's choices for a unit. CRUNCH (the colour stage's, AFFINE's) spoils them; at rest (ENC_CLEAN) they are
+ * the encoder as GRIT has always had it: every predictor ranked, the two best simulated, the finest shift that holds
+ * the residual's peak */
+typedef struct {
+    uint32_t nf;                         /* predictors it may use, 0..nf - 1 (5: SPU-ADPCM's all; CRUNCH: down to 2) */
+    uint32_t sim;                        /* 1: the two best simulated on the decoder's history; 0: the first ranked */
+    int32_t bias;                        /* shifts coarser than the peak needs (each: twice the step, +6 dB of grain) */
+    int32_t shmax;                       /* the finest shift allowed (12: a step of one LSB; less: quiet tails grain) */
+    int32_t trunc;                       /* 1: the residual truncated toward zero, not rounded (small ones lost) */
+} cd_enc_t;
+static const cd_enc_t ENC_CLEAN = {5u, 1u, 0, 12, 0};
+
+/* one unit of 28 through predictor f at shift sh: the console's decode of the nearest nibbles (step 2^(ex - sh)),
+ * written to out; the squared error back. o, oo: the decoder's history (old, older) before the unit */
+static float cd_try(const int16_t *blk, int32_t o, int32_t oo, uint32_t f, int32_t sh, int32_t ex, int32_t qmin,
+                    int32_t qmax, int32_t trunc, int16_t *out)
 {
-    uint32_t i;
-    const float a0 = 0.355768f, a1 = 0.487396f, a2 = 0.144232f, a3 = 0.012604f, sc = 8160.0f / 0.355768f;
-    for (i = 0; i <= 512u; i++) {
-        float x = (float)i / 256.0f;     /* cos(pi x / 2) = sin of a quarter turn past x / 4 */
-        float c1 = brk_sin_turns(0.25f + x * 0.25f), c2 = brk_sin_turns(0.25f + x * 0.5f),
-              c3 = brk_sin_turns(0.25f + x * 0.75f);
-        float w = sc * (a0 + a1 * c1 + a2 * c2 + a3 * c3);
-        NUT[i] = (int16_t)(w < 0.0f ? w - 0.5f : w + 0.5f);
+    int32_t k = ex - sh, hp, hn, f0 = PRED[f][0], f1 = PRED[f][1];
+    uint32_t j;
+    float err = 0.0f;
+    if (k < 0)
+        k = 0;
+    hp = hn = k ? 1 << (k - 1) : 0;      /* the nearest nibble (half a step added, then floored) */
+    if (trunc) {                         /* (CRUNCH: toward zero, as a cheap encoder: small residuals lost, no DC) */
+        hp = 0;
+        hn = (1 << k) - 1;
+    }
+    for (j = 0; j < 28u; j++) {
+        int32_t p = (o * f0 + oo * f1 + 32) >> 6, q = blk[j] - p, s, d;
+        q = (q + (q < 0 ? hn : hp)) >> k;
+        q = q < qmin ? qmin : q > qmax ? qmax : q;
+        s = sat16(((q * (1 << ex)) >> sh) + p);   /* (a multiply: a negative shifted left is undefined) */
+        d = s - blk[j];
+        err += (float)(d * d);
+        oo = o;
+        o = s;
+        out[j] = (int16_t)s;
+    }
+    return err;
+}
+
+/* one unit of 28 (blk) encoded and decoded into out: each allowed predictor's residual on the input ranked, the two
+ * best simulated at the finest shift that holds their peak (the decoder's own history: what the console would hear),
+ * the better one kept. h: the decoder's history (old, older), carried on. bits 2..4; xa8: XA's 8-bit mode (bytes
+ * shifted up by 8, else nibbles by 12); nfilt 5 SPU, 4 XA; filter 0 auto, 1..nfilt one forced */
+static void cd_unit(const int16_t *blk, int32_t *h, uint32_t bits, uint32_t xa8, uint32_t nfilt, uint32_t filter,
+                    const cd_enc_t *e, int16_t *out)
+{
+    int16_t tmp[28];
+    uint32_t f, f0 = 0, f1 = nfilt - 1u, j, cand[2] = {0, 0};
+    int32_t qmax = xa8 ? 127 : (1 << (bits - 1u)) - 1, qmin = -qmax - 1;
+    int32_t ex = xa8 ? 8 : 12;           /* the nibble (or byte) is shifted up by 12 (or 8) */
+    int32_t peak[5] = {0, 0, 0, 0, 0}, sh[2] = {12, 12};
+    float e0 = -1.0f, e1 = -1.0f, ea, eb;
+    if (filter && filter <= nfilt)
+        f0 = f1 = filter - 1u;
+    else if (e->nf < nfilt)
+        f1 = e->nf - 1u;                 /* (CRUNCH: the gentler predictors only) */
+    for (f = f0; f <= f1; f++) {         /* the residual's energy and peak on the input */
+        int32_t o = h[0], oo = h[1];
+        float en = 0.0f;
+        for (j = 0; j < 28u; j++) {
+            int32_t p = (o * PRED[f][0] + oo * PRED[f][1] + 32) >> 6, r = blk[j] - p;
+            en += (float)r * (float)r;
+            r = r < 0 ? -r : r;
+            if (r > peak[f])
+                peak[f] = r;
+            oo = o;
+            o = blk[j];
+        }
+        if (e0 < 0.0f || en < e0) {
+            e1 = e0; cand[1] = cand[0];
+            e0 = en; cand[0] = f;
+        } else if (e1 < 0.0f || en < e1) {
+            e1 = en; cand[1] = f;
+        }
+    }
+    if (e1 < 0.0f)
+        cand[1] = cand[0];
+    for (j = 0; j < 2u; j++) {           /* the finest shift whose largest nibble reaches the peak (CRUNCH: coarser) */
+        int32_t s;
+        for (s = 12; s > 0; s--)
+            if (((int32_t)qmax << ex >> s) >= peak[cand[j]])
+                break;
+        s -= e->bias;
+        sh[j] = s < 0 ? 0 : s > e->shmax ? e->shmax : s;
+    }
+    ea = cd_try(blk, h[0], h[1], cand[0], sh[0], ex, qmin, qmax, e->trunc, out);
+    if (e->sim && cand[1] != cand[0]) {
+        eb = cd_try(blk, h[0], h[1], cand[1], sh[1], ex, qmin, qmax, e->trunc, tmp);
+        if (eb < ea)
+            for (j = 0; j < 28u; j++)
+                out[j] = tmp[j];
+    }
+    h[0] = out[27];
+    h[1] = out[26];
+}
+
+/* CRUNCH 0..1 into one unit's choices, each a step at a time: a fraction is a chance (dice per unit), so the sound
+ * thickens smoothly as the knob turns. Up to 1: predictors 5 -> 2 (the strong low-frequency ones go first), the
+ * simulation gone by 0.5 (the first ranked kept), up to 2 shifts coarser (where the format has them: loud units are
+ * at its coarsest already), the finest shift 12 -> 4 (the smallest step 1 -> 256 LSB: quiet tails turn to grain,
+ * then gate) and the residual truncated toward zero instead of rounded (a cheap encoder's way; it reaches loud units
+ * too). Measured at 11.025 kHz (tests/engine/psx_color_demo.c), the codec's SNR at CRUNCH 0 / .25 / .5 / .75 / 1:
+ * the pad 34 / 26 / 22 / 15 / 10 dB, the break 29 / 22 / 18 / 15 / 13, the break 34 dB down 28 / 21 / 18 / 11 / 3 */
+static void crunch_enc(cd_enc_t *e, float c, uint32_t *rnd)
+{
+    int32_t v;
+    e->nf = (uint32_t)(5.0f - 3.0f * c + brk_randf(rnd));
+    e->nf = e->nf < 2u ? 2u : e->nf > 5u ? 5u : e->nf;
+    e->sim = brk_randf(rnd) >= 2.0f * c;
+    e->bias = (int32_t)(2.0f * c + brk_randf(rnd));
+    v = (int32_t)(12.0f - 8.0f * c + brk_randf(rnd));
+    e->shmax = v < 0 ? 0 : v > 12 ? 12 : v;
+    e->trunc = brk_randf(rnd) < c;
+}
+
+BRK_COLD void psx_adpcm_roundtrip(const int16_t *in, int16_t *out, uint32_t units, uint32_t bits, uint32_t filter,
+                                  float crunch)
+{
+    int32_t h[2] = {0, 0};
+    uint32_t u, rnd = 0x1234567u;
+    bits = bits < 2u ? 2u : bits > 4u ? 4u : bits;
+    for (u = 0; u < units; u++) {
+        cd_enc_t e = ENC_CLEAN;
+        if (crunch > 0.0f)
+            crunch_enc(&e, brk_clampf(crunch, 0.0f, 1.0f), &rnd);
+        cd_unit(in + 28u * u, h, bits, 0u, 5u, filter, &e, out + 28u * u);
     }
 }
 
+/* ---- XA: the CD audio codec (its own clock and playback, as before). (Its float clocks drift at 37.8 and 18.9 kHz:
+ * the playback position wanders against the decoder's within a minute and reads stale units; the colour stage's Q16
+ * clock below is the cure, kept out of XA for now) ---- */
 #define CD_RING 128u                     /* decoded samples, a power of two */
 typedef struct {
     float z[4];                          /* the anti-alias filter before the codec's rate: two SVF stages' states */
     float prev;                          /* the input sample before (the fractional sampling) */
     int16_t blk[28];                     /* the unit being gathered */
     uint32_t nb;
-    int32_t old, older;                  /* the decoder's history (the encoder runs it too: no drift) */
+    int32_t hist[2];                     /* the decoder's history, old and older (the encoder runs it too: no drift) */
     int16_t dec[CD_RING];
     uint32_t wpos;                       /* decoded samples written */
     float rpos;                          /* where playback reads, in decoded samples (trails wpos by ~1.3 units) */
@@ -276,89 +436,10 @@ typedef struct {
     float g, k1, k2;                     /* the anti-alias filter: 4th-order Butterworth at 0.45 x rate (TPT SVFs) */
     uint32_t bits, filter, nfilt, xa, stereo, on;
 } codec_t;
-static codec_t grit, xa;
-
-/* one unit of 28 through predictor f at shift sh: the console's decode of the nearest nibbles (step 2^(ex - sh));
- * the squared error back; write: the decoded samples into the ring and the history */
-static float cd_try(cd_ch_t *h, uint32_t f, int32_t sh, int32_t ex, int32_t qmin, int32_t qmax, int write)
-{
-    int32_t o = h->old, oo = h->older, k = ex - sh, half, f0 = PRED[f][0], f1 = PRED[f][1];
-    uint32_t j;
-    float err = 0.0f;
-    if (k < 0)
-        k = 0;
-    half = k ? 1 << (k - 1) : 0;
-    for (j = 0; j < 28u; j++) {
-        int32_t p = (o * f0 + oo * f1 + 32) >> 6, q = (h->blk[j] - p + half) >> k, s, d;
-        q = q < qmin ? qmin : q > qmax ? qmax : q;
-        s = sat16(((q * (1 << ex)) >> sh) + p);   /* (a multiply: a negative shifted left is undefined) */
-        d = s - h->blk[j];
-        err += (float)(d * d);
-        oo = o;
-        o = s;
-        if (write) {
-            h->dec[h->wpos & (CD_RING - 1u)] = (int16_t)s;
-            h->wpos++;
-        }
-    }
-    if (write) {
-        h->old = o;
-        h->older = oo;
-    }
-    return err;
-}
-
-/* one unit of 28: each predictor's residual on the input ranked, the two best simulated at the finest shift that
- * holds their peak (the decoder's own history: what the console would hear), the better one decoded into the ring */
-static void cd_unit(codec_t *c, cd_ch_t *h)
-{
-    uint32_t f, f0 = 0, f1 = c->nfilt - 1u, j, cand[2] = {0, 0};
-    int32_t qmax = c->xa && c->bits >= 8u ? 127 : (1 << (c->bits - 1u)) - 1, qmin = -qmax - 1;
-    int32_t ex = c->xa && c->bits >= 8u ? 8 : 12;   /* the nibble (or byte) is shifted up by 12 (or 8) */
-    int32_t peak[5] = {0, 0, 0, 0, 0}, sh[2] = {12, 12};
-    float en[5], e0 = -1.0f, e1 = -1.0f, ea, eb;
-    if (c->filter && c->filter <= c->nfilt)
-        f0 = f1 = c->filter - 1u;
-    for (f = f0; f <= f1; f++) {         /* the residual's energy and peak on the input */
-        int32_t o = h->old, oo = h->older;
-        float e = 0.0f;
-        for (j = 0; j < 28u; j++) {
-            int32_t p = (o * PRED[f][0] + oo * PRED[f][1] + 32) >> 6, r = h->blk[j] - p;
-            e += (float)r * (float)r;
-            r = r < 0 ? -r : r;
-            if (r > peak[f])
-                peak[f] = r;
-            oo = o;
-            o = h->blk[j];
-        }
-        en[f] = e;
-        if (e0 < 0.0f || e < e0) {
-            e1 = e0; cand[1] = cand[0];
-            e0 = e; cand[0] = f;
-        } else if (e1 < 0.0f || e < e1) {
-            e1 = e; cand[1] = f;
-        }
-    }
-    if (e1 < 0.0f)
-        cand[1] = cand[0];
-    for (j = 0; j < 2u; j++) {           /* the finest shift whose largest nibble reaches the peak */
-        int32_t s;
-        for (s = 12; s > 0; s--)
-            if (((int32_t)qmax << ex >> s) >= peak[cand[j]])
-                break;
-        sh[j] = s;
-    }
-    ea = cd_try(h, cand[0], sh[0], ex, qmin, qmax, 0);
-    eb = cand[1] != cand[0] ? cd_try(h, cand[1], sh[1], ex, qmin, qmax, 0) : ea;
-    j = eb < ea ? 1u : 0u;
-    cd_try(h, cand[j], sh[j], ex, qmin, qmax, 1);
-    (void)en;
-}
+static codec_t xa;
 
 static inline int32_t cd_at(const cd_ch_t *h, int32_t i) { return h->dec[(uint32_t)i & (CD_RING - 1u)]; }
 
-/* one input sample in, one output sample out (44.1 kHz both sides; the codec between them at its own rate). ph: where
- * the next codec sample falls after the input sample before, in input samples (cd_process advances it) */
 /* a TPT state-variable low-pass stage (Zavalishin's form): g = tan(pi fc / fs), k = 1 / Q */
 static inline float svf_lp(float *z, float x, float g, float k)
 {
@@ -368,6 +449,8 @@ static inline float svf_lp(float *z, float x, float g, float k)
     return lp;
 }
 
+/* one input sample in, one output sample out (44.1 kHz both sides; the codec between them at its own rate). ph: where
+ * the next codec sample falls after the input sample before, in input samples (cd_process advances it) */
 static float cd_sample(codec_t *c, cd_ch_t *h, float x, float ph)
 {
     int32_t i, a, b, d, e;
@@ -378,21 +461,24 @@ static float cd_sample(codec_t *c, cd_ch_t *h, float x, float ph)
     while (ph < 1.0f) {                  /* the codec's samples between the input before and this one */
         h->blk[h->nb++] = (int16_t)f2s(h->prev + (y - h->prev) * ph);
         if (h->nb == 28u) {
-            cd_unit(c, h);
+            int16_t o[28];
+            uint32_t j;
+            cd_unit(h->blk, h->hist, c->bits, c->xa && c->bits >= 8u, c->nfilt, c->filter, &ENC_CLEAN, o);
+            for (j = 0; j < 28u; j++)
+                h->dec[(h->wpos + j) & (CD_RING - 1u)] = o[j];
+            h->wpos += 28u;
             h->nb = 0;
         }
         ph += c->inv;
     }
     h->prev = y;
-    /* playback: four decoded samples; SPU through the cosine window (the voice's soft top), XA through a cubic
-     * (the CD decoder's interpolation is a long, flatter filter: psx-spx, "25-point Zigzag Interpolation") */
+    /* playback: four decoded samples through a cubic (the CD decoder's interpolation is a long, flatter filter:
+     * psx-spx, "25-point Zigzag Interpolation") */
     pos = h->rpos;
     i = (int32_t)pos;
     fr = (uint32_t)((pos - (float)i) * 256.0f);
     a = cd_at(h, i - 1); b = cd_at(h, i); d = cd_at(h, i + 1); e = cd_at(h, i + 2);
-    if (!c->xa) {
-        out = (float)(NUT[256u + fr] * a + NUT[fr] * b + NUT[256u - fr] * d + NUT[512u - fr] * e) * (1.0f / 32768.0f);
-    } else {                             /* Catmull-Rom */
+    {                                    /* Catmull-Rom */
         float t = (float)fr * (1.0f / 256.0f), fa = (float)a, fb = (float)b, fd = (float)d, fe = (float)e;
         out = fb + 0.5f * t * (fd - fa + t * (2.0f * fa - 5.0f * fb + 4.0f * fd - fe + t * (3.0f * (fb - fd) + fe - fa)));
     }
@@ -452,7 +538,7 @@ static void cd_clear(codec_t *c)
         cd_ch_t *h = &c->ch[k];
         h->z[0] = h->z[1] = h->z[2] = h->z[3] = h->prev = 0.0f;
         h->nb = 0;
-        h->old = h->older = 0;
+        h->hist[0] = h->hist[1] = 0;
         for (j = 0; j < CD_RING; j++)
             h->dec[j] = 0;
         h->wpos = 64u;                   /* (playback starts 64 decoded samples behind: past a whole unit) */
@@ -461,13 +547,266 @@ static void cd_clear(codec_t *c)
     c->ph = 0.0f;
 }
 
-void psx_grit_set(float rate, uint32_t bits, uint32_t filter) { cd_set(&grit, rate, bits, filter, 0u, 1u); }
-void psx_grit_process(float *l, float *r, uint32_t n, float mix) { cd_process(&grit, l, r, n, mix); }
 void psx_xa_set(uint32_t half_rate, uint32_t bits8, uint32_t stereo)
 {
     cd_set(&xa, half_rate ? 18900.0f : 37800.0f, bits8 ? 8u : 4u, 0u, 1u, stereo);
 }
 void psx_xa_process(float *l, float *r, uint32_t n, float mix) { cd_process(&xa, l, r, n, mix); }
+
+/* ---- the colour stage: GRIT grown into the PS1's sample sound (AFFINE's) ---- */
+/* The input taken down to the codec's rate (FILTERED: a 4th-order Butterworth at 0.45 x the rate first, as the
+ * console's samples were prepared; RAW: straight, its aliases kept, as some games had them), each 28 samples through
+ * the SPU-ADPCM round trip (or kept as 16-bit PCM: ADPCM off), played back at 44.1 kHz through the four-point
+ * interpolator. One clock drives both sides: codec samples in Q16, the playback CL_LEAD samples behind the newest
+ * whatever the rate, so it never drifts (GRIT's old float clocks did at 16, 32 and 37.8 kHz: the playback wandered
+ * through its ring within a minute); a new rate glides in; the dry is delayed by the same latency for the mix. */
+const char *const PSXC_RATE_NAME[PSXC_RATES] = {"GRIT", "44.1K", "22K", "11K", "8K"};
+const float PSXC_RATE_HZ[PSXC_RATES] = {0.0f, 44100.0f, 22050.0f, 11025.0f, 8000.0f};
+#define CL_ONE (1u << 16)                /* one codec sample on the clock (Q16) */
+#define CL_RING 64u                      /* decoded samples, a power of two that divides 65536 (the clock's wrap) */
+#define CL_LEAD 32                       /* playback behind the clock: a unit (28) + the interpolator's reach (2) + 2 */
+#define CL_DRY 256u                      /* the dry's delay line, frames (8 kHz FILTERED's latency: 182) */
+#define CL_GLIDE 6.0f                    /* a rate change: latency moved a block at most (2.3 %, 25-110 ms) */
+#define CL_K1 (1.0f / 0.5412f)           /* the anti-alias filter: Butterworth, 4th order: Q 0.541 and 1.307 */
+#define CL_K2 (1.0f / 1.3066f)
+typedef struct {
+    float z[4];                          /* the anti-alias filter's states (two SVF stages) */
+    float prev;                          /* the input sample before (the fractional sampling) */
+    int32_t hist[2];                     /* the decoder's history (old, older) */
+    int16_t blk[28];                     /* the unit being gathered */
+    int16_t dec[CL_RING];                /* decoded samples, each at its codec index & (CL_RING - 1) */
+} cl_ch_t;
+static struct {
+    cl_ch_t ch[2];
+    uint32_t acc;                        /* the clock: codec samples, Q16 (wraps; the ring follows its low bits) */
+    uint32_t inc;                        /* codec samples per output sample, Q16 (11025 Hz: 4000h) */
+    uint32_t nb;                         /* samples gathered into the unit */
+    float iinc;                          /* 1 / inc: a codec sample's place between two input samples */
+    float g, aad;                        /* the anti-alias filter (g = tan(pi fc / fs)); its delay at DC, samples */
+    float raw_s, mix_s, fade, smooth_s;  /* RAW (0 filtered .. 1 raw), the mix, the bus's fade in, SMOOTH: eased */
+    uint32_t dlat, dw, fresh, run;       /* the dry's delay (frames), its write place; 1: just cleared; the bus's */
+    uint32_t bits, filter, adpcm, rnd;
+    float crunch;
+    float dry[CL_DRY][2];
+} cl;
+static volatile float p_grate = 22050.0f, p_crunch, p_csmooth = 1.0f;
+static volatile uint32_t p_gbits = 4u, p_gfilt, p_crate, p_craw, p_cadpcm = 1u;
+
+void psx_grit_set(float rate, uint32_t bits, uint32_t filter)
+{
+    p_grate = rate;
+    p_gbits = bits < 2u ? 2u : bits > 4u ? 4u : bits;
+    p_gfilt = filter;
+}
+void psx_color_set(uint32_t rate, uint32_t raw, uint32_t adpcm, float crunch, float smooth)
+{
+    p_crate = rate < PSXC_RATES ? rate : 0u;
+    p_craw = raw ? 1u : 0u;
+    p_cadpcm = adpcm ? 1u : 0u;
+    p_crunch = brk_clampf(crunch, 0.0f, 1.0f);
+    p_csmooth = brk_clampf(smooth, 0.0f, 1.0f);
+}
+
+BRK_COLD static void cl_clear(void)
+{
+    uint8_t *z = (uint8_t *)&cl;
+    uint32_t i;
+    for (i = 0; i < sizeof cl; i++)
+        z[i] = 0u;
+    cl.fresh = 1u;
+    cl.rnd = 0x1234567u;
+}
+
+/* the latency: the playback behind the clock (CL_LEAD codec samples), the input's sample before, the filter's delay */
+static float cl_latency(uint32_t raw) { return (float)CL_LEAD * 65536.0f * cl.iinc + 1.0f + (raw ? 0.0f : cl.aad); }
+float psx_color_latency(void) { return cl.inc ? cl_latency(p_craw) : 0.0f; }
+
+BRK_COLD static void cl_block(void)
+{
+    uint32_t ri = p_crate, inc;
+    float hz = brk_clampf(ri ? PSXC_RATE_HZ[ri] : p_grate, 2000.0f, 44100.0f);
+    inc = (uint32_t)(hz * (65536.0f / 44100.0f) + 0.5f);
+    if (cl.inc && inc != cl.inc) {       /* a new rate eases in: the latency moves CL_GLIDE samples a block at most */
+        float lt = (float)CL_LEAD * 65536.0f / (float)inc, lc = (float)CL_LEAD * 65536.0f * cl.iinc;
+        if (lt > lc + CL_GLIDE)
+            lt = lc + CL_GLIDE;
+        else if (lt < lc - CL_GLIDE)
+            lt = lc - CL_GLIDE;
+        else
+            lt = 0.0f;
+        if (lt > 0.0f) {                 /* (on the way: the rate and its filter between the two) */
+            inc = (uint32_t)((float)CL_LEAD * 65536.0f / lt + 0.5f);
+            hz = (float)inc * (44100.0f / 65536.0f);
+        }
+    }
+    if (inc != cl.inc) {
+        cl.inc = inc;
+        cl.iinc = 1.0f / (float)inc;
+        cl.g = brk_tan_pi(brk_clampf(0.45f * hz, 1000.0f, 19000.0f) / 44100.0f);
+        cl.aad = (CL_K1 + CL_K2) / (2.0f * cl.g);   /* (a bilinear low-pass's delay at DC: sum of 1/Q over 2g) */
+    }
+    cl.bits = p_gbits;
+    cl.filter = p_gfilt;
+    cl.adpcm = p_cadpcm;
+    cl.crunch = p_crunch;
+}
+
+/* a unit gathered (k: the codec index of its last sample): through the round trip (or kept), into the ring */
+static void cl_unit(uint32_t k)
+{
+    cd_enc_t e = ENC_CLEAN;
+    int16_t out[28];
+    uint32_t c, j, base = k - 27u;
+    if (cl.crunch > 0.0f && cl.adpcm)
+        crunch_enc(&e, cl.crunch, &cl.rnd);
+    for (c = 0; c < 2u; c++) {
+        cl_ch_t *h = &cl.ch[c];
+        if (cl.adpcm) {
+            cd_unit(h->blk, h->hist, cl.bits, 0u, 5u, cl.filter, &e, out);
+        } else {                         /* (16-bit PCM; the history follows, ready for the codec's return) */
+            for (j = 0; j < 28u; j++)
+                out[j] = h->blk[j];
+            h->hist[0] = out[27];
+            h->hist[1] = out[26];
+        }
+        for (j = 0; j < 28u; j++)
+            h->dec[(base + j) & (CL_RING - 1u)] = out[j];
+    }
+}
+
+/* playback at i + fr / 256 (fr: 8 bits, as the SPU's pitch counter gives its table). SMOOTH sm: 1 the SPU's gaussian
+ * (its table, its maths: the soft, dull top), 0.5 linear, 0 the nearest sample (no interpolation: the images left
+ * above the rate, bright and metallic); between, the two neighbours blended */
+static inline float cl_play(const int16_t *dec, int32_t i, uint32_t fr, float sm)
+{
+    int32_t b = dec[(uint32_t)i & (CL_RING - 1u)], d = dec[(uint32_t)(i + 1) & (CL_RING - 1u)];
+    float lin, g, nr;
+    if (sm > 0.5f) {                     /* (the gaussian: the oldest, older, old, new samples) */
+        int32_t a = dec[(uint32_t)(i - 1) & (CL_RING - 1u)], e = dec[(uint32_t)(i + 2) & (CL_RING - 1u)];
+        g = (float)(((PSX_GAUSS[0xFFu - fr] * a) >> 15) + ((PSX_GAUSS[0x1FFu - fr] * b) >> 15) +
+                    ((PSX_GAUSS[0x100u + fr] * d) >> 15) + ((PSX_GAUSS[fr] * e) >> 15));
+        if (sm >= 1.0f)
+            return g * S2F;
+        lin = (float)b + (float)((d - b) * (int32_t)fr) * (1.0f / 256.0f);
+        return (lin + (g - lin) * (2.0f * sm - 1.0f)) * S2F;
+    }
+    lin = (float)b + (float)((d - b) * (int32_t)fr) * (1.0f / 256.0f);
+    if (sm >= 0.5f)
+        return lin * S2F;
+    nr = (float)(fr < 128u ? b : d);
+    return (nr + (lin - nr) * (2.0f * sm)) * S2F;
+}
+
+/* the stage over a block, in place: mix 0..1 with the dry delayed to match; want: the bus's fade toward 1 (0: out) */
+static void cl_process(float *l, float *r, uint32_t n, float mix, uint32_t want)
+{
+    uint32_t i, inc, dl0, dl1, xf;
+    float iinc, g, dr, dm, df, ds, smooth = p_csmooth, rn = 1.0f / (float)(n ? n : 1u);
+    cl_block();
+    inc = cl.inc;
+    iinc = cl.iinc;
+    g = cl.g;
+    mix = brk_clampf(mix, 0.0f, 1.0f);
+    dl1 = (uint32_t)(cl_latency(p_craw) + 0.5f);
+    if (cl.fresh) {                      /* (just cleared: everything where it is set, nothing eased in) */
+        cl.raw_s = p_craw ? 1.0f : 0.0f;
+        cl.mix_s = mix;
+        cl.smooth_s = smooth;
+        cl.dlat = dl1;
+        cl.fresh = 0u;
+    }
+    dl0 = cl.dlat;
+    xf = dl0 != dl1;                     /* (the latency changed: the dry crossfades to its new delay over the block) */
+    dr = ((p_craw ? 1.0f : 0.0f) - cl.raw_s) * rn;
+    dm = (mix - cl.mix_s) * rn;
+    ds = (smooth - cl.smooth_s) * rn;
+    df = ((want ? 1.0f : 0.0f) - cl.fade) * rn;
+    if (cl.raw_s >= 1.0f && !p_craw) {
+        uint32_t c;                      /* (back to FILTERED: the filter, idle while RAW, starts where its input is) */
+        for (c = 0; c < 2u; c++) {
+            cl.ch[c].z[0] = cl.ch[c].z[2] = 0.0f;
+            cl.ch[c].z[1] = cl.ch[c].z[3] = cl.ch[c].prev;
+        }
+    }
+    {                                    /* (the block's state in locals: the float stores below could alias it) */
+        uint32_t acc = cl.acc, dw = cl.dw, nb = cl.nb;
+        float rs = cl.raw_s, m = cl.mix_s, sm = cl.smooth_s, f = cl.fade, p0 = cl.ch[0].prev, p1 = cl.ch[1].prev;
+        for (i = 0; i < n; i++) {
+            float x0 = l[i], x1 = r[i], y0 = x0, y1 = x1, w0, w1;
+            uint32_t a = acc, d = (0u - a) & (CL_ONE - 1u);
+            cl.dry[dw][0] = x0;
+            cl.dry[dw][1] = x1;
+            rs += dr;
+            m += dm;
+            sm += ds;
+            f += df;
+            if (rs < 1.0f) {             /* FILTERED, RAW, or between while it eases */
+                float f0 = svf_lp(&cl.ch[0].z[2], svf_lp(&cl.ch[0].z[0], x0, g, CL_K1), g, CL_K2),
+                      f1 = svf_lp(&cl.ch[1].z[2], svf_lp(&cl.ch[1].z[0], x1, g, CL_K1), g, CL_K2);
+                y0 = rs <= 0.0f ? f0 : f0 + (x0 - f0) * rs;
+                y1 = rs <= 0.0f ? f1 : f1 + (x1 - f1) * rs;
+            }
+            while (d < inc) {            /* the codec's samples between the input before and this one */
+                float ph = (float)d * iinc;
+                cl.ch[0].blk[nb] = (int16_t)f2s(p0 + (y0 - p0) * ph);
+                cl.ch[1].blk[nb] = (int16_t)f2s(p1 + (y1 - p1) * ph);
+                if (++nb == 28u) {
+                    cl_unit((a + d) >> 16);
+                    nb = 0;
+                }
+                d += CL_ONE;
+            }
+            p0 = y0;
+            p1 = y1;
+            {                            /* playback, CL_LEAD codec samples behind the clock */
+                int32_t pi = (int32_t)(a >> 16) - CL_LEAD;
+                uint32_t fr = (a >> 8) & 0xFFu;
+                w0 = cl_play(cl.ch[0].dec, pi, fr, sm);
+                w1 = cl_play(cl.ch[1].dec, pi, fr, sm);
+            }
+            acc = a + inc;
+            if (m < 1.0f || xf) {        /* the mix, against the dry delayed by the latency */
+                uint32_t q0 = (dw - dl0) & (CL_DRY - 1u);
+                float d0 = cl.dry[q0][0], d1 = cl.dry[q0][1];
+                if (xf) {
+                    uint32_t q1 = (dw - dl1) & (CL_DRY - 1u);
+                    float t = (float)(i + 1u) * rn;
+                    d0 += (cl.dry[q1][0] - d0) * t;
+                    d1 += (cl.dry[q1][1] - d1) * t;
+                }
+                if (m < 1.0f) {
+                    w0 = d0 + (w0 - d0) * m;
+                    w1 = d1 + (w1 - d1) * m;
+                }
+            }
+            if (f < 1.0f) {              /* the bus's fade: in from (or out to) the sound as it came */
+                w0 = x0 + (w0 - x0) * f;
+                w1 = x1 + (w1 - x1) * f;
+            }
+            l[i] = w0;
+            r[i] = w1;
+            dw = (dw + 1u) & (CL_DRY - 1u);
+        }
+        cl.acc = acc;
+        cl.dw = dw;
+        cl.nb = nb;
+        cl.ch[0].prev = p0;
+        cl.ch[1].prev = p1;
+    }
+    cl.raw_s = p_craw ? 1.0f : 0.0f;     /* (landed exactly) */
+    cl.mix_s = mix;
+    cl.smooth_s = smooth;
+    cl.fade = want ? 1.0f : 0.0f;
+    cl.dlat = dl1;
+}
+
+void psx_grit_process(float *l, float *r, uint32_t n, float mix)
+{
+    if (mix <= 0.0f)
+        return;
+    cl.fade = 1.0f;                      /* (called alone: no fade, the stage at once) */
+    cl_process(l, r, n, mix, 1u);
+}
 
 /* ================================================================================================== CRUSH --- */
 const char *const CRUSH_MODE_NAME[CRUSH_MODES] = {"TRUNC", "ROUND", "DITHER"};
@@ -709,13 +1048,25 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
     redux_s += (brk_clampf(bus.redux, 0.0f, 1.0f) - redux_s) * 0.3f;
     /* CODEC: the sound as the console's samples (rests first when the render runs over) */
     if (bus_shed >= 1u) {
-        /* (shed) */
-    } else if (bus.codec == CODEC_GRIT) {
-        psx_grit_set(bus.crate, bus.cbits, bus.cfilt);
-        psx_grit_process(l, r, n, bus.cmix);
-    } else if (bus.codec == CODEC_XA) {
-        psx_xa_set(bus.xhalf, 0u, bus.xstereo);
-        psx_xa_process(l, r, n, bus.cmix);
+        cl.run = 0u;                     /* (shed: GRIT stops at once, as before; back, it starts afresh) */
+    } else {
+        uint32_t want = bus.codec == CODEC_GRIT && bus.cmix > 0.0f;
+        if (want && !cl.run) {           /* GRIT on: cleared, a block run unheard (its latency filled), then faded in */
+            cl_clear();
+            cl.run = 1u;
+        }
+        if (cl.run) {                    /* (and off: faded out over a block, to the sound undelayed) */
+            psx_grit_set(bus.crate, bus.cbits, bus.cfilt);
+            cl_process(l, r, n, bus.cmix, want && cl.run == 2u);
+            if (cl.run == 1u)
+                cl.run = 2u;
+            else if (!want && cl.fade <= 0.0f)
+                cl.run = 0u;
+        }
+        if (bus.codec == CODEC_XA) {
+            psx_xa_set(bus.xhalf, 0u, bus.xstereo);
+            psx_xa_process(l, r, n, bus.cmix);
+        }
     }
     /* SPU VERB: what's sent in, the reverb added in place; it rests once nothing has gone in or come out for ~8 s */
     if (vb.wk && bus_shed < 3u) {
@@ -788,15 +1139,15 @@ static void verb_clear(void)            /* the work area, the resamplers, the ea
 
 BRK_COLD void psx_init(void)
 {
-    nut_init();
     verb_clear();
     verb_idle = 1000u;
     send_s = crush_s = redux_s = 0.0f;
     if (sk.ring)
         psx_skip_init(sk.ring, sk.frames);
-    cd_clear(&grit);
+    cl_clear();
     cd_clear(&xa);
     psx_grit_set(22050.0f, 4u, 0u);
+    psx_color_set(PSXC_RATE_GRIT, 0u, 1u, 0.0f, 1.0f);
     psx_xa_set(0u, 0u, 1u);
     psx_crush_set(16.0f, CRUSH_ROUND, 0.0f);
     psx_redux_set(44100.0f, REDUX_HARD, 0.0f);

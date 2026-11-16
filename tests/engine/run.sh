@@ -19,4 +19,13 @@ done
 # AFFINE: the PSX effects over a Cyberworm Amen (checks, then WAVs in OUTDIR: crush, redux, grit, xa, skip, verbs, tour)
 "$CC" -std=c99 -O2 -Wall -Iapp/dsp tests/engine/psx_demo.c "$OUT"/psx.o -lm -o "$OUT/psx_demo"
 "$OUT/psx_demo" breaks/huge/cw_amen_jungle.wav 175 "$OUT"
+# AFFINE: the colour stage (GRIT's path: rate, RAW, CRUNCH, SMOOTH): checks; PSX_COLOR_RENDERS=1 also writes the A/B
+# renders to build/review/psx_color/ (index.txt says what each is)
+"$CC" -std=c99 -O2 -Wall -Iapp/dsp tests/engine/psx_color_demo.c "$OUT"/psx.o -lm -o "$OUT/psx_color_demo"
+if [ -n "$PSX_COLOR_RENDERS" ]; then
+    mkdir -p build/review/psx_color
+    "$OUT/psx_color_demo" breaks/huge/cw_amen_jungle.wav build/review/psx_color
+else
+    "$OUT/psx_color_demo" breaks/huge/cw_amen_jungle.wav
+fi
 "$CC" -std=c99 -O2 -Wall -Iapp/dsp tests/engine/psx_bench.c "$OUT"/psx.o "$OUT"/brk_fx.o "$OUT"/brk.o "$OUT"/brk_synth.o "$OUT"/adpcm.o "$OUT"/brk_math.o -lm -o "$OUT/psx_bench"
