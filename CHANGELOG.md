@@ -4,6 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Site:** the FM-1's screen and the panel beside it one height in The chip and Perform; the waveform takes the
+  room left.
 - **Site:** the header's gem is HOME's, in 3D: a pointer on it throws it into a spin.
 - **Site:** no Skins section (the header's switch does it); the black keys' names fit their pills, in one row or
   two; no text past its box or the screen at any width (the numbers a size down in narrow tiles, shorter titles);

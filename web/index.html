@@ -14,7 +14,7 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <div class="rules" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -122,7 +122,7 @@
   <div class="chip">
     <ol class="chain" id="chain" aria-label="The PSX bus, in its order"></ol>
     <div class="chip__screen">
-      <figure class="scr scan"><canvas id="chip-scr" width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="The FM-1's PSX page"></canvas><figcaption id="chip-cap">EFFECTS › PSX</figcaption></figure>
+      <figure class="scr scan"><div class="scr__box"><canvas id="chip-scr" width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="The FM-1's PSX page"></canvas></div><figcaption id="chip-cap">EFFECTS › PSX</figcaption></figure>
     </div>
     <div class="chip__plate wipe">
       <div class="chip__head"><h3 id="chip-name">VERB</h3><span class="label cool" id="chip-tag">9 presets</span></div>
@@ -151,7 +151,7 @@
   </div>
   <div class="perf">
     <div class="perf__screen">
-      <figure class="scr scan"><canvas id="perf-scr" width="240" height="240" data-src="screens/home.png" role="img" aria-label="HOME on the FM-1"></canvas><figcaption id="perf-cap">HOME</figcaption></figure>
+      <figure class="scr scan"><div class="scr__box"><canvas id="perf-scr" width="240" height="240" data-src="screens/home.png" role="img" aria-label="HOME on the FM-1"></canvas></div><figcaption id="perf-cap">HOME</figcaption></figure>
     </div>
     <div class="perf__plate">
       <div class="perf__name"><h3 id="perf-name">HOME</h3><span class="label cool" id="perf-key">Hold a key</span></div>

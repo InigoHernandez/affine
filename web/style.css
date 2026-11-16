@@ -201,6 +201,22 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 .scr { margin: 0; min-width: 0; }
 .scr canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; border: 1px solid var(--line); background: var(--bg); }
 .scr figcaption { margin-top: var(--s1); font: var(--label); text-transform: uppercase; color: var(--gray); }
+/* beside a plate (02 the chip, 03 perform): the screen's card and the plate one height. The row is as tall as the taller;
+ * the plate's picture (the scope, the keys) takes what the plate has over, the screen's card its own ground around the
+ * screen; the caption under the card, so their bottoms line up */
+@media (min-width: 641px) {
+  .chip__screen, .chip__plate, .perf__screen, .perf__plate { align-self: stretch; }
+  .chip__screen, .perf__screen { display: flex; padding-bottom: var(--s4); }
+  .chip__screen .scr, .perf__screen .scr { position: relative; flex: 1; display: flex; flex-direction: column; }
+  .scr__box { flex: 1; display: flex; align-items: center; border: 1px solid var(--line); background: var(--bg); }
+  .scr__box canvas { border: 0; }
+  .chip__screen .scr figcaption, .perf__screen .scr figcaption { position: absolute; left: 0; top: 100%; }
+  .chip__plate { display: flex; flex-direction: column; margin-bottom: var(--s4); }
+  .chip__plate .scope { flex: 1 1 auto; min-height: 120px; }
+  .chip__plate #scope { position: absolute; inset: 0; height: 100%; }   /* (its own size never pushes the plate) */
+  .perf__plate { display: flex; flex-direction: column; margin-bottom: var(--s4); }
+  .perf__plate .bks { flex: 1 1 auto; align-content: center; }
+}
 
 /* 01 how to play: things to try, a name and its keys */
 .todo { grid-column: 1 / -1; list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gut); counter-reset: td; }
@@ -332,6 +348,7 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 /* narrower */
 @media (max-width: 1100px) {
   .bks { grid-template-columns: repeat(6, minmax(0, 1fr)); }   /* (two rows: each name fits its key) */
+  .knobs4 { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--s2); }
   .chain { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .stage__go { padding: var(--s1); }
   .stage__go i { display: none; }
