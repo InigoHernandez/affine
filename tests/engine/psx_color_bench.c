@@ -66,6 +66,42 @@ static void vhall2(void) { vhall(); psx_verb_input(2.0f); }
 static void vglide(void) { vhall(); verb_glide = 1u; }
 static void vspace(void) { psx_verb_set(PSXV_SPACE_ECHO, 0.8f, 1.0f, 0.3f, 0.0f); verb_glide = 0u; }
 static void xa18(void) { psx_xa_set(1u, 0u, 1u); }
+/* the whole bus as the firmware runs it (CODEC, SPU VERB, CRUSH, REDUX, SKIP, CONSOLE OUT), at 170 BPM, HOME's gestures
+ * at 0 unless a row sets them; preset -1: the bus at rest */
+static uint8_t skring[2u * PSX_SKIP_FRAMES];
+static double bus_cost(int preset, float console, int mono, float home_send)
+{
+    uint32_t b;
+    uint64_t a;
+    psx_bus_t bs;
+    psx_color_t c;
+    float spb = 44100.0f * 60.0f / 170.0f;
+    psx_verb_init(spu, PSXV_WORDS);
+    psx_skip_init(skring, PSX_SKIP_FRAMES);
+    psx_init();
+    psx_bus_defaults(&bs);
+    psx_color_defaults(&c);
+    if (preset >= 0)
+        psx_preset((uint32_t)preset, &bs, &c, 170.0f);
+    if (console >= 0.0f)
+        c.console = console;
+    c.mono = (uint8_t)mono;
+    bs.send = home_send;
+    psx_bus_set(&bs);
+    psx_bus_color(&c);
+    for (b = 0; b < 450u; b++) {         /* (past the 400 blocks SPU VERB runs after psx_init before it may rest) */
+        fill();
+        psx_bus_process(l, r, 0, N, (float)(b * N) / spb, spb);
+    }
+    a = instr();
+    for (b = 0; b < BLOCKS; b++) { fill(); psx_bus_process(l, r, 0, N, (float)((b + 450u) * N) / spb, spb); }
+    return (double)(instr() - a) / (BLOCKS * N) - fill_cost;
+}
+static void brow(const char *name, int preset, float console, int mono, float home_send)
+{
+    double c = bus_cost(preset, console, mono, home_send);
+    printf("  %-44s %6.0f   %4.1f %% of a core\n", name, c, 100.0 * c / 1570.0);
+}
 static void xa37m(void) { psx_xa_set(0u, 0u, 0u); }
 #endif
 static double per_sample(setup_fn setup, int xa, float mix)
@@ -134,6 +170,14 @@ int main(void)
     vrow("SPU VERB HALL, INPUT 2", vhall2);
     vrow("SPU VERB HALL, SIZE gliding all along", vglide);
     vrow("SPU VERB SPACE ECHO, TONE .3", vspace);
+    brow("the bus at rest (as an older save: all off)", -1, 0.0f, 0, 0.0f);
+    brow("CONSOLE OUT 0.5 alone (the bus otherwise at rest)", -1, 0.5f, 0, 0.0f);
+    brow("CONSOLE OUT 1 + MONO alone", -1, 1.0f, 1, 0.0f);
+    brow("the full chain: SUBTLE GLUE", PSXP_GLUE, -1.0f, 0, 0.0f);
+    brow("the full chain: PS1 PAD", PSXP_PAD, -1.0f, 0, 0.0f);
+    brow("the full chain: CRUNCHY TAIL", PSXP_TAIL, -1.0f, 0, 0.0f);
+    brow("the full chain: DUB ECHO PSX", PSXP_DUB, -1.0f, 0, 0.0f);
+    brow("SUBTLE GLUE + HOME's VERB 0.5 (ROOM sounding)", PSXP_GLUE, -1.0f, 0, 0.5f);
     row("RATE 44.1 kHz FILTERED, ADPCM off", r44f, 0, 1.0f);
     row("RATE 22.05 kHz FILTERED, ADPCM off", r22f, 0, 1.0f);
     row("RATE 11.025 kHz FILTERED, ADPCM off", r11f, 0, 1.0f);

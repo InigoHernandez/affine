@@ -39,7 +39,7 @@
                                           * compacted; LOAF BREAKER's "CHP7" and any other magic load the defaults) */
 /* From AFF1 on the settings only grow at the end: a shorter save (an older firmware's) loads into the front and the
  * fields after it keep their defaults (SET_SIZE_MIN: AFF1's size; an append keeps it). A change that isn't an append
- * needs a new magic (and loses the saves). Append new fields after pxv, before the KICK FX tail */
+ * needs a new magic (and loses the saves). Append new fields at the end (after pxc, the PSX colour: 16 Nov 2026) */
 typedef struct { perc_voice_t v[2]; float volume; } perc2_t;   /* LOAF BREAKER: the snare's and the hat's, as saves
                                           * have them (perc_t has every drum now) */
 typedef struct {
@@ -143,7 +143,12 @@ typedef struct {
     uint8_t grp_ours;                    /* AFFINE: bit g: pattern group g's objects were saved by AFFINE (LOAF BREAKER
                                           * and CHOPPAH write the same addresses, the same sizes: a size can't tell) */
     uint8_t rsv_aff[3];
-    /* (AFF1's last field: append new ones here, and move SET_SIZE_MIN on only with a new magic) */
+    /* (AFF1's first size ends here) */
+    psx_color_t pxc;                     /* AFFINE, 16 Nov 2026: the PSX colour (psx.h): COLOR's RATE, CRUNCH (and PCM),
+                                          * SMOOTH, AMOUNT; OUT's CONSOLE, MONO, SEND, INPUT; the last preset. 28 B; a
+                                          * save from before has none: the defaults, the sound as it was (GRIT at
+                                          * CODEC's RATE, AMOUNT 1, CONSOLE 0) */
+    /* (append new fields here, and move SET_SIZE_MIN on only with a new magic) */
 } settings_t;
 #define PX_OK 0xA5u
 #define BRKV_TAG 0xB0u
@@ -156,6 +161,8 @@ static float att_ms(uint32_t v) { return 0.1f * brk_exp2f_c((float)(v > 100u ? 1
 static float rel_ms(uint32_t v) { return 20.0f * brk_exp2f_c((float)(v > 100u ? 100u : v) * 0.0532f); }
 #define SET_SAVED sizeof(settings_t)    /* what SAVE writes and a load reads at most */
 #define SET_SIZE_MIN (offsetof(settings_t, pxv) + 1u)   /* the shortest save that loads: AFF1's first size */
+#define SET_SIZE_PXC offsetof(settings_t, pxc)   /* a save from before the PSX colour (16 Nov 2026) */
+_Static_assert(SET_SIZE_PXC % 4u == 0u && sizeof(psx_color_t) == 28u, "the PSX colour appended, no gap before it");
 _Static_assert(sizeof(settings_t) <= 3840u, "a store object holds 3840 bytes");
 static settings_t set;
 /* LOAF BREAKER (11 Nov 2026, FLEXOR): the black keys' functions, BKF_*: the eleven pads (brk.h PAD_*: FREEZE and DUB
@@ -278,6 +285,7 @@ static void settings_defaults(void)
         z[k] = 0u;
     set.magic = SET_MAGIC;
     psx_bus_defaults(&set.psx);          /* (AFFINE: the PSX bus at rest: the gestures at 0, SPACE ECHO waiting) */
+    psx_color_defaults(&set.pxc);        /* (the PSX colour as it was before it: AMOUNT 1, CONSOLE 0, GRIT's rate) */
     set.scrfx = 50u;                     /* (the screen effect's AMOUNT: half) */
     set.sfx_on = 0u;                     /* (the screen effects: none at the start and after RESET ALL; the site's
                                           * screenshots clean) */
@@ -372,6 +380,7 @@ static void psx_apply(void)
     if (crush_held && b.crush < 0.86f)
         b.crush = 0.86f;
     psx_bus_set(&b);
+    psx_bus_color(&set.pxc);             /* (the PSX colour: COLOR, OUT, AMOUNT) */
 }
 /* AFFINE: the PUNCH row's combos (BKC_0 + CB_*): each one's functions (bit BKF_*), its name (10 at most) and three
  * letters (the foot's EFFECT), and its settings while it sounds: only those of the functions it has (a key of the

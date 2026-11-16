@@ -53,7 +53,12 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
   GRIT is the colour stage (`psx_color_set`: rate, RAW/FILTERED, ADPCM, CRUNCH, SMOOTH) and XA runs on its Q16 clock
   (no drift); SPU VERB has INPUT (`psx_verb_input`: drives its 16-bit maths), a send that glides in each block, a type
   or a SIZE leap faded out and in, and SIZE knob moves gliding tick by tick (`verb_tick_glide`: fractional reads, write
-  heads that fill what they pass). Checks: `tests/engine/psx_color_demo.c`, `psx_color2_demo.c`; costs:
+  heads that fill what they pass). After SKIP, CONSOLE OUT (low-pass, DC blocker, MONO, a slight cubic clip). The colour's
+  own settings are `set.pxc` (psx_color_t, settings_t's tail since 16 Nov 2026: an older save loads its defaults, the
+  sound as before), sent by `psx_apply` (`psx_bus_color`): COLOR's RATE (RAW in its steps), CRUNCH (PCM below 0),
+  SMOOTH, AMOUNT (scales the codec's mix, CRUNCH, CONSOLE and SEND from 0 clean to 1 at their knobs), OUT's CONSOLE,
+  MONO, SEND, INPUT; `psx_preset` the four presets (PRESETS on the PSX page). Checks: `tests/engine/psx_color_demo.c`,
+  `psx_color2_demo.c` (`PSX_COLOR2_RENDERS=1` renders to build/review/psx_color2/), scenario `psxcolor`; costs:
   `psx_color_bench.c` (Mac instructions a sample with the FM-1's flags).
 - `app/ui/affont.c`: every page writes in AFFINE's pixel font (`app/aff_font.h`, CC BY-SA 4.0): macros route LOAF's
   `cv_text` / `text_w` to it (FONT_B 2x; FONT_T, FONT_XS 1x). New text: use `aff_text` / `aff_knob_cell`.
@@ -62,7 +67,8 @@ The owner's lessons from MONO2K and Demake: `../FM1-FIRMWARE-HANDBOOK.md`. Add t
   SETTINGS K2. The foot on every page is HOME's panel (main.c `draw_foot`).
 - Skins (common.c): AFFINE's five, POLYGON first; `C_BLACK` is the skin's ground inside the UI.
 - `tools/contact_sheet.py NAMES`: the simulator's screenshots side by side (after `sh tests/scenarios.sh`).
-- `app/ui/psxp.c`: the PSX page (EFFECTS, SELECT past the slots: `ui.fx_focus == BRK_FX_SLOTS`).
+- `app/ui/psxp.c`: the PSX page (EFFECTS, SELECT past the slots: `ui.fx_focus == BRK_FX_SLOTS`): six parts on ALGORITHM
+  (VERB, CODEC, COLOR, LOFI, SKIP, OUT), PRESETS the four presets; its text through `pp_text` (the host's audit sees it).
 - BOOM (LOAF's kick stripped): `app/dsp/kick.c` and `app/ui/kick.c`.
 - Tests: `./build.sh test` (engine + PSX checks), `sh tests/scenarios.sh` (every host scenario; 8 inherited
   failures listed as KNOWN in it), `tests/look/home.c` (HOME drawn off the device).

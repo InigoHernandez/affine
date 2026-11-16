@@ -1531,7 +1531,8 @@ static void input(void)
             pattern_pick(d);             /* SEL held: the pattern, on any page (AFFINE: HOME's SEL + PRESETS, LOAF
                                           * BREAKER's KICK 1-20, gone) */
         else if (k == EN_PRESET && FX_PSX())
-            psxp_turn(0, d);             /* (AFFINE: the part's first choice: the verb's type, the codec ...) */
+            psxp_preset_turn(d);         /* (AFFINE: the PSX presets, every stage at once; the part's first choice
+                                          * before, 16 Nov 2026) */
         else if (k == EN_PRESET && ui.page == PG_FX)
             fx_type_turn(d);   /* the focused slot's effect (LOAF
                                           * BREAKER: BEGINNER, a whole scene) */
@@ -1914,7 +1915,7 @@ static void draw_help(void)
                                         {"+SELECT", "FILTER"}};   /* (LOAF BREAKER 0.201: SEL + a button, one table: its
                                           * domain's second function; AFFINE: LOAF's "NEXT SOURCE", "COPY / PASTE",
                                           * "BUILD / DROP", "DRUM FILTER" in a word) */
-    static const char *const P[10][3][2] = {   /* (AFFINE: three a page; LOAF's fourth lines gone: a knob the foot names,
+    static const char *const P[11][3][2] = {   /* (AFFINE: three a page; LOAF's fourth lines gone: a knob the foot names,
                                           * SEL + SAVE's UNDO again, MIXER's "LFO + K: LEVELS ANYWHERE", ...) */
         {{"ALGO", "BOOM / SHAPE"}, {"PRESETS", "808 JUNGLE DUB.."}, {"SELECT", "NEXT SOUND"}},   /* (AFFINE: BOOM) */
         {{"EDIT HELD", "BIG / CLASSIC"}, {"PRESETS", "ITS MEMORIES"}, {"+ARP", "COPY DRUM"}},   /* (AFFINE: SEL + ARP's
@@ -1926,9 +1927,10 @@ static void draw_help(void)
         {{"SETUP K3", "BEGINNER/EXPERT"}, {"RESET", "PART BY PART"}, {"SEL X2", "SEL LOCKED, LIT"}},
         {{"PRESETS", "THE PATTERN"}, {"ALGO", "THE BREAK"}, {"SELECT", "THE TEMPO"}},
         {{"ALGO", "THE BREAK"}, {"K1-K3", "PITCH GRAIN SNAP"}, {"+EDIT", "BOOM"}},
-        {{"ARP", "FILL (LATCH)"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}}};
+        {{"ARP", "FILL (LATCH)"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}},
+        {{"PRESETS", "PSX PRESETS"}, {"ALGO", "ITS PARTS"}, {"SELECT", "THE SLOTS"}}};   /* (AFFINE: the PSX page) */
     uint32_t i, row[2] = {0u, 0u}, w = ui.page == PG_KICK ? 0u : ui.page == PG_PERC ? 1u : ui.page == PG_SEQ ? 2u
-                    : ui.page == PG_FX ? 3u : ui.page == PG_TRACK ? 4u : ui.page == PG_MIX ? 5u : ui.page == PG_GLOBAL &&
+                    : FX_PSX() ? 10u : ui.page == PG_FX ? 3u : ui.page == PG_TRACK ? 4u : ui.page == PG_MIX ? 5u : ui.page == PG_GLOBAL &&
                     ui.gpage == GP_BREAK ? 8u : ui.page == PG_GLOBAL && ui.gpage == GP_FILL ? 9u : ui.page == PG_GLOBAL
                     ? 6u : 7u;
     int32_t kw = 0;
@@ -3572,6 +3574,12 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
         set.bkeys.bk[1] = (uint8_t)atoi(a);
         return 1;
     }
+    if (!strcmp(cmd, "store_old")) {     /* store_old: the settings saved as a firmware before the PSX colour wrote them
+                                          * (AFFINE, 16 Nov 2026: SET_SIZE_PXC bytes, the colour's not in them) */
+        (void)plat_store_save(OBJ_SETTINGS, &set, SET_SIZE_PXC);
+        printf("  settings saved short: %u of %u bytes\n", (unsigned)SET_SIZE_PXC, (unsigned)SET_SAVED);
+        return 1;
+    }
     if (!strcmp(cmd, "store_foreign")) { /* store_foreign: the settings saved under another firmware's magic (LOAF
                                           * BREAKER's "CHP7"), the rest of the store left: a reboot reads none of it */
         static settings_t fs;
@@ -3609,7 +3617,9 @@ int app_expect(const char *what, int *got)
                                     "arp_bits", "bk_arpfx", "kit", "psmp", "gate", "crush", "redux", "send", "vtype",
                                     "codec", "skchance", "row", "fheld", "psx_held", "kil", "cmb", "fx_wet",
                                     "pitch", "fxr_lo", "fxr_hi", "fxr_c", "rplay", "dj_now", "roll_div", "rec",
-                                    "bk_mute", "cmb_lit"};   /* (AFFINE: the gate, the PSX bus, x100; the black keys'
+                                    "bk_mute", "cmb_lit", "pp_part", "px_rate", "px_crunch", "px_smooth", "px_amount",
+                                    "px_console", "px_mono", "px_send", "px_input", "px_preset", "cmix", "vsize",
+                                    "vtone", "vdepth", "cbits"};   /* (AFFINE: the gate, the PSX bus, x100; the black keys'
                                           * row, the functions held (bit BKF_*), VRB SKP CRS held (bits 0-2), BOOM
                                           * quiet, the combo's settings in, the FX fader, the pitch, the steps recorded
                                           * (1-16, 17-32), the first one's code (-1 none), the code playing (-1 none),
@@ -3782,6 +3792,21 @@ int app_expect(const char *what, int *got)
     v[n++] = ui.rec;
     v[n++] = bk_mute;
     v[n++] = cmb_act;
+    v[n++] = pp_part;                    /* (AFFINE: the PSX page's part; the PSX colour x100, CRUNCH -1 for PCM) */
+    v[n++] = set.pxc.rate;
+    v[n++] = set.pxc.adpcm ? (int)(set.pxc.crunch * 100.0f + 0.5f) : -1;
+    v[n++] = (int)(set.pxc.smooth * 100.0f + 0.5f);
+    v[n++] = (int)(set.pxc.amount * 100.0f + 0.5f);
+    v[n++] = (int)(set.pxc.console * 100.0f + 0.5f);
+    v[n++] = set.pxc.mono;
+    v[n++] = (int)(set.pxc.vsend * 100.0f + 0.5f);
+    v[n++] = (int)(set.pxc.vinput * 100.0f + 0.5f);
+    v[n++] = set.pxc.preset;
+    v[n++] = (int)(set.psx.cmix * 100.0f + 0.5f);
+    v[n++] = (int)(set.psx.vsize * 100.0f + 0.5f);
+    v[n++] = (int)(set.psx.vtone * 100.0f + 0.5f);
+    v[n++] = (int)(set.psx.vdepth * 100.0f + 0.5f);
+    v[n++] = set.psx.cbits;
     for (i = 0; i < n; i++)
         if (!strcmp(what, W[i])) {
             *got = v[i];

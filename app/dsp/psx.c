@@ -1208,7 +1208,10 @@ void psx_skip_process(float *l, float *r, uint32_t n, float beat, float spb, flo
 const char *const CODEC_NAME[CODECS] = {"OFF", "GRIT", "XA"};
 static volatile psx_bus_t p_bus;
 static psx_bus_t bus;                    /* the render's copy */
+static volatile psx_color_t p_col;
+static psx_color_t col;                  /* the render's copy */
 static float send_s, crush_s, redux_s;   /* the gestures, eased per block (no steps heard) */
+static float xsend_s;                    /* SEND (the PSX's own, x AMOUNT), eased per block */
 static float vgain_s;                    /* the send into SPU VERB at the last block's end (each block glides from it) */
 static uint32_t verb_idle = 1000u;       /* blocks with nothing in or out of SPU VERB (it rests: no CPU spent) */
 
@@ -1234,6 +1237,149 @@ BRK_COLD void psx_bus_defaults(psx_bus_t *b)
     b->skmix = 1.0f;
 }
 void psx_bus_set(const psx_bus_t *b) { *(psx_bus_t *)&p_bus = *b; }
+
+/* ------------------------------------------------------------------------------- the colour's settings --- */
+const char *const PSXR_NAME[PSXR_N] = {"GRIT", "44K", "22K", "22K RAW", "11K", "11K RAW", "8K", "8K RAW"};
+static const uint8_t PSXR_C[PSXR_N] = {PSXC_RATE_GRIT, PSXC_RATE_44K, PSXC_RATE_22K, PSXC_RATE_22K, PSXC_RATE_11K,
+                                       PSXC_RATE_11K, PSXC_RATE_8K, PSXC_RATE_8K};
+uint32_t psxr_rate(uint32_t r) { return PSXR_C[r < PSXR_N ? r : 0u]; }
+uint32_t psxr_raw(uint32_t r) { return r == PSXR_22K_RAW || r == PSXR_11K_RAW || r == PSXR_8K_RAW; }
+BRK_COLD void psx_color_defaults(psx_color_t *c)
+{
+    c->rate = PSXR_GRIT;
+    c->adpcm = 1u;
+    c->mono = 0u;
+    c->preset = 0u;
+    c->crunch = 0.0f;
+    c->smooth = 1.0f;
+    c->amount = 1.0f;
+    c->console = 0.0f;
+    c->vsend = 0.0f;
+    c->vinput = 1.0f;
+}
+void psx_bus_color(const psx_color_t *c) { *(psx_color_t *)&p_col = *c; }
+
+/* ------------------------------------------------------------------------------------------ CONSOLE OUT --- */
+#define CO_DC_R 0.998575f                /* the DC blocker's pole: 1 - 2 pi 10 Hz / 44.1 kHz */
+static struct {
+    float a, w;                          /* the amount and the width (1 stereo .. 0 MONO), where the last block left them */
+    float lp[2][2], dx[2], dy[2];        /* the low-pass's two one-poles, the DC blocker's last in and out, each side */
+    uint32_t byp;                        /* 1: at rest (flat, stereo): passed by, its states to start afresh */
+} co = {0.0f, 1.0f, {{0.0f, 0.0f}, {0.0f, 0.0f}}, {0.0f, 0.0f}, {0.0f, 0.0f}, 1u};
+float psx_console_hz(float amount) { return 20000.0f * brk_exp2f(-1.3219f * brk_clampf(amount, 0.0f, 1.0f)); }
+float psx_console_clip(float x, float amount)
+{
+    float c = 0.1f * brk_clampf(amount, 0.0f, 1.0f);
+    x = brk_clampf(x, -1.5f, 1.5f);      /* (the cubic rises all the way there: 1 - 3c x^2 > 0) */
+    return x - c * x * x * x;
+}
+static float co_g(float a)               /* the one-pole's coefficient at the amount's cutoff (TPT: G = g / (1 + g)) */
+{
+    float t = brk_tan_pi(psx_console_hz(a) / 44100.0f);
+    return t / (1.0f + t);
+}
+static void console_process(float *l, float *r, uint32_t n, float amount, uint32_t mono)
+{
+    float a = co.a, a1 = brk_clampf(amount, 0.0f, 1.0f), w = co.w, wt = mono ? 0.0f : 1.0f, w1, rn, g, dg, da, dw;
+    uint32_t i, ch;
+    w1 = w + brk_clampf(wt - w, -0.25f, 0.25f);   /* (MONO in or out over four blocks) */
+    if (a <= 0.0f && a1 <= 0.0f && w >= 1.0f && w1 >= 1.0f) {
+        co.byp = 1u;
+        return;
+    }
+    if (co.byp && n) {                   /* (from rest: the filters start where the sound is) */
+        for (ch = 0; ch < 2u; ch++) {
+            float x = ch ? r[0] : l[0];
+            co.lp[ch][0] = co.lp[ch][1] = co.dx[ch] = x;
+            co.dy[ch] = 0.0f;
+        }
+        co.byp = 0u;
+    }
+    rn = 1.0f / (float)(n ? n : 1u);
+    g = co_g(a);
+    dg = (co_g(a1) - g) * rn;
+    da = (a1 - a) * rn;
+    dw = (w1 - w) * rn;
+    for (i = 0; i < n; i++) {
+        float y[2], m, sd, c;
+        a += da;
+        g += dg;
+        w += dw;
+        c = 0.1f * a;
+        for (ch = 0; ch < 2u; ch++) {
+            float x = ch ? r[i] : l[i], *z = co.lp[ch], d;
+            float v = (x - z[0]) * g, y1 = v + z[0], y2;   /* the low-pass: two one-poles (TPT, -6 dB at the cutoff),
+                                          * blended in by the amount */
+            z[0] = y1 + v;
+            v = (y1 - z[1]) * g;
+            y2 = v + z[1];
+            z[1] = y2 + v;
+            x += a * (y2 - x);
+            d = x - co.dx[ch] + CO_DC_R * co.dy[ch];   /* the DC blocker, the same */
+            co.dx[ch] = x;
+            co.dy[ch] = d;
+            y[ch] = x + a * (d - x);
+        }
+        m = 0.5f * (y[0] + y[1]);        /* MONO: the sides narrowed to the middle */
+        sd = 0.5f * (y[0] - y[1]) * w;
+        y[0] = brk_clampf(m + sd, -1.5f, 1.5f);
+        y[1] = brk_clampf(m - sd, -1.5f, 1.5f);
+        l[i] = y[0] - c * y[0] * y[0] * y[0];   /* the soft clip (psx_console_clip) */
+        r[i] = y[1] - c * y[1] * y[1] * y[1];
+    }
+    co.a = a1;
+    co.w = w1;
+}
+
+/* --------------------------------------------------------------------------------------------- presets --- */
+/* The owner's four (16 Nov 2026), from the colour's measurements (phases 1-2) and tuned by renders and levels
+ * (tests/engine/psx_color2_demo.c, build/review/psx_color2/). Each sets CODEC (GRIT, its mix, 4 bits), the colour,
+ * SPU VERB and CONSOLE OUT */
+const char *const PSXP_NAME[PSXP_N] = {"SUBTLE GLUE", "PS1 PAD", "CRUNCHY TAIL", "DUB ECHO PSX"};
+BRK_COLD void psx_preset(uint32_t k, psx_bus_t *b, psx_color_t *c, float bpm)
+{
+    /*                      rate          crunch smooth amount console send input  mix  verb             size  tone  depth */
+    static const struct { uint8_t rate, vtype; float crunch, smooth, amount, console, vsend, vinput, mix, vsize, vtone,
+                          vdepth; } P[PSXP_N] = {
+        {PSXR_22K, PSXV_ROOM, 0.0f, 1.0f, 0.6f, 0.35f, 0.0f, 1.0f, 0.5f, 0.5f, 0.2f, 0.6f},
+        {PSXR_11K, PSXV_HALL, 0.2f, 1.0f, 1.0f, 0.4f, 0.3f, 1.0f, 1.0f, 1.0f, 0.25f, 0.8f},
+        {PSXR_8K_RAW, PSXV_STUDIO_M, 0.7f, 0.5f, 1.0f, 0.5f, 0.2f, 2.0f, 0.85f, 0.8f, 0.1f, 0.7f},
+        {PSXR_22K, PSXV_SPACE_ECHO, 0.25f, 1.0f, 1.0f, 0.3f, 0.45f, 1.0f, 1.0f, 1.0f, 0.3f, 0.8f},
+    };
+    k = k < PSXP_N ? k : 0u;
+    b->codec = CODEC_GRIT;
+    b->cmix = P[k].mix;
+    b->cbits = 4u;
+    b->cfilt = 0u;
+    b->vtype = P[k].vtype;
+    b->vsize = P[k].vsize;
+    b->vtone = P[k].vtone;
+    b->vdepth = P[k].vdepth;
+    c->rate = P[k].rate;
+    c->adpcm = 1u;
+    c->mono = 0u;
+    c->crunch = P[k].crunch;
+    c->smooth = P[k].smooth;
+    c->amount = P[k].amount;
+    c->console = P[k].console;
+    c->vsend = P[k].vsend;
+    c->vinput = P[k].vinput;
+    c->preset = (uint8_t)(k + 1u);
+    if (k == PSXP_DUB && bpm > 40.0f) {  /* SPACE ECHO's feedback (mLSAME - dLSAME: 4A4h x 4 cells at 22.05 kHz) on an
+                                          * eighth, else a dotted sixteenth, else a sixteenth; its SIZE as far as the
+                                          * area lets it (0.94) */
+        static const float NOTE[3] = {0.5f, 0.375f, 0.25f};
+        float gap = (float)((0x1ED6u - 0x1A32u) * 4u) / 22050.0f, smax = (float)(PSXV_WORDS - 3u) /
+                    (float)((0x1ED6u + 0x33Du) * 4u), sc = 0.0f;
+        uint32_t q;
+        for (q = 0; q < 3u; q++) {
+            sc = NOTE[q] * 60.0f / bpm / gap;
+            if (sc <= smax)
+                break;
+        }
+        b->vsize = brk_clampf((sc - 0.25f) / 0.75f, 0.0f, 1.0f);
+    }
+}
 static uint32_t bus_shed;
 void psx_bus_shed(uint32_t level) { bus_shed = level; }
 float psx_crush_bits(float crush) { return 16.0f - 14.0f * brk_clampf(crush, 0.0f, 1.0f); }
@@ -1262,8 +1408,15 @@ float psx_verb_tail(uint32_t type)
 
 void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb)
 {
+    float amt, cmix;
     bus = *(const psx_bus_t *)&p_bus;
+    col = *(const psx_color_t *)&p_col;
+    amt = brk_clampf(col.amount, 0.0f, 1.0f);   /* AMOUNT: the codec's mix and CRUNCH, CONSOLE, SEND dialled in */
+    cmix = brk_clampf(bus.cmix, 0.0f, 1.0f) * amt;
+    psx_color_set(psxr_rate(col.rate), psxr_raw(col.rate), col.adpcm, col.crunch * amt, col.smooth);
+    psx_verb_input(col.vinput);
     send_s += (brk_clampf(bus.send, 0.0f, 1.0f) - send_s) * 0.3f;
+    xsend_s += (brk_clampf(col.vsend, 0.0f, 1.0f) * amt - xsend_s) * 0.3f;
     crush_s += (brk_clampf(bus.crush, 0.0f, 1.0f) - crush_s) * 0.3f;
     redux_s += (brk_clampf(bus.redux, 0.0f, 1.0f) - redux_s) * 0.3f;
     /* CODEC: the sound as the console's samples (rests first when the render runs over) */
@@ -1271,20 +1424,20 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
         cl.run = 0u;                     /* (shed: GRIT and XA stop at once, as before; back, they start afresh) */
         xa.run = 0u;
     } else {
-        uint32_t want = bus.codec == CODEC_GRIT && bus.cmix > 0.0f;
+        uint32_t want = bus.codec == CODEC_GRIT && cmix > 0.0f;
         if (want && !cl.run) {           /* GRIT on: cleared, a block run unheard (its latency filled), then faded in */
             cl_clear();
             cl.run = 1u;
         }
         if (cl.run) {                    /* (and off: faded out over a block, to the sound undelayed) */
             psx_grit_set(bus.crate, bus.cbits, bus.cfilt);
-            cl_process(l, r, n, bus.cmix, want && cl.run == 2u);
+            cl_process(l, r, n, cmix, want && cl.run == 2u);
             if (cl.run == 1u)
                 cl.run = 2u;
             else if (!want && cl.fade <= 0.0f)
                 cl.run = 0u;
         }
-        want = bus.codec == CODEC_XA && bus.cmix > 0.0f;
+        want = bus.codec == CODEC_XA && cmix > 0.0f;
         if (want && !xa.run) {           /* XA the same way */
             psx_xa_set(bus.xhalf, 0u, bus.xstereo);
             xa_clear();
@@ -1292,7 +1445,7 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
         }
         if (xa.run) {
             psx_xa_set(bus.xhalf, 0u, bus.xstereo);
-            xa_proc(l, r, n, bus.cmix, want && xa.run == 2u);
+            xa_proc(l, r, n, cmix, want && xa.run == 2u);
             if (xa.run == 1u)
                 xa.run = 2u;
             else if (!want && xa.fade <= 0.0f)
@@ -1301,7 +1454,7 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
     }
     /* SPU VERB: what's sent in, the reverb added in place; it rests once nothing has gone in or come out for ~8 s */
     if (vb.wk && bus_shed < 3u) {
-        float s = send_s + brk_clampf(bus.vthrow, 0.0f, 1.0f), ei = 0.0f, eo = 0.0f;
+        float s = send_s + brk_clampf(bus.vthrow, 0.0f, 1.0f) + xsend_s, ei = 0.0f, eo = 0.0f;
         int sending = s > 0.0005f || vsend || bus.vfreeze > 0.0f;
         if (sending)
             verb_idle = 0u;
@@ -1328,6 +1481,8 @@ void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float b
         psx_skip_set(bus.skdiv, bus.skchance, bus.skseek);
         psx_skip_process(l, r, n, beat, spb, bus.skmix);
     }
+    /* CONSOLE OUT: the console's own output, last (passed by at rest) */
+    console_process(l, r, n, brk_clampf(col.console, 0.0f, 1.0f) * amt, col.mono);
 }
 
 /* ================================================================================================== mu-law --- */
@@ -1378,7 +1533,10 @@ BRK_COLD void psx_init(void)
 {
     verb_clear();
     verb_idle = 1000u;
-    send_s = crush_s = redux_s = vgain_s = 0.0f;
+    send_s = crush_s = redux_s = vgain_s = xsend_s = 0.0f;
+    co.a = 0.0f;
+    co.w = 1.0f;
+    co.byp = 1u;
     if (sk.ring)
         psx_skip_init(sk.ring, sk.frames);
     cl_clear();
@@ -1393,7 +1551,10 @@ BRK_COLD void psx_init(void)
     psx_verb_input(1.0f);
     {
         psx_bus_t b;
+        psx_color_t c;
         psx_bus_defaults(&b);
         psx_bus_set(&b);
+        psx_color_defaults(&c);
+        psx_bus_color(&c);
     }
 }

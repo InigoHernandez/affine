@@ -1,5 +1,6 @@
-# AFFINE: the PSX page, EFFECTS' fifth tab: SELECT past the slots; ALGORITHM its parts VERB, CODEC, LOFI, SKIP; each
-# part's knobs set the PSX bus (heard with HOME's VERB and CRUSH up). EFFECTS remembers the tab when it comes back.
+# AFFINE: the PSX page, EFFECTS' fifth tab: SELECT past the slots; ALGORITHM its parts VERB, CODEC, COLOR, LOFI, SKIP,
+# OUT (round); each part's knobs set the PSX bus (heard with HOME's VERB and CRUSH up). EFFECTS remembers the tab when
+# it comes back. (COLOR and OUT: psxcolor.txt)
 #   app/build/host/affine_host tests/scenarios/psxpage.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -24,8 +25,9 @@ turn K2 -2 80
 wait 800
 expect codec 1
 shot pp_codec.png
-turn ALGO 1 80
+turn ALGO 2 80
 wait 800
+expect pp_part 3
 shot pp_lofi.png
 turn ALGO 1 80
 wait 200
@@ -33,6 +35,9 @@ turn K2 30 20
 wait 1500
 expect skchance 60
 shot pp_skip.png
+turn ALGO 2 80
+wait 300
+expect pp_part 0
 tap HOME
 wait 300
 tap FX

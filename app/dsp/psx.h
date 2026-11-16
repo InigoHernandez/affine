@@ -99,7 +99,8 @@ void psx_init(void);                     /* every effect cleared and off (after 
 
 /* ---- the PSX bus: the effects in one fixed order after the FX chain, before the limiter (brk_fx_process runs it):
  *   CODEC (GRIT or XA: the sources as the console's samples) -> SPU VERB (one reverb, as the console has: the mix sent
- *   by SEND, the slices' throws, the VERB pad) -> CRUSH -> REDUX -> SKIP (they take the reverb's tail with them).
+ *   by SEND, the slices' throws, the VERB pad) -> CRUSH -> REDUX -> SKIP (they take the reverb's tail with them) ->
+ *   CONSOLE OUT.
  * The four gestures (HOME's knobs) are FILTER (brk_fx_t.dj), crush, redux and send; the rest are the PSX page's */
 enum { CODEC_OFF, CODEC_GRIT, CODEC_XA, CODECS };
 extern const char *const CODEC_NAME[CODECS];
@@ -118,6 +119,46 @@ typedef struct {
 } psx_bus_t;
 void psx_bus_defaults(psx_bus_t *b);
 void psx_bus_set(const psx_bus_t *b);    /* main loop: copied at the next block */
+
+/* ---- the PSX colour's own settings (AFFINE, 16 Nov 2026: settings_t's tail, so a save made before them loads these
+ * defaults, the sound as it was): the colour stage (GRIT's path, psx_color_set), AMOUNT, CONSOLE OUT, SPU VERB's
+ * INPUT and the PSX's own send into it.
+ * AMOUNT 0..1 dials the colour in: each of these goes from neutral (0) to its own knob (1): the codec's mix (MIX on
+ * CODEC, GRIT or XA) and CRUNCH, CONSOLE, SEND. So the knobs say what "full" is, AMOUNT how much of it; 0 is clean
+ * (the codec out, the console flat, nothing more into the reverb), 1 each at its knob (the default: as before).
+ * RATE, SMOOTH, INPUT, MONO and every other stage are not scaled (switches and characters, or HOME's gestures).
+ * CONSOLE OUT (AFFINE's): the console's own output after the bus's last stage, before the limiter: a gentle low-pass
+ * (the analogue stage, a TV's speakers: two one-poles, -6 dB at 20 kHz .. 8 kHz, blended in), a DC blocker (the output's
+ * coupling, 10 Hz), MONO, and a slight soft clip (a cubic: 0.6 % THD at -6 dBFS, 2.5 % at 0 dBFS at 1). Every value
+ * glides over a block, MONO over ~25 ms. */
+enum { PSXR_GRIT, PSXR_44K, PSXR_22K, PSXR_22K_RAW, PSXR_11K, PSXR_11K_RAW, PSXR_8K, PSXR_8K_RAW, PSXR_N };
+extern const char *const PSXR_NAME[PSXR_N];   /* (GRIT: CODEC's RATE, the step an older save sounds at) */
+uint32_t psxr_rate(uint32_t r);          /* COLOR's RATE step as psx_color_set's rate (PSXC_RATE_*) */
+uint32_t psxr_raw(uint32_t r);           /* 1: RAW */
+typedef struct {
+    uint8_t rate;                        /* COLOR's RATE: PSXR_* */
+    uint8_t adpcm;                       /* 1 the ADPCM round trip, 0 16-bit PCM at the rate (CRUNCH's step below 0) */
+    uint8_t mono;                        /* OUT's MONO */
+    uint8_t preset;                      /* the last preset picked, 1..PSXP_N (0 none): PRESETS steps on from it */
+    float crunch;                        /* 0..1 */
+    float smooth;                        /* 0..1 (1 the gaussian) */
+    float amount;                        /* AMOUNT 0..1 (1: each at its knob) */
+    float console;                       /* CONSOLE OUT 0..1 (0 off) */
+    float vsend;                         /* SEND: the PSX's own into SPU VERB, on top of HOME's VERB, 0..1 */
+    float vinput;                        /* SPU VERB's INPUT, 0.25..4 */
+} psx_color_t;
+void psx_color_defaults(psx_color_t *c); /* as before: GRIT's rate, ADPCM, CRUNCH 0, SMOOTH 1, AMOUNT 1, CONSOLE 0,
+                                          * SEND 0, INPUT 1, stereo */
+void psx_bus_color(const psx_color_t *c);   /* main loop: copied at the next block */
+float psx_console_hz(float amount);      /* CONSOLE's low-pass at an amount (for the screen) */
+float psx_console_clip(float x, float amount);   /* CONSOLE's clip curve (for the screen) */
+
+/* ---- the PSX presets (PRESETS on the PSX page): each sets the colour, SPU VERB and CONSOLE OUT at once (CODEC to
+ * GRIT; HOME's gestures, LOFI and SKIP left as they are). bpm: DUB ECHO PSX's SIZE puts SPACE ECHO's repeats on an
+ * eighth (a dotted sixteenth or a sixteenth where the eighth is too long) */
+enum { PSXP_GLUE, PSXP_PAD, PSXP_TAIL, PSXP_DUB, PSXP_N };
+extern const char *const PSXP_NAME[PSXP_N];
+void psx_preset(uint32_t k, psx_bus_t *b, psx_color_t *c, float bpm);
 /* the render: l, r in place; vsend: more into SPU VERB (mono; 0 none); beat: where the block starts, in beats; spb:
  * samples a beat */
 void psx_bus_process(float *l, float *r, const float *vsend, uint32_t n, float beat, float spb);

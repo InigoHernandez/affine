@@ -114,7 +114,17 @@ The PS1's sample sound as a stage of its own, in four phases (the owner's spec):
    period at -0.07 dB each (near forever, inverted), SPACE ECHO a diffuse cloud from ~80 ms (4.2 s tail), HALF ECHO a
    dense 16 ms flutter. XA on the colour stage's Q16 clock: its latency 38.9 samples at 37.8 kHz and 77.6 at 18.9,
    the same over 5 minutes (it wandered 14..181 before); its dry aligned; on and off faded. XA 558 -> 440 Mac
-   instructions a sample; SPU VERB 330, 505 while SIZE glides.
+   instructions a sample; SPU VERB 330, 505 while SIZE glides (c72e996).
+4. CONSOLE OUT after SKIP (two one-poles -6 dB at 20 kHz .. 8 kHz, a 10 Hz DC blocker, MONO, a cubic clip: harmonics
+   44 dB under a -6 dBFS tone at 1; 63 Mac instructions a sample). AMOUNT 0..1 scales the codec's mix (GRIT or XA),
+   CRUNCH, CONSOLE and the PSX's SEND into SPU VERB from neutral to their knobs: 0 is the dry bit for bit, 1 as the
+   knobs say (the default). The PSX page grows COLOR (AMOUNT, RATE: GRIT's, 44K, 22K, 22K RAW, 11K, 11K RAW, 8K,
+   8K RAW; CRUNCH, PCM below 0; SMOOTH) and OUT (CONSOLE, MONO, SEND, INPUT: VERB's four knobs were taken); SIZE steps
+   note values at the tempo on CHAOS and DELAY; PRESETS the four presets (SUBTLE GLUE, PS1 PAD, CRUNCHY TAIL,
+   DUB ECHO PSX), every stage at once, each within 0.7 dB of the dry. settings_t grows by psx_color_t (28 B, 2088 ->
+   2116): an older save loads it at its defaults (the bus bit for bit as at 0b455f5 but for SPU VERB's smoothing).
+   Full chain, Mac instructions a sample: GLUE 421, PAD 654, TAIL 565, DUB 724 (a core ~1570). Renders:
+   build/review/psx_color2/. Waiting: the owner's ear, the FM-1's CPU meter with a preset on.
 
 ## 4. The look
 

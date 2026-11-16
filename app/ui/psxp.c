@@ -1,16 +1,23 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 /* AFFINE: the PSX page, EFFECTS' fifth tab (SELECT past the slots: ui.fx_focus == BRK_FX_SLOTS), the PSX bus's settings
- * (psx.h; HOME's knobs keep the amounts: FILTER, CRUSH, REDUX, VERB). Four parts on ALGORITHM:
- *   VERB   TYPE (the nine), SIZE, TONE, DEPTH; the picture: the preset's own early echoes (its combs, from its
- *          registers) and its tail, the sound going in lit
+ * (psx.h; HOME's knobs keep the amounts: FILTER, CRUSH, REDUX, VERB). Six parts on ALGORITHM:
+ *   VERB   TYPE (the nine), SIZE (on CHAOS and DELAY in note values at the tempo), TONE, DEPTH; the picture: the
+ *          preset's own early echoes (its combs, from its registers) and its tail, the sound going in lit
  *   CODEC  MODE (OFF, GRIT, XA), RATE, BITS, MIX; the picture: a wave as the codec's steps hold it
+ *   COLOR  AMOUNT, RATE (GRIT's, 44K, 22K, 22K RAW, 11K, 11K RAW, 8K, 8K RAW), CRUNCH (PCM below 0), SMOOTH; the
+ *          picture: the wave at the rate, played back as SMOOTH does it, the codec's noise floor rising with CRUNCH,
+ *          the interpolation's kernel (box, triangle, psx-spx's gaussian)
  *   LOFI   CRUSH's MODE and MASK, REDUX's MODE and JITTER; the picture: the bits' staircase
  *   SKIP   LENGTH, CHANCE, SEEK, MIX; the picture: the disc, the slipping sector lit
- * Drawn whole in the POLYGON look (app/ui/aff.c), as HOME. Part of app.c's unity, after aff.c. */
+ *   OUT    CONSOLE, MONO, SEND (the PSX's own into SPU VERB), INPUT (SPU VERB's): the SPU's mixer and the console's
+ *          output (VERB's four knobs are taken: TYPE, SIZE, TONE, DEPTH); the picture: CONSOLE's roll-off and clip
+ *          curve, the reverb's input as INPUT drives it and SEND fills it, the two speakers (one dot: MONO)
+ * PRESETS: the four PSX presets (psx.h PSXP_*), every stage at once. Drawn whole in the POLYGON look (app/ui/aff.c), as
+ * HOME. Part of app.c's unity, after aff.c. */
 
 #define FX_PSX() (ui.page == PG_FX && ui.fx_focus == BRK_FX_SLOTS)
-enum { PP_VERB, PP_CODEC, PP_LOFI, PP_SKIP, PP_N };
-static const char *const PP_NAME[PP_N] = {"VERB", "CODEC", "LOFI", "SKIP"};
+enum { PP_VERB, PP_CODEC, PP_COLOR, PP_LOFI, PP_SKIP, PP_OUT, PP_N };
+static const char *const PP_NAME[PP_N] = {"VERB", "CODEC", "COLOR", "LOFI", "SKIP", "OUT"};
 static uint8_t pp_part;                  /* the part shown (not saved) */
 static const char *const VERB_SHORT[PSXV_N] = {"ROOM", "STD S", "STD M", "STD L", "HALL", "HALF", "SPACE", "CHAOS",
                                                "DELAY"};   /* (the presets' names short: HOME's picture, this page) */
@@ -19,9 +26,59 @@ static const float GRIT_RATES[6] = {11025.0f, 16000.0f, 22050.0f, 32000.0f, 3780
 static const char *psxp_name(int i)
 {
     static const char *const N[PP_N][4] = {{"TYPE", "SIZE", "TONE", "DEPTH"}, {"MODE", "RATE", "BITS", "MIX"},
-                                           {"CRUSH", "MASK", "REDUX", "JITTER"}, {"LENGTH", "CHANCE", "SEEK", "MIX"}};
+                                           {"AMOUNT", "RATE", "CRUNCH", "SMOOTH"}, {"CRUSH", "MASK", "REDUX", "JITTER"},
+                                           {"LENGTH", "CHANCE", "SEEK", "MIX"}, {"CONSOLE", "MONO", "SEND", "INPUT"}};
     return N[pp_part % PP_N][i & 3];
 }
+
+/* SIZE on CHAOS and DELAY (their repeats clean, on one period: psx_verb_taps' first comb): note values at the tempo.
+ * SIZE keeps its meaning (the addresses' scale); the knob steps between the notes that fit (1/16 .. 3/4) */
+#define PP_NOTES 7
+static const float PP_NOTE_B[PP_NOTES] = {0.25f, 0.5f, 0.75f, 1.0f, 1.5f, 2.0f, 3.0f};   /* in beats */
+static const char *const PP_NOTE_NAME[PP_NOTES] = {"1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"};
+static int pp_echo(void) { return set.psx.vtype == PSXV_CHAOS || set.psx.vtype == PSXV_DELAY; }
+static float pp_note_size(uint32_t k)    /* SIZE that puts the repeat on note k at the tempo; < 0 or > 1: it can't */
+{
+    float ms[4], g[4], bpm = (float)set.tempo_x10 * 0.1f, per;
+    psx_verb_taps(set.psx.vtype, 1.0f, ms, g);   /* (the period at SIZE 100 %: scale 1) */
+    per = PP_NOTE_B[k % PP_NOTES] * 60000.0f / (bpm > 40.0f ? bpm : 40.0f);
+    return (per / ms[0] - 0.25f) / 0.75f;
+}
+static int pp_note_at(void)              /* the note SIZE is on now, -1 none */
+{
+    uint32_t k;
+    for (k = 0; k < PP_NOTES; k++) {
+        float z = pp_note_size(k) - set.psx.vsize;
+        if (z < 0.004f && z > -0.004f)
+            return (int)k;
+    }
+    return -1;
+}
+static void pp_note_turn(int32_t d)      /* SIZE to the next note that fits, up or down */
+{
+    int32_t k;
+    float best = -1.0f;
+    for (k = 0; k < PP_NOTES; k++) {
+        float z = pp_note_size((uint32_t)k);
+        if (z < 0.0f || z > 1.0f)
+            continue;
+        if ((d > 0 && z > set.psx.vsize + 0.004f && (best < 0.0f || z < best)) ||
+            (d < 0 && z < set.psx.vsize - 0.004f && (best < 0.0f || z > best)))
+            best = z;
+    }
+    if (best >= 0.0f)
+        set.psx.vsize = best;
+}
+
+static void pp_db_text(float g, char *t)   /* INPUT: 2 -> "+6 DB" */
+{
+    int32_t db = (int32_t)(6.0206f * brk_log2f(g) + (g < 1.0f ? -0.5f : 0.5f));
+    t[0] = db > 0 ? '+' : 0;
+    t[1] = 0;
+    int_text(db, t + (db > 0 ? 1 : 0));
+    text_cat(t, " DB");
+}
+static float pp_db_norm(float g) { return brk_clampf((6.0206f * brk_log2f(g) + 12.0f) / 24.0f, 0.0f, 1.0f); }
 
 static uint32_t grit_rate_idx(float hz)
 {
@@ -41,6 +98,8 @@ static void psxp_value(int i, char *t)
     case PP_VERB:
         if (i == 0)
             text_cat(t, VERB_SHORT[b->vtype % PSXV_N]);
+        else if (i == 1 && pp_echo() && pp_note_at() >= 0)
+            text_cat(t, PP_NOTE_NAME[pp_note_at()]);
         else if (i == 1) {               /* SIZE: the presets' addresses scaled, a quarter .. as the console */
             int_text((int32_t)((0.25f + 0.75f * b->vsize) * 100.0f + 0.5f), t);
             text_cat(t, "%");
@@ -62,6 +121,36 @@ static void psxp_value(int i, char *t)
         } else
             pct_text(b->cmix, t);
         break;
+    case PP_COLOR: {
+        const psx_color_t *c = &set.pxc;
+        if (i == 0)
+            pct_text(c->amount, t);
+        else if (i == 1 && c->rate == PSXR_GRIT) {   /* (GRIT's step: CODEC's RATE) */
+            tenths_text((int32_t)(b->crate / 100.0f + 0.5f), t);
+            text_cat(t, "K");
+        } else if (i == 1)
+            text_cat(t, PSXR_NAME[c->rate % PSXR_N]);
+        else if (i == 2) {
+            if (c->adpcm)
+                pct_text(c->crunch, t);
+            else
+                text_cat(t, "PCM");
+        } else
+            pct_text(c->smooth, t);
+        break;
+    }
+    case PP_OUT: {
+        const psx_color_t *c = &set.pxc;
+        if (i == 0)
+            pct_text(c->console, t);
+        else if (i == 1)
+            text_cat(t, c->mono ? "MONO" : "STEREO");
+        else if (i == 2)
+            pct_text(c->vsend, t);
+        else
+            pp_db_text(c->vinput, t);
+        break;
+    }
     case PP_LOFI:
         if (i == 0)
             text_cat(t, CRUSH_MODE_NAME[b->cmode % CRUSH_MODES]);
@@ -96,6 +185,8 @@ static float psxp_norm(int i)            /* the knob's gauge, 0..1, -1 none (a c
     switch (pp_part % PP_N) {
     case PP_VERB: return i == 0 ? -1.0f : i == 1 ? b->vsize : i == 2 ? b->vtone : b->vdepth;
     case PP_CODEC: return i == 3 ? b->cmix : -1.0f;
+    case PP_COLOR: return i == 0 ? set.pxc.amount : i == 1 ? -1.0f : i == 2 ? set.pxc.crunch : set.pxc.smooth;
+    case PP_OUT: return i == 0 ? set.pxc.console : i == 1 ? -1.0f : i == 2 ? set.pxc.vsend : pp_db_norm(set.pxc.vinput);
     case PP_LOFI: return i == 1 ? b->cmask : i == 3 ? b->rjit : -1.0f;
     default: return i == 0 ? -1.0f : i == 1 ? b->skchance : i == 2 ? b->skseek : b->skmix;
     }
@@ -110,6 +201,8 @@ static void psxp_turn(int i, int32_t d)
     case PP_VERB:
         if (i == 0)
             b->vtype = (uint8_t)clamp((int32_t)b->vtype + s, 0, PSXV_N - 1);
+        else if (i == 1 && pp_echo())
+            pp_note_turn(d);             /* (CHAOS, DELAY: the repeat on a note at the tempo) */
         else if (i == 1)
             b->vsize = knob_f(b->vsize, d, 0.02f, 0.0f, 1.0f);
         else if (i == 2)
@@ -130,6 +223,43 @@ static void psxp_turn(int i, int32_t d)
         else
             b->cmix = knob_f(b->cmix, d, 0.02f, 0.0f, 1.0f);
         break;
+    case PP_COLOR: {
+        psx_color_t *c = &set.pxc;
+        if (i > 0 && b->codec == CODEC_OFF)
+            b->codec = CODEC_GRIT;       /* (the colour is GRIT's path: a turn here switches it on) */
+        if (i == 0)
+            c->amount = knob_f(c->amount, d, 0.02f, 0.0f, 1.0f);
+        else if (i == 1)
+            c->rate = (uint8_t)clamp((int32_t)c->rate + s, 0, PSXR_N - 1);
+        else if (i == 2) {               /* CRUNCH, and below 0 the codec off: 16-bit PCM at the rate */
+            if (!c->adpcm) {
+                if (s > 0) {
+                    c->adpcm = 1u;
+                    c->crunch = 0.0f;
+                }
+            } else if (s < 0 && c->crunch <= 0.0f)
+                c->adpcm = 0u;
+            else
+                c->crunch = knob_f(c->crunch, d, 0.02f, 0.0f, 1.0f);
+        } else
+            c->smooth = knob_f(c->smooth, d, 0.02f, 0.0f, 1.0f);
+        break;
+    }
+    case PP_OUT: {
+        psx_color_t *c = &set.pxc;
+        if (i == 0)
+            c->console = knob_f(c->console, d, 0.02f, 0.0f, 1.0f);
+        else if (i == 1)
+            c->mono = (uint8_t)(s > 0);
+        else if (i == 2)
+            c->vsend = knob_f(c->vsend, d, 0.02f, 0.0f, 1.0f);
+        else {                           /* INPUT: whole dB, -12 .. +12 */
+            int32_t db = (int32_t)(6.0206f * brk_log2f(c->vinput) + (c->vinput < 1.0f ? -0.5f : 0.5f)) + s;
+            db = clamp(db, -12, 12);
+            c->vinput = brk_exp2f((float)db / 6.0206f);
+        }
+        break;
+    }
     case PP_LOFI:
         if (i == 0)
             b->cmode = (uint8_t)clamp((int32_t)b->cmode + s, 0, CRUSH_MODES - 1);
@@ -162,10 +292,43 @@ static void psxp_part_turn(int32_t d)    /* ALGORITHM on the PSX page: its parts
     app_say("PSX", PP_NAME[pp_part]);
 }
 
+static void psxp_preset_turn(int32_t d)  /* PRESETS on the PSX page: the four presets, every stage at once */
+{
+    int32_t k = set.pxc.preset;
+    if (!k)
+        k = d > 0 ? 1 : PSXP_N;
+    else
+        k = clamp(k + (d > 0 ? 1 : -1), 1, PSXP_N);
+    psx_preset((uint32_t)k - 1u, &set.psx, &set.pxc, (float)set.tempo_x10 * 0.1f);
+    app_say("PRESET", PSXP_NAME[k - 1]);
+    changed_fx();
+}
+
 /* ---------------------------------------------------------------------------------------------- the picture --- */
 /* the stage: rows 44..186 between the header and the panel */
 #define PP_TOP 44
 #define PP_BOT 186
+/* a text at the screen's (x, y) (y: its capitals' top), in the strip at band: aff_text, and the host's text audit sees
+ * it (affont.c: past an edge, under 2x, two that overlap); each placed inside one strip */
+static int32_t pp_text(int32_t x, int32_t y, const char *s, uint16_t c, int32_t band, int align)
+{
+    int32_t x0 = align == 1 ? x - aff_text_w(s, 2) : align == 2 ? x - aff_text_w(s, 2) / 2 : x;
+    if (y + (int32_t)AFF_CAP_H * 2 <= band || y >= band + 60)
+        return x0 + aff_text_w(s, 2);    /* (another strip's) */
+    aff_aud_add(x0, y - band, 2, s);
+    return aff_text(x, y, s, 2, c, band, align);
+}
+static void pp_px(int32_t x, int32_t y, uint16_t c, int32_t band)
+{
+    if (y >= band && y < band + 60 && x >= 0 && x < 240)
+        cv_pset(x, y - band, c);
+}
+static void pp_span(int32_t x, int32_t y0, int32_t y1, uint16_t c, int32_t band)   /* a column from y0 to y1 */
+{
+    int32_t y, a = y0 < y1 ? y0 : y1, b = y0 < y1 ? y1 : y0;
+    for (y = a; y <= b; y++)
+        pp_px(x, y, c, band);
+}
 static void pp_vbar(int32_t x, int32_t y0, int32_t y1, const a_ramp_t *r, int32_t band)
 {
     int32_t y;
@@ -210,8 +373,8 @@ static void pp_draw_verb(int32_t band, uint32_t now)
         t[0] = 0;
         tenths_text((int32_t)(tail * 10.0f + 0.5f), t);
         text_cat(t, " S");
-        aff_text(8, base + 4, "TAIL", 2, A_DIM, band, 0);
-        aff_text(232, base + 4, t, 2, A_INK, band, 1);
+        pp_text(8, base + 9, "TAIL", A_DIM, band, 0);   /* (rows 181..190: in the strip 180..239) */
+        pp_text(232, base + 9, t, A_INK, band, 1);
     }
     (void)now;
 }
@@ -302,6 +465,141 @@ static void pp_draw_skip(int32_t band, uint32_t now)
     }
 }
 
+/* COLOR: the wave at the colour's rate (RAW: its top kept, aliased into the samples; FILTERED: gone first), played back
+ * as SMOOTH does it (the steps, lines, or the gaussian's swell), drawn over the wave as it came by the amount heard (the
+ * codec's MIX x AMOUNT); under it the codec's noise floor (CRUNCH x AMOUNT; flat for PCM) and the kernel the playback
+ * weighs its four samples by (a box, a triangle, psx-spx's gaussian) */
+static float pp_kernel(float t, float sm) /* the playback's weight on a sample t samples away, SMOOTH sm */
+{
+    float a = t < 0.0f ? -t : t, nr = a < 0.5f ? 1.0f : 0.0f, ln = a < 1.0f ? 1.0f - a : 0.0f, gs = 0.0f;
+    int32_t gi = 0x1FF - (int32_t)(a * 256.0f + 0.5f);
+    if (gi >= 0)
+        gs = (float)PSX_GAUSS[gi] * (1.0f / 32768.0f);   /* (the four weights at the fraction: gauss[1FFh - 256|t|]) */
+    return sm <= 0.5f ? nr + (ln - nr) * 2.0f * sm : ln + (gs - ln) * (2.0f * sm - 1.0f);
+}
+static void pp_draw_color(int32_t band, uint32_t now)
+{
+    const psx_bus_t *b = &set.psx;
+    const psx_color_t *c = &set.pxc;
+    float hz = c->rate == PSXR_GRIT ? b->crate : PSXC_RATE_HZ[psxr_rate(c->rate)], per = 88200.0f / hz;   /* (px a
+                                          * codec sample: 2 at 44.1 kHz .. 11 at 8 kHz) */
+    float ph = (float)(now % 6000u) / 6000.0f, amt = brk_clampf(c->amount, 0.0f, 1.0f);
+    float mix = b->codec == CODEC_GRIT ? brk_clampf(b->cmix, 0.0f, 1.0f) * amt : 0.0f;
+    float cr = c->adpcm ? brk_clampf(c->crunch, 0.0f, 1.0f) * amt : 0.0f, top = 1.0f;
+    int32_t x, mid = 86, last = -1, k;
+    uint32_t raw = psxr_raw(c->rate), seed;
+    if (2.0f * per < 9.7f)
+        top = 1.0f;                      /* (the wave's top partial, 9.7 px: under the rate's half, kept either way) */
+    else
+        top = raw ? 1.0f : 0.0f;         /* (over it: FILTERED takes it out first; RAW keeps it, aliased) */
+    for (x = 8; x < 232; x++) {
+        float t = (float)(x - 8), w = 0.66f * brk_sin_turns(t / 64.0f + ph) + 0.22f * brk_sin_turns(t / 9.7f + ph * 3.0f);
+        float pos = t / per, fr = pos - (float)(int32_t)pos, y = 0.0f;
+        int32_t i0 = (int32_t)pos, yy, j;
+        for (j = -1; j <= 2; j++) {      /* the four codec samples around, weighed as SMOOTH plays them */
+            float st = (float)(i0 + j) * per, sv = 0.66f * brk_sin_turns(st / 64.0f + ph) +
+                       0.22f * top * brk_sin_turns(st / 9.7f + ph * 3.0f);
+            seed = (uint32_t)(i0 + j) * 2654435761u + (now / 120u) * 40503u;
+            sv += cr * 0.32f * ((float)((seed >> 16) & 255u) / 255.0f - 0.5f);   /* (the codec's error, CRUNCH) */
+            y += sv * pp_kernel((float)j - fr, c->smooth);
+        }
+        y = w + (y - w) * mix;           /* (the amount heard over the wave as it came) */
+        pp_px(x, mid - (int32_t)(w * 36.0f), A_DIM, band);
+        yy = mid - (int32_t)(y * 36.0f);
+        pp_span(x, last >= 0 ? last : yy, yy, A_HOT, band);
+        pp_px(x, yy + 1, A_HOT, band);
+        last = yy;
+    }
+    {                                    /* the codec's noise floor: grass rising with CRUNCH (PCM: flat) */
+        int32_t y0 = 178, h0 = c->adpcm ? 3 + (int32_t)(cr * 30.0f) : 1;
+        for (x = 8; x < 150; x++) {
+            uint32_t r = (uint32_t)x * 2246822519u + (now / 90u) * 3266489917u;
+            int32_t h = h0 * (int32_t)(160u + ((r >> 20) & 95u)) / 255, y;
+            for (y = y0 - h; y <= y0; y++)
+                pp_px(x, y, a_dith(&ar_floor1, 120 + (y0 - y) * 4, x, y), band);
+        }
+        for (x = 8; x < 150; x++)
+            pp_px(x, y0 + 1, A_DIM, band);
+    }
+    {                                    /* the kernel: -2 .. 2 samples across 64 px, a box's height 40 */
+        int32_t kx = 166, ky = 178, kl = -1;
+        for (k = 0; k < 64; k++) {
+            float t = ((float)k - 32.0f) / 16.0f, v = pp_kernel(t, c->smooth);
+            int32_t yy = ky - (int32_t)(v * 40.0f);
+            pp_span(kx + k, kl >= 0 ? kl : yy, yy, A_HOT, band);
+            kl = yy;
+        }
+        for (k = 0; k < 64; k++)
+            pp_px(kx + k, ky + 1, A_DIM, band);
+    }
+}
+
+/* OUT: CONSOLE's roll-off (the low-pass and the DC blocker as heard, CONSOLE x AMOUNT) and its clip curve; the reverb's
+ * input (INPUT's gain into its 16-bit maths, clipped flat at full scale, across what SEND x AMOUNT fills); the two
+ * speakers, one dot when MONO */
+static void pp_draw_out(int32_t band, uint32_t now)
+{
+    const psx_color_t *c = &set.pxc;
+    float amt = brk_clampf(c->amount, 0.0f, 1.0f), a = brk_clampf(c->console, 0.0f, 1.0f) * amt;
+    float fc = psx_console_hz(a), sd = brk_clampf(c->vsend, 0.0f, 1.0f) * amt, in = c->vinput;
+    int32_t x, last = -1, k;
+    for (x = 8; x < 150; x++) {          /* the roll-off: 20 Hz .. 20 kHz across, 0 .. -24 dB down (y 50 .. 114) */
+        float f = 20.0f * brk_exp2f((float)(x - 8) * (9.966f / 141.0f)), w = f / fc, q = 1.0f + w * w;
+        float re = 1.0f - a + a * (1.0f - w * w) / (q * q), im = -a * 2.0f * w / (q * q), m2 = re * re + im * im;
+        float hw = f / 10.0f, hp2 = hw * hw / (1.0f + hw * hw), db, g;
+        g = 1.0f - a + a * hp2;          /* (the DC blocker, blended in: its power, roughly) */
+        db = 3.0103f * brk_log2f(m2 * g * g + 1e-9f);   /* (10 log10 of the power) */
+        {
+            int32_t yy = 50 + (int32_t)(-db * (64.0f / 24.0f));
+            yy = yy > 114 ? 114 : yy;
+            pp_px(x, 50, A_DIM, band);
+            pp_span(x, last >= 0 ? last : yy, yy, A_HOT, band);
+            pp_px(x, yy + 1, A_HOT, band);
+            last = yy;
+        }
+    }
+    for (k = 0; k < 3; k++) {            /* (100 Hz, 1 kHz, 10 kHz: 2.32, 5.64, 8.97 octaves over 20 Hz) */
+        int32_t gx = 8 + (int32_t)((2.3219f + 3.3219f * (float)k) * (141.0f / 9.966f)), y;
+        for (y = 52; y < 114; y += 3)
+            pp_px(gx, y, A_BG1, band);
+    }
+    {                                    /* the clip: in -1.5 .. 1.5 across 64, out the same up 64 (y 50 .. 114) */
+        int32_t cx = 166, cy = 82, cl = -1;
+        for (k = 0; k < 64; k++) {
+            float xi = ((float)k - 32.0f) / 21.33f, yo = psx_console_clip(xi, a);
+            int32_t yy = cy - (int32_t)(yo * 21.33f), yd = cy - (int32_t)(xi * 21.33f);
+            pp_px(cx + k, yd, A_DIM, band);
+            pp_span(cx + k, cl >= 0 ? cl : yy, yy, A_HOT, band);
+            cl = yy;
+        }
+    }
+    {                                    /* the reverb's input: x in -1..1 across 44, out INPUT x, flat at full scale */
+        int32_t bx = 8, by = 158, il = -1;
+        for (k = 0; k < 45; k++) {
+            float xi = ((float)k - 22.0f) / 22.0f, yo = brk_clampf(xi * in, -1.0f, 1.0f);
+            int32_t yy = by - (int32_t)(yo * 22.0f), yd = by - (int32_t)(xi * 22.0f);
+            uint16_t cc = (xi < 0.0f ? -xi : xi) <= sd + 0.02f ? A_HOT : A_DIM;   /* (lit: what SEND fills) */
+            pp_px(bx + k, yd, A_BG1, band);
+            pp_span(bx + k, il >= 0 ? il : yy, yy, cc, band);
+            il = yy;
+        }
+    }
+    {                                    /* the speakers: L and R, closing to one dot as MONO comes in */
+        static float wd = 1.0f;
+        float want = c->mono ? 0.0f : 1.0f;
+        int32_t sp, cxs = 168, cy = 158;
+        wd += (want - wd) * 0.35f;       /* (as the sound narrows: a few frames) */
+        for (sp = 0; sp < 2; sp++) {
+            int32_t ox = cxs + (int32_t)((sp ? 30.0f : -30.0f) * wd), dx, dy;
+            for (dy = -7; dy <= 7; dy++)
+                for (dx = -7; dx <= 7; dx++)
+                    if (dx * dx + dy * dy <= 49)
+                        pp_px(ox + dx, cy + dy, a_dith(&ar_lane, 150 + (49 - dx * dx - dy * dy) * 2 +
+                              (int32_t)((now / 40u) % 8u), ox + dx, cy + dy), band);
+        }
+    }
+}
+
 static void psxp_draw(uint32_t now)
 {
     int32_t top, i;
@@ -309,23 +607,33 @@ static void psxp_draw(uint32_t now)
     for (top = 0; top < 240; top += 60) {
         cv_begin(240, 60, A_BG0);
         aff_check();
-        /* the header: PSX and its parts, the one shown lit */
+        /* the header: PSX, a message or the colour's state; the part shown, and the six as pips, its one lit */
         if (top < 40) {
-            int32_t x = 8;
-            aff_text(8, 8, "PSX", 2, A_INK, top, 0);
-            if (now < ui.msg_until) {
-                aff_text(232, 8, ui.msg[1], 2, A_HOT, top, 1);
-            } else
-                aff_text(232, 8, "SPU", 2, A_DIM, top, 1);
-            for (i = 0; i < PP_N; i++) {
-                x = aff_text(x, 24, PP_NAME[i], 2, i == pp_part ? A_HOT : A_DIM, top, 0) + 10;
+            pp_text(8, 8, "PSX", A_INK, top, 0);
+            if (now < ui.msg_until)
+                pp_text(232, 8, ui.msg[1], A_HOT, top, 1);
+            else if (pp_part == PP_COLOR && set.psx.codec != CODEC_GRIT)
+                pp_text(232, 8, "GRIT OFF", A_DIM, top, 1);   /* (the colour is GRIT's: off, a turn of K2-K4) */
+            else if (set.pxc.preset && (pp_part == PP_COLOR || pp_part == PP_OUT))
+                pp_text(232, 8, PSXP_NAME[(set.pxc.preset - 1u) % PSXP_N], A_DIM, top, 1);
+            else
+                pp_text(232, 8, "SPU", A_DIM, top, 1);
+            pp_text(8, 24, PP_NAME[pp_part % PP_N], A_HOT, top, 0);
+            for (i = 0; i < PP_N; i++) {  /* (the pips: 8 x 8, 4 apart, right-aligned) */
+                int32_t px = 232 - (PP_N - i) * 12 + 4, yy, xx;
+                for (yy = 25; yy < 33; yy++)
+                    for (xx = px; xx < px + 8; xx++)
+                        pp_px(xx, yy, i == pp_part ? A_HOT : A_DIM, top);
             }
         }
         switch (pp_part % PP_N) {
         case PP_VERB: pp_draw_verb(top, now); break;
         case PP_CODEC: pp_draw_codec(top, now); break;
+        case PP_COLOR: pp_draw_color(top, now); break;
+        case PP_OUT: pp_draw_out(top, now); break;
         case PP_LOFI: pp_draw_lofi(top); break;
-        default: pp_draw_skip(top, now); break;
+        case PP_SKIP: pp_draw_skip(top, now); break;
+        default: break;
         }
         if (top + 60 > AH_PANEL) {       /* the panel: the four knobs, as HOME's */
             cv_rect(0, AH_PANEL - top, 240, 1, A_DIM);
@@ -333,8 +641,8 @@ static void psxp_draw(uint32_t now)
                 int32_t gx = 8 + (i & 1) * 120, gy = 198 + (i >> 1) * 21;
                 float g = psxp_norm(i);
                 psxp_value(i, gv[i]);
-                aff_text(gx, gy, psxp_name(i), 2, A_DIM, top, 0);
-                aff_text(gx + 106, gy, gv[i], 2, A_INK, top, 1);
+                pp_text(gx, gy, psxp_name(i), A_DIM, top, 0);
+                pp_text(gx + 106, gy, gv[i], A_INK, top, 1);
                 if (g >= 0.0f)
                     home_bar(gx, gy + 13, 106, g, 0, top);
             }
