@@ -9,7 +9,9 @@
  * Checks: nothing NaN or past full scale; levels near the dry's; the latency measured against psx_color_latency and
  * the dry delayed to it (a 50 % mix has no comb notch; the same mix over an undelayed dry has one); CRUNCH 0 is the
  * encoder as it was (bit for bit against a frozen copy of it below) and CRUNCH spoils it in order; rate changes,
- * RAW, the mix and the bus's GRIT on and off without clicks (the largest step between two samples stays bounded). */
+ * RAW, SMOOTH, the mix and the bus's GRIT on and off without clicks (the largest step between two samples stays
+ * bounded); PSX_GAUSS is psx-spx's table; SMOOTH 0 / 0.5 / 1 leave the images above the rate in order and 1 dulls
+ * the band's top most. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,7 +86,12 @@ static buf_t src_pad(float secs)          /* A minor 7 (A2 G3 C4 E4), three saws
     for (i = 0; i < n; i++) { b.l[i] *= 0.5012f / peak; b.r[i] *= 0.5012f / peak; }   /* -6 dBFS peak */
     return b;
 }
-static uint32_t rd32(FILE *f) { uint8_t b[4]; if (fread(b, 1, 4, f) != 4) return 0; return b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24; }
+static uint32_t rd32(FILE *f)
+{
+    uint8_t b[4];
+    if (fread(b, 1, 4, f) != 4) return 0;
+    return b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24;
+}
 static uint16_t rd16(FILE *f) { uint8_t b[2]; if (fread(b, 1, 2, f) != 2) return 0; return (uint16_t)(b[0] | b[1] << 8); }
 static buf_t src_break(const char *path, float secs)   /* the break, looped, x 0.8 (as psx_demo.c) */
 {
@@ -143,7 +150,7 @@ static void run(const buf_t *in, buf_t *out, const var_t *v, float mix)
     psx_init();
     psx_grit_set(22050.0f, 4u, 0u);
     if (!v->today)
-        psx_color_set(v->rate, v->raw, v->adpcm, v->crunch);
+        psx_color_set(v->rate, v->raw, v->adpcm, v->crunch, v->smooth);
     *out = buf_new(in->n);
     memcpy(out->l, in->l, in->n * 4);
     memcpy(out->r, in->r, in->n * 4);
@@ -364,35 +371,40 @@ static void check_clicks(void)
     static const uint32_t SEQ[8] = {PSXC_RATE_11K, PSXC_RATE_8K, PSXC_RATE_22K, PSXC_RATE_44K, PSXC_RATE_8K,
                                     PSXC_RATE_44K, PSXC_RATE_11K, PSXC_RATE_22K};
     uint32_t pass, i;
-    for (pass = 0; pass < 4u; pass++) {
+    for (pass = 0; pass < 5u; pass++) {
         buf_t in = src_sine(3.0f, 220.0f, 0.5f), out = buf_new(in.n), st;
         float mix = pass == 1u ? 0.5f : 1.0f, worst, steady;
         uint32_t adpcm = pass >= 2u;
+        float sms[3] = {1.0f, 1.0f, 1.0f};
+        if (pass == 3u) { sms[0] = 0.5f; sms[1] = 0.75f; }   /* (pass 3: SMOOTH 0.5 .. 1, with RAW and the mix) */
+        if (pass == 4u) { sms[0] = 0.0f; sms[1] = 0.5f; }    /* (pass 4: SMOOTH 0, 0.5, 1 in turn) */
         var_t v = {"steady", PSXC_RATE_8K, 0u, adpcm, 0.0f, 1.0f, 0, ""};
         memcpy(out.l, in.l, in.n * 4); memcpy(out.r, in.r, in.n * 4);
         psx_init();
         for (i = 0; i < in.n; i += BLOCK) {
             uint32_t seg = i / (SR / 4u), k = in.n - i < BLOCK ? in.n - i : BLOCK;
-            if (pass == 3u)              /* RAW and the mix moved too */
-                psx_color_set(SEQ[seg & 7u], seg & 1u, 1u, 0.0f);
+            if (pass == 3u)              /* RAW, SMOOTH and the mix moved too */
+                psx_color_set(SEQ[seg & 7u], seg & 1u, 1u, 0.0f, sms[seg % 3u]);
             else
-                psx_color_set(SEQ[seg & 7u], 0u, adpcm, 0.0f);
+                psx_color_set(SEQ[seg & 7u], 0u, adpcm, 0.0f, sms[seg % 3u]);
             psx_grit_process(out.l + i, out.r + i, k, pass == 3u ? (seg & 2u ? 0.6f : 1.0f) : mix);
         }
         worst = max_step(&out, SR / 10u, out.n);
         run(&in, &st, &v, mix);          /* the steadiest it gets: 8 kHz all the way */
         steady = max_step(&st, SR / 10u, st.n);
-        for (i = 0; i < 4u; i++) {       /* and the other rates held */
+        for (i = 0; i < 12u; i++) {      /* and the other rates held, each SMOOTH it visits held too (SMOOTH 0 is a
+                                          * staircase: its steps are the effect) */
             buf_t s2;
             var_t v2 = v;
-            v2.rate = SEQ[i];
+            v2.rate = SEQ[i & 3u];
+            v2.smooth = sms[i / 4u];
             run(&in, &s2, &v2, mix);
             if (max_step(&s2, SR / 10u, s2.n) > steady) steady = max_step(&s2, SR / 10u, s2.n);
             buf_free(&s2);
         }
         printf("  rate changes %-22s largest step %.4f (held rates %.4f, the dry %.4f)\n",
                pass == 0 ? "(ADPCM off)" : pass == 1 ? "(ADPCM off, mix 50 %)" : pass == 2 ? "(ADPCM)" :
-               "(ADPCM, RAW and mix)", worst, steady, max_step(&in, 0, in.n));
+               pass == 3 ? "(+ RAW, mix, SMOOTH .5-1)" : "(ADPCM, SMOOTH 0-1)", worst, steady, max_step(&in, 0, in.n));
         CHECK(worst < steady * 1.35f, "rate changes click: largest step %.4f against %.4f held", worst, steady);
         buf_free(&in); buf_free(&out); buf_free(&st);
     }
@@ -418,10 +430,91 @@ static void check_clicks(void)
     }
 }
 
+/* ---- SMOOTH: the SPU's table as psx-spx lists it, and what the three interpolations do to the top ---- */
+static void fft(double *re, double *im, uint32_t n)   /* radix 2, in place */
+{
+    uint32_t i, j = 0, len, k;
+    for (i = 1; i < n; i++) {
+        uint32_t bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) { double t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    for (len = 2; len <= n; len <<= 1) {
+        double a = -2.0 * M_PI / len;
+        for (i = 0; i < n; i += len)
+            for (k = 0; k < len / 2u; k++) {
+                double wr = cos(a * k), wi = sin(a * k), xr = re[i + k + len / 2u], xi = im[i + k + len / 2u];
+                double tr = xr * wr - xi * wi, ti = xr * wi + xi * wr;
+                re[i + k + len / 2u] = re[i + k] - tr; im[i + k + len / 2u] = im[i + k] - ti;
+                re[i + k] += tr; im[i + k] += ti;
+            }
+    }
+}
+/* the energy between lo and hi Hz, dB (Welch: 4096-point Hann frames, half overlapped) */
+static double band_db(const buf_t *b, double lo, double hi)
+{
+    enum { NF = 4096 };
+    static double re[NF], im[NF];
+    double e = 0;
+    uint32_t at, i, frames = 0;
+    for (at = SR / 4u; at + NF <= b->n; at += NF / 2u, frames++) {
+        for (i = 0; i < NF; i++) { re[i] = b->l[at + i] * (0.5 - 0.5 * cos(2.0 * M_PI * i / NF)); im[i] = 0; }
+        fft(re, im, NF);
+        for (i = 1; i < NF / 2u; i++) {
+            double f = (double)i * SR / NF;
+            if (f >= lo && f < hi) e += re[i] * re[i] + im[i] * im[i];
+        }
+    }
+    return 10.0 * log10(e / (frames ? frames : 1) + 1e-30);
+}
+static void check_smooth(void)
+{
+    long long tot = 0, w = 0;
+    int mono = 1, lo = 1 << 30, hi = -(1 << 30);
+    uint32_t i, k;
+    double top[3], soft[3], dry_top, dry_soft;
+    buf_t in;
+    for (i = 0; i < 512u; i++) {
+        tot += PSX_GAUSS[i];
+        w += (long long)PSX_GAUSS[i] * (i + 1);
+        if (i && PSX_GAUSS[i] < PSX_GAUSS[i - 1]) mono = 0;
+    }
+    for (i = 0; i < 256u; i++) {
+        int s = PSX_GAUSS[0xFF - i] + PSX_GAUSS[0x1FF - i] + PSX_GAUSS[0x100 + i] + PSX_GAUSS[i];
+        if (s < lo) lo = s;
+        if (s > hi) hi = s;
+    }
+    /* (the sums from psx-spx's own text: total and index-weighted, read off the page when it was copied) */
+    CHECK(tot == 4177922 && w == 1669063706, "PSX_GAUSS is psx-spx's table (sums %lld %lld)", tot, w);
+    CHECK(mono && PSX_GAUSS[0] == -1 && PSX_GAUSS[511] == 0x59B3, "PSX_GAUSS rises from -1 to 59B3h");
+    CHECK(lo == 0x7F7F && hi == 0x7F81, "each four of PSX_GAUSS sum to 7F7Fh..7F81h, as psx-spx says (%X..%X)", lo, hi);
+    in = src_noise(4.0f, 30000.0f);      /* (two one-poles at 30 kHz: white enough, -1 dB at 10 kHz) */
+    dry_top = band_db(&in, 11025.0, 22050.0);
+    dry_soft = band_db(&in, 2756.0, 4961.0);
+    for (k = 0; k < 3u; k++) {
+        var_t v = {"s", PSXC_RATE_11K, 0u, 0u, 0.0f, 0.5f * (float)k, 0, ""};
+        buf_t out;
+        run(&in, &out, &v, 1.0f);
+        top[k] = band_db(&out, 11025.0, 22050.0) - dry_top;
+        soft[k] = band_db(&out, 2756.0, 4961.0) - dry_soft;
+        buf_free(&out);
+    }
+    printf("  SMOOTH at 11.025 kHz over white noise, against the dry: 11-22 kHz (images) %.1f / %.1f / %.1f dB, "
+           "2.8-5 kHz (the band's top) %.1f / %.1f / %.1f dB at 0 / 0.5 / 1\n", top[0], top[1], top[2], soft[0],
+           soft[1], soft[2]);
+    CHECK(top[0] > top[1] + 6.0 && top[1] > top[2] + 6.0, "SMOOTH: the images above the rate fall in order "
+          "(%.1f %.1f %.1f dB)", top[0], top[1], top[2]);
+    CHECK(soft[2] < soft[1] - 1.0 && soft[1] < soft[0], "SMOOTH 1 dulls the band's top most (%.1f %.1f %.1f dB)",
+          soft[0], soft[1], soft[2]);
+    buf_free(&in);
+}
+
 /* ---- the renders ---- */
 static const var_t VARS[] = {
     {"dry", 0, 0, 0, 0.0f, 1.0f, 0, "the source"},
-    {"grit_today", PSXC_RATE_GRIT, 0, 1, 0.0f, 1.0f, 1, "GRIT as it was: 22.05 kHz, FILTERED, ADPCM, CRUNCH 0"},
+    {"grit_today", PSXC_RATE_GRIT, 0, 1, 0.0f, 1.0f, 1, "GRIT's defaults (22.05 kHz, FILTERED, ADPCM, CRUNCH 0, SMOOTH 1): "
+                                                         "GRIT as it was, through psx-spx's table now"},
     {"r22k_filt", PSXC_RATE_22K, 0, 0, 0.0f, 1.0f, 0, "RATE 22.05 kHz FILTERED, ADPCM off, SMOOTH 1"},
     {"r22k_raw", PSXC_RATE_22K, 1, 0, 0.0f, 1.0f, 0, "RATE 22.05 kHz RAW, ADPCM off, SMOOTH 1"},
     {"r11k_filt", PSXC_RATE_11K, 0, 0, 0.0f, 1.0f, 0, "RATE 11.025 kHz FILTERED, ADPCM off, SMOOTH 1"},
@@ -431,6 +524,9 @@ static const var_t VARS[] = {
     {"adpcm_c0", PSXC_RATE_11K, 0, 1, 0.0f, 1.0f, 0, "11.025 kHz FILTERED, ADPCM, CRUNCH 0, SMOOTH 1"},
     {"adpcm_c50", PSXC_RATE_11K, 0, 1, 0.5f, 1.0f, 0, "11.025 kHz FILTERED, ADPCM, CRUNCH 0.5, SMOOTH 1"},
     {"adpcm_c100", PSXC_RATE_11K, 0, 1, 1.0f, 1.0f, 0, "11.025 kHz FILTERED, ADPCM, CRUNCH 1, SMOOTH 1"},
+    {"smooth0", PSXC_RATE_11K, 0, 0, 0.0f, 0.0f, 0, "11.025 kHz FILTERED, ADPCM off, SMOOTH 0 (nearest)"},
+    {"smooth50", PSXC_RATE_11K, 0, 0, 0.0f, 0.5f, 0, "11.025 kHz FILTERED, ADPCM off, SMOOTH 0.5 (linear)"},
+    {"smooth100", PSXC_RATE_11K, 0, 0, 0.0f, 1.0f, 0, "11.025 kHz FILTERED, ADPCM off, SMOOTH 1 (gaussian; = r11k_filt)"},
     {"ps1", PSXC_RATE_11K, 0, 1, 0.25f, 1.0f, 0, "the full PS1: 11.025 kHz FILTERED, ADPCM, CRUNCH 0.25, SMOOTH 1"},
 };
 #define NVARS (sizeof VARS / sizeof VARS[0])
@@ -487,8 +583,12 @@ static void render(const char *dir, const char *brk)
             snprintf(name, sizeof name, "%s_%s", SRC[s], VARS[k].name);
             save(dir, name, &out);
             pk = peak_of(&out, &bad);
-            fprintf(ix, "%-18s.wav  peak %6.1f dBFS  RMS %6.1f dBFS  latency %5.1f samples  %s\n", name,
-                    20.0f * log10f(pk + 1e-9f), rms_db(&out, 0, out.n), k ? psx_color_latency() : 0.0f, VARS[k].say);
+            {
+                char file[72];
+                snprintf(file, sizeof file, "%s.wav", name);
+                fprintf(ix, "%-22s peak %6.1f dBFS  RMS %6.1f dBFS  latency %5.1f samples  %s\n", file,
+                        20.0f * log10f(pk + 1e-9f), rms_db(&out, 0, out.n), k ? psx_color_latency() : 0.0f, VARS[k].say);
+            }
             run(&ab_in, &o2, &VARS[k], 1.0f);  /* the A/B: 4 s of it, 20 ms fades, 0.5 s of silence after */
             for (i = 0; i < 4u * SR && a0 + i < o2.n; i++) {
                 float e = 1.0f;
@@ -497,7 +597,7 @@ static void render(const char *dir, const char *brk)
                 ab.l[ab_at + i] = o2.l[a0 + i] * e;
                 ab.r[ab_at + i] = o2.r[a0 + i] * e;
             }
-            fprintf(ix, "%22s A/B at %5.1f s\n", "", (float)ab_at / SR);
+            fprintf(ix, "%22s  (in %s_ab.wav at %4.1f s)\n", "", SRC[s], (float)ab_at / SR);
             ab_at += (uint32_t)(4.5f * SR);
             buf_free(&out); buf_free(&o2);
         }
@@ -541,6 +641,7 @@ int main(int argc, char **argv)
     check_encoder(&pad, &drums);
     check_latency();
     check_clicks();
+    check_smooth();
     if (argc > 2)
         render(argv[2], brk);
     printf("%d of %d colour checks passed\n", checks - fails, checks);

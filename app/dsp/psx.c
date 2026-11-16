@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 /* AFFINE's PS1-era effects (psx.h). AFFINE's own code; the hardware's documented numbers come from psx-spx
- * (https://psx-spx.consoledev.net/: "SPU Reverb Examples", "Reverb Buffer Resampling", "CDROM XA-ADPCM"). */
+ * (https://psx-spx.consoledev.net/: "SPU Reverb Examples", "Reverb Buffer Resampling", "CDROM XA-ADPCM",
+ * "4-Point Gaussian Interpolation"). */
 #include "psx.h"
 #include "brk_math.h"
 
@@ -241,22 +242,46 @@ void psx_verb_process(const float *inl, const float *inr, float *outl, float *ou
 /* ======================================================================================= SPU GRIT and XA --- */
 /* the predictors (psx-spx, "XA-ADPCM": pos_xa_adpcm_table, neg_xa_adpcm_table; SPU-ADPCM has five, XA four) */
 static const int16_t PRED[5][2] = {{0, 0}, {60, 0}, {115, -52}, {98, -55}, {122, -60}};
-/* the interpolator: a four-term Nuttall window over four samples (psx-spx describes the console's "gaussian" table
- * as a four-term cosine window of the Nuttall family, normalised to 255/256): AFFINE computes its own from Nuttall's
- * coefficients (1981) at init. NUT[i] = w(i / 256), i = 0..512 (x = 0..2 samples from the centre) */
-static int16_t NUT[513];
-BRK_COLD static void nut_init(void)
-{
-    uint32_t i;
-    const float a0 = 0.355768f, a1 = 0.487396f, a2 = 0.144232f, a3 = 0.012604f, sc = 8160.0f / 0.355768f;
-    for (i = 0; i <= 512u; i++) {
-        float x = (float)i / 256.0f;     /* cos(pi x / 2) = sin of a quarter turn past x / 4 */
-        float c1 = brk_sin_turns(0.25f + x * 0.25f), c2 = brk_sin_turns(0.25f + x * 0.5f),
-              c3 = brk_sin_turns(0.25f + x * 0.75f);
-        float w = sc * (a0 + a1 * c1 + a2 * c2 + a3 * c3);
-        NUT[i] = (int16_t)(w < 0.0f ? w - 0.5f : w + 0.5f);
-    }
-}
+/* the interpolator: the SPU's four-point "gaussian" table, its 512 values as psx-spx lists them ("Sound Processing
+ * Unit (SPU)", "4-Point Gaussian Interpolation": documented numbers, copied from its text). With i the 8-bit fraction
+ * between the older and the old of four samples: out = gauss[0FFh - i] x oldest + gauss[1FFh - i] x older +
+ * gauss[100h + i] x old + gauss[000h + i] x new, each product SAR 15. Each four sum to 7F7Fh..7F81h, never past 8000h
+ * (psx-spx). AFFINE computed a four-term Nuttall window here before (within 55 of 59B3h everywhere: the sound moved
+ * 56-61 dB under the signal) */
+const int16_t PSX_GAUSS[512] = {
+    -0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,-0x001,
+    0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x001,0x001,0x001,0x001,0x002,0x002,0x002,0x003,0x003,
+    0x003,0x004,0x004,0x005,0x005,0x006,0x007,0x007,0x008,0x009,0x009,0x00A,0x00B,0x00C,0x00D,0x00E,
+    0x00F,0x010,0x011,0x012,0x013,0x015,0x016,0x018,0x019,0x01B,0x01C,0x01E,0x020,0x021,0x023,0x025,
+    0x027,0x029,0x02C,0x02E,0x030,0x033,0x035,0x038,0x03A,0x03D,0x040,0x043,0x046,0x049,0x04D,0x050,
+    0x054,0x057,0x05B,0x05F,0x063,0x067,0x06B,0x06F,0x074,0x078,0x07D,0x082,0x087,0x08C,0x091,0x096,
+    0x09C,0x0A1,0x0A7,0x0AD,0x0B3,0x0BA,0x0C0,0x0C7,0x0CD,0x0D4,0x0DB,0x0E3,0x0EA,0x0F2,0x0FA,0x101,
+    0x10A,0x112,0x11B,0x123,0x12C,0x135,0x13F,0x148,0x152,0x15C,0x166,0x171,0x17B,0x186,0x191,0x19C,
+    0x1A8,0x1B4,0x1C0,0x1CC,0x1D9,0x1E5,0x1F2,0x200,0x20D,0x21B,0x229,0x237,0x246,0x255,0x264,0x273,
+    0x283,0x293,0x2A3,0x2B4,0x2C4,0x2D6,0x2E7,0x2F9,0x30B,0x31D,0x330,0x343,0x356,0x36A,0x37E,0x392,
+    0x3A7,0x3BC,0x3D1,0x3E7,0x3FC,0x413,0x42A,0x441,0x458,0x470,0x488,0x4A0,0x4B9,0x4D2,0x4EC,0x506,
+    0x520,0x53B,0x556,0x572,0x58E,0x5AA,0x5C7,0x5E4,0x601,0x61F,0x63E,0x65C,0x67C,0x69B,0x6BB,0x6DC,
+    0x6FD,0x71E,0x740,0x762,0x784,0x7A7,0x7CB,0x7EF,0x813,0x838,0x85D,0x883,0x8A9,0x8D0,0x8F7,0x91E,
+    0x946,0x96F,0x998,0x9C1,0x9EB,0xA16,0xA40,0xA6C,0xA98,0xAC4,0xAF1,0xB1E,0xB4C,0xB7A,0xBA9,0xBD8,
+    0xC07,0xC38,0xC68,0xC99,0xCCB,0xCFD,0xD30,0xD63,0xD97,0xDCB,0xE00,0xE35,0xE6B,0xEA1,0xED7,0xF0F,
+    0xF46,0xF7F,0xFB7,0xFF1,0x102A,0x1065,0x109F,0x10DB,0x1116,0x1153,0x118F,0x11CD,0x120B,0x1249,0x1288,0x12C7,
+    0x1307,0x1347,0x1388,0x13C9,0x140B,0x144D,0x1490,0x14D4,0x1517,0x155C,0x15A0,0x15E6,0x162C,0x1672,0x16B9,0x1700,
+    0x1747,0x1790,0x17D8,0x1821,0x186B,0x18B5,0x1900,0x194B,0x1996,0x19E2,0x1A2E,0x1A7B,0x1AC8,0x1B16,0x1B64,0x1BB3,
+    0x1C02,0x1C51,0x1CA1,0x1CF1,0x1D42,0x1D93,0x1DE5,0x1E37,0x1E89,0x1EDC,0x1F2F,0x1F82,0x1FD6,0x202A,0x207F,0x20D4,
+    0x2129,0x217F,0x21D5,0x222C,0x2282,0x22DA,0x2331,0x2389,0x23E1,0x2439,0x2492,0x24EB,0x2545,0x259E,0x25F8,0x2653,
+    0x26AD,0x2708,0x2763,0x27BE,0x281A,0x2876,0x28D2,0x292E,0x298B,0x29E7,0x2A44,0x2AA1,0x2AFF,0x2B5C,0x2BBA,0x2C18,
+    0x2C76,0x2CD4,0x2D33,0x2D91,0x2DF0,0x2E4F,0x2EAE,0x2F0D,0x2F6C,0x2FCC,0x302B,0x308B,0x30EA,0x314A,0x31AA,0x3209,
+    0x3269,0x32C9,0x3329,0x3389,0x33E9,0x3449,0x34A9,0x3509,0x3569,0x35C9,0x3629,0x3689,0x36E8,0x3748,0x37A8,0x3807,
+    0x3867,0x38C6,0x3926,0x3985,0x39E4,0x3A43,0x3AA2,0x3B00,0x3B5F,0x3BBD,0x3C1B,0x3C79,0x3CD7,0x3D35,0x3D92,0x3DEF,
+    0x3E4C,0x3EA9,0x3F05,0x3F62,0x3FBD,0x4019,0x4074,0x40D0,0x412A,0x4185,0x41DF,0x4239,0x4292,0x42EB,0x4344,0x439C,
+    0x43F4,0x444C,0x44A3,0x44FA,0x4550,0x45A6,0x45FC,0x4651,0x46A6,0x46FA,0x474E,0x47A1,0x47F4,0x4846,0x4898,0x48E9,
+    0x493A,0x498A,0x49D9,0x4A29,0x4A77,0x4AC5,0x4B13,0x4B5F,0x4BAC,0x4BF7,0x4C42,0x4C8D,0x4CD7,0x4D20,0x4D68,0x4DB0,
+    0x4DF7,0x4E3E,0x4E84,0x4EC9,0x4F0E,0x4F52,0x4F95,0x4FD7,0x5019,0x505A,0x509A,0x50DA,0x5118,0x5156,0x5194,0x51D0,
+    0x520C,0x5247,0x5281,0x52BA,0x52F3,0x532A,0x5361,0x5397,0x53CC,0x5401,0x5434,0x5467,0x5499,0x54CA,0x54FA,0x5529,
+    0x5558,0x5585,0x55B2,0x55DE,0x5609,0x5632,0x565B,0x5684,0x56AB,0x56D1,0x56F6,0x571B,0x573E,0x5761,0x5782,0x57A3,
+    0x57C3,0x57E2,0x57FF,0x581C,0x5838,0x5853,0x586D,0x5886,0x589E,0x58B5,0x58CB,0x58E0,0x58F4,0x5907,0x5919,0x592A,
+    0x593A,0x5949,0x5958,0x5965,0x5971,0x597C,0x5986,0x598F,0x5997,0x599E,0x59A4,0x59A9,0x59AD,0x59B0,0x59B2,0x59B3,
+};
 
 /* ---- the encoder (SPU-ADPCM and XA-ADPCM): one unit of 28 samples encoded and decoded at once ---- */
 /* the encoder's choices for a unit. CRUNCH (the colour stage's, AFFINE's) spoils them; at rest (ENC_CLEAN) they are
@@ -537,10 +562,11 @@ void psx_xa_process(float *l, float *r, uint32_t n, float mix) { cd_process(&xa,
  * through its ring within a minute); a new rate glides in; the dry is delayed by the same latency for the mix. */
 const char *const PSXC_RATE_NAME[PSXC_RATES] = {"GRIT", "44.1K", "22K", "11K", "8K"};
 const float PSXC_RATE_HZ[PSXC_RATES] = {0.0f, 44100.0f, 22050.0f, 11025.0f, 8000.0f};
+#define CL_ONE (1u << 16)                /* one codec sample on the clock (Q16) */
 #define CL_RING 64u                      /* decoded samples, a power of two that divides 65536 (the clock's wrap) */
 #define CL_LEAD 32                       /* playback behind the clock: a unit (28) + the interpolator's reach (2) + 2 */
 #define CL_DRY 256u                      /* the dry's delay line, frames (8 kHz FILTERED's latency: 182) */
-#define CL_GLIDE 6.0f                    /* a rate change: the latency's most a block (2.3 %: a quarter tone, 25-110 ms) */
+#define CL_GLIDE 6.0f                    /* a rate change: latency moved a block at most (2.3 %, 25-110 ms) */
 #define CL_K1 (1.0f / 0.5412f)           /* the anti-alias filter: Butterworth, 4th order: Q 0.541 and 1.307 */
 #define CL_K2 (1.0f / 1.3066f)
 typedef struct {
@@ -557,13 +583,13 @@ static struct {
     uint32_t nb;                         /* samples gathered into the unit */
     float iinc;                          /* 1 / inc: a codec sample's place between two input samples */
     float g, aad;                        /* the anti-alias filter (g = tan(pi fc / fs)); its delay at DC, samples */
-    float raw_s, mix_s, fade;            /* RAW (0 filtered .. 1 raw), the mix, the bus's fade in: eased */
+    float raw_s, mix_s, fade, smooth_s;  /* RAW (0 filtered .. 1 raw), the mix, the bus's fade in, SMOOTH: eased */
     uint32_t dlat, dw, fresh, run;       /* the dry's delay (frames), its write place; 1: just cleared; the bus's */
     uint32_t bits, filter, adpcm, rnd;
     float crunch;
     float dry[CL_DRY][2];
 } cl;
-static volatile float p_grate = 22050.0f, p_crunch;
+static volatile float p_grate = 22050.0f, p_crunch, p_csmooth = 1.0f;
 static volatile uint32_t p_gbits = 4u, p_gfilt, p_crate, p_craw, p_cadpcm = 1u;
 
 void psx_grit_set(float rate, uint32_t bits, uint32_t filter)
@@ -572,12 +598,13 @@ void psx_grit_set(float rate, uint32_t bits, uint32_t filter)
     p_gbits = bits < 2u ? 2u : bits > 4u ? 4u : bits;
     p_gfilt = filter;
 }
-void psx_color_set(uint32_t rate, uint32_t raw, uint32_t adpcm, float crunch)
+void psx_color_set(uint32_t rate, uint32_t raw, uint32_t adpcm, float crunch, float smooth)
 {
     p_crate = rate < PSXC_RATES ? rate : 0u;
     p_craw = raw ? 1u : 0u;
     p_cadpcm = adpcm ? 1u : 0u;
     p_crunch = brk_clampf(crunch, 0.0f, 1.0f);
+    p_csmooth = brk_clampf(smooth, 0.0f, 1.0f);
 }
 
 BRK_COLD static void cl_clear(void)
@@ -647,20 +674,34 @@ static void cl_unit(uint32_t k)
     }
 }
 
-/* playback: the four decoded samples around I + fr / 256 through the cosine window */
-static inline float cl_play(const int16_t *dec, int32_t i, uint32_t fr)
+/* playback at i + fr / 256 (fr: 8 bits, as the SPU's pitch counter gives its table). SMOOTH sm: 1 the SPU's gaussian
+ * (its table, its maths: the soft, dull top), 0.5 linear, 0 the nearest sample (no interpolation: the images left
+ * above the rate, bright and metallic); between, the two neighbours blended */
+static inline float cl_play(const int16_t *dec, int32_t i, uint32_t fr, float sm)
 {
-    int32_t a = dec[(uint32_t)(i - 1) & (CL_RING - 1u)], b = dec[(uint32_t)i & (CL_RING - 1u)],
-            d = dec[(uint32_t)(i + 1) & (CL_RING - 1u)], e = dec[(uint32_t)(i + 2) & (CL_RING - 1u)];
-    float out = (float)(NUT[256u + fr] * a + NUT[fr] * b + NUT[256u - fr] * d + NUT[512u - fr] * e) * (1.0f / 32768.0f);
-    return out * S2F;
+    int32_t b = dec[(uint32_t)i & (CL_RING - 1u)], d = dec[(uint32_t)(i + 1) & (CL_RING - 1u)];
+    float lin, g, nr;
+    if (sm > 0.5f) {                     /* (the gaussian: the oldest, older, old, new samples) */
+        int32_t a = dec[(uint32_t)(i - 1) & (CL_RING - 1u)], e = dec[(uint32_t)(i + 2) & (CL_RING - 1u)];
+        g = (float)(((PSX_GAUSS[0xFFu - fr] * a) >> 15) + ((PSX_GAUSS[0x1FFu - fr] * b) >> 15) +
+                    ((PSX_GAUSS[0x100u + fr] * d) >> 15) + ((PSX_GAUSS[fr] * e) >> 15));
+        if (sm >= 1.0f)
+            return g * S2F;
+        lin = (float)b + (float)((d - b) * (int32_t)fr) * (1.0f / 256.0f);
+        return (lin + (g - lin) * (2.0f * sm - 1.0f)) * S2F;
+    }
+    lin = (float)b + (float)((d - b) * (int32_t)fr) * (1.0f / 256.0f);
+    if (sm >= 0.5f)
+        return lin * S2F;
+    nr = (float)(fr < 128u ? b : d);
+    return (nr + (lin - nr) * (2.0f * sm)) * S2F;
 }
 
 /* the stage over a block, in place: mix 0..1 with the dry delayed to match; want: the bus's fade toward 1 (0: out) */
 static void cl_process(float *l, float *r, uint32_t n, float mix, uint32_t want)
 {
     uint32_t i, inc, dl0, dl1, xf;
-    float iinc, g, dr, dm, df, rn = 1.0f / (float)(n ? n : 1u);
+    float iinc, g, dr, dm, df, ds, smooth = p_csmooth, rn = 1.0f / (float)(n ? n : 1u);
     cl_block();
     inc = cl.inc;
     iinc = cl.iinc;
@@ -670,6 +711,7 @@ static void cl_process(float *l, float *r, uint32_t n, float mix, uint32_t want)
     if (cl.fresh) {                      /* (just cleared: everything where it is set, nothing eased in) */
         cl.raw_s = p_craw ? 1.0f : 0.0f;
         cl.mix_s = mix;
+        cl.smooth_s = smooth;
         cl.dlat = dl1;
         cl.fresh = 0u;
     }
@@ -677,6 +719,7 @@ static void cl_process(float *l, float *r, uint32_t n, float mix, uint32_t want)
     xf = dl0 != dl1;                     /* (the latency changed: the dry crossfades to its new delay over the block) */
     dr = ((p_craw ? 1.0f : 0.0f) - cl.raw_s) * rn;
     dm = (mix - cl.mix_s) * rn;
+    ds = (smooth - cl.smooth_s) * rn;
     df = ((want ? 1.0f : 0.0f) - cl.fade) * rn;
     if (cl.raw_s >= 1.0f && !p_craw) {
         uint32_t c;                      /* (back to FILTERED: the filter, idle while RAW, starts where its input is) */
@@ -685,67 +728,74 @@ static void cl_process(float *l, float *r, uint32_t n, float mix, uint32_t want)
             cl.ch[c].z[1] = cl.ch[c].z[3] = cl.ch[c].prev;
         }
     }
-    for (i = 0; i < n; i++) {
-        float x[2], y[2], w[2], rs, m, f;
-        uint32_t a = cl.acc, d = (0u - a) & 0xFFFFu, c;
-        x[0] = l[i];
-        x[1] = r[i];
-        cl.dry[cl.dw][0] = x[0];
-        cl.dry[cl.dw][1] = x[1];
-        rs = cl.raw_s += dr;
-        m = cl.mix_s += dm;
-        f = cl.fade += df;
-        for (c = 0; c < 2u; c++) {       /* FILTERED, RAW, or between while it eases */
-            y[c] = x[c];
-            if (rs < 1.0f) {
-                cl_ch_t *h = &cl.ch[c];
-                float fl = svf_lp(&h->z[2], svf_lp(&h->z[0], x[c], g, CL_K1), g, CL_K2);
-                y[c] = rs <= 0.0f ? fl : fl + (x[c] - fl) * rs;
+    {                                    /* (the block's state in locals: the float stores below could alias it) */
+        uint32_t acc = cl.acc, dw = cl.dw, nb = cl.nb;
+        float rs = cl.raw_s, m = cl.mix_s, sm = cl.smooth_s, f = cl.fade, p0 = cl.ch[0].prev, p1 = cl.ch[1].prev;
+        for (i = 0; i < n; i++) {
+            float x0 = l[i], x1 = r[i], y0 = x0, y1 = x1, w0, w1;
+            uint32_t a = acc, d = (0u - a) & (CL_ONE - 1u);
+            cl.dry[dw][0] = x0;
+            cl.dry[dw][1] = x1;
+            rs += dr;
+            m += dm;
+            sm += ds;
+            f += df;
+            if (rs < 1.0f) {             /* FILTERED, RAW, or between while it eases */
+                float f0 = svf_lp(&cl.ch[0].z[2], svf_lp(&cl.ch[0].z[0], x0, g, CL_K1), g, CL_K2),
+                      f1 = svf_lp(&cl.ch[1].z[2], svf_lp(&cl.ch[1].z[0], x1, g, CL_K1), g, CL_K2);
+                y0 = rs <= 0.0f ? f0 : f0 + (x0 - f0) * rs;
+                y1 = rs <= 0.0f ? f1 : f1 + (x1 - f1) * rs;
             }
-        }
-        while (d < inc) {                /* the codec's samples between the input before and this one */
-            float ph = (float)d * iinc;
-            cl.ch[0].blk[cl.nb] = (int16_t)f2s(cl.ch[0].prev + (y[0] - cl.ch[0].prev) * ph);
-            cl.ch[1].blk[cl.nb] = (int16_t)f2s(cl.ch[1].prev + (y[1] - cl.ch[1].prev) * ph);
-            if (++cl.nb == 28u) {
-                cl_unit((a + d) >> 16);
-                cl.nb = 0;
+            while (d < inc) {            /* the codec's samples between the input before and this one */
+                float ph = (float)d * iinc;
+                cl.ch[0].blk[nb] = (int16_t)f2s(p0 + (y0 - p0) * ph);
+                cl.ch[1].blk[nb] = (int16_t)f2s(p1 + (y1 - p1) * ph);
+                if (++nb == 28u) {
+                    cl_unit((a + d) >> 16);
+                    nb = 0;
+                }
+                d += CL_ONE;
             }
-            d += 0x10000u;
-        }
-        cl.ch[0].prev = y[0];
-        cl.ch[1].prev = y[1];
-        {                                /* playback, CL_LEAD codec samples behind the clock */
-            int32_t pi = (int32_t)(a >> 16) - CL_LEAD;
-            uint32_t fr = (a >> 8) & 0xFFu;
-            w[0] = cl_play(cl.ch[0].dec, pi, fr);
-            w[1] = cl_play(cl.ch[1].dec, pi, fr);
-        }
-        cl.acc = a + inc;
-        if (m < 1.0f || xf) {            /* the mix, against the dry delayed by the latency */
-            uint32_t p0 = (cl.dw - dl0) & (CL_DRY - 1u);
-            float d0 = cl.dry[p0][0], d1 = cl.dry[p0][1];
-            if (xf) {
-                uint32_t p1 = (cl.dw - dl1) & (CL_DRY - 1u);
-                float t = (float)(i + 1u) * rn;
-                d0 += (cl.dry[p1][0] - d0) * t;
-                d1 += (cl.dry[p1][1] - d1) * t;
+            p0 = y0;
+            p1 = y1;
+            {                            /* playback, CL_LEAD codec samples behind the clock */
+                int32_t pi = (int32_t)(a >> 16) - CL_LEAD;
+                uint32_t fr = (a >> 8) & 0xFFu;
+                w0 = cl_play(cl.ch[0].dec, pi, fr, sm);
+                w1 = cl_play(cl.ch[1].dec, pi, fr, sm);
             }
-            if (m < 1.0f) {
-                w[0] = d0 + (w[0] - d0) * m;
-                w[1] = d1 + (w[1] - d1) * m;
+            acc = a + inc;
+            if (m < 1.0f || xf) {        /* the mix, against the dry delayed by the latency */
+                uint32_t q0 = (dw - dl0) & (CL_DRY - 1u);
+                float d0 = cl.dry[q0][0], d1 = cl.dry[q0][1];
+                if (xf) {
+                    uint32_t q1 = (dw - dl1) & (CL_DRY - 1u);
+                    float t = (float)(i + 1u) * rn;
+                    d0 += (cl.dry[q1][0] - d0) * t;
+                    d1 += (cl.dry[q1][1] - d1) * t;
+                }
+                if (m < 1.0f) {
+                    w0 = d0 + (w0 - d0) * m;
+                    w1 = d1 + (w1 - d1) * m;
+                }
             }
+            if (f < 1.0f) {              /* the bus's fade: in from (or out to) the sound as it came */
+                w0 = x0 + (w0 - x0) * f;
+                w1 = x1 + (w1 - x1) * f;
+            }
+            l[i] = w0;
+            r[i] = w1;
+            dw = (dw + 1u) & (CL_DRY - 1u);
         }
-        if (f < 1.0f) {                  /* the bus's fade: in from (or out to) the sound as it came */
-            w[0] = x[0] + (w[0] - x[0]) * f;
-            w[1] = x[1] + (w[1] - x[1]) * f;
-        }
-        l[i] = w[0];
-        r[i] = w[1];
-        cl.dw = (cl.dw + 1u) & (CL_DRY - 1u);
+        cl.acc = acc;
+        cl.dw = dw;
+        cl.nb = nb;
+        cl.ch[0].prev = p0;
+        cl.ch[1].prev = p1;
     }
     cl.raw_s = p_craw ? 1.0f : 0.0f;     /* (landed exactly) */
     cl.mix_s = mix;
+    cl.smooth_s = smooth;
     cl.fade = want ? 1.0f : 0.0f;
     cl.dlat = dl1;
 }
@@ -1089,7 +1139,6 @@ static void verb_clear(void)            /* the work area, the resamplers, the ea
 
 BRK_COLD void psx_init(void)
 {
-    nut_init();
     verb_clear();
     verb_idle = 1000u;
     send_s = crush_s = redux_s = 0.0f;
@@ -1098,7 +1147,7 @@ BRK_COLD void psx_init(void)
     cl_clear();
     cd_clear(&xa);
     psx_grit_set(22050.0f, 4u, 0u);
-    psx_color_set(PSXC_RATE_GRIT, 0u, 1u, 0.0f);
+    psx_color_set(PSXC_RATE_GRIT, 0u, 1u, 0.0f, 1.0f);
     psx_xa_set(0u, 0u, 1u);
     psx_crush_set(16.0f, CRUSH_ROUND, 0.0f);
     psx_redux_set(44100.0f, REDUX_HARD, 0.0f);

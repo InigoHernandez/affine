@@ -57,20 +57,24 @@ static void g44(void) { psx_grit_set(44100.0f, 4u, 0u); }
 static void g32(void) { psx_grit_set(32000.0f, 4u, 0u); }
 static void xa37(void) { psx_xa_set(0u, 0u, 1u); }
 #ifndef PSX_OLD
-static void r44f(void) { psx_color_set(PSXC_RATE_44K, 0u, 0u, 0.0f); }
-static void r22f(void) { psx_color_set(PSXC_RATE_22K, 0u, 0u, 0.0f); }
-static void r11f(void) { psx_color_set(PSXC_RATE_11K, 0u, 0u, 0.0f); }
-static void r8f(void) { psx_color_set(PSXC_RATE_8K, 0u, 0u, 0.0f); }
-static void r22r(void) { psx_color_set(PSXC_RATE_22K, 1u, 0u, 0.0f); }
-static void r11r(void) { psx_color_set(PSXC_RATE_11K, 1u, 0u, 0.0f); }
-static void r8r(void) { psx_color_set(PSXC_RATE_8K, 1u, 0u, 0.0f); }
-static void a44(void) { psx_color_set(PSXC_RATE_44K, 0u, 1u, 0.0f); }
-static void a22(void) { psx_color_set(PSXC_RATE_22K, 0u, 1u, 0.0f); }
-static void a11(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f); }
-static void a8(void) { psx_color_set(PSXC_RATE_8K, 0u, 1u, 0.0f); }
-static void a11c5(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.5f); }
-static void a11c10(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 1.0f); }
-static void ps1(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.25f); }
+static void r44f(void) { psx_color_set(PSXC_RATE_44K, 0u, 0u, 0.0f, 1.0f); }
+static void r22f(void) { psx_color_set(PSXC_RATE_22K, 0u, 0u, 0.0f, 1.0f); }
+static void r11f(void) { psx_color_set(PSXC_RATE_11K, 0u, 0u, 0.0f, 1.0f); }
+static void r8f(void) { psx_color_set(PSXC_RATE_8K, 0u, 0u, 0.0f, 1.0f); }
+static void r22r(void) { psx_color_set(PSXC_RATE_22K, 1u, 0u, 0.0f, 1.0f); }
+static void r11r(void) { psx_color_set(PSXC_RATE_11K, 1u, 0u, 0.0f, 1.0f); }
+static void r8r(void) { psx_color_set(PSXC_RATE_8K, 1u, 0u, 0.0f, 1.0f); }
+static void a44(void) { psx_color_set(PSXC_RATE_44K, 0u, 1u, 0.0f, 1.0f); }
+static void a22(void) { psx_color_set(PSXC_RATE_22K, 0u, 1u, 0.0f, 1.0f); }
+static void a11(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f, 1.0f); }
+static void a8(void) { psx_color_set(PSXC_RATE_8K, 0u, 1u, 0.0f, 1.0f); }
+static void a11c5(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.5f, 1.0f); }
+static void a11c10(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 1.0f, 1.0f); }
+static void ps1(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.25f, 1.0f); }
+static void s0(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f, 0.0f); }
+static void s50(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f, 0.5f); }
+static void s75(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f, 0.75f); }
+static void s25(void) { psx_color_set(PSXC_RATE_11K, 0u, 1u, 0.0f, 0.25f); }
 #endif
 static void none(void) { }
 
@@ -97,11 +101,15 @@ int main(void)
     row("RATE 8 kHz RAW, ADPCM off", r8r, 0, 1.0f);
     row("ADPCM 44.1 kHz, CRUNCH 0", a44, 0, 1.0f);
     row("ADPCM 22.05 kHz, CRUNCH 0", a22, 0, 1.0f);
-    row("ADPCM 11.025 kHz, CRUNCH 0", a11, 0, 1.0f);
+    row("ADPCM 11.025 kHz, CRUNCH 0 (SMOOTH 1)", a11, 0, 1.0f);
     row("ADPCM 8 kHz, CRUNCH 0", a8, 0, 1.0f);
     row("ADPCM 11.025 kHz, CRUNCH 0.5", a11c5, 0, 1.0f);
     row("ADPCM 11.025 kHz, CRUNCH 1", a11c10, 0, 1.0f);
     row("ADPCM 11.025 kHz, mix 50 % (the dry delayed)", a11, 0, 0.5f);
+    row("ADPCM 11.025 kHz, SMOOTH 0 (nearest)", s0, 0, 1.0f);
+    row("ADPCM 11.025 kHz, SMOOTH 0.25 (nearest/linear)", s25, 0, 1.0f);
+    row("ADPCM 11.025 kHz, SMOOTH 0.5 (linear)", s50, 0, 1.0f);
+    row("ADPCM 11.025 kHz, SMOOTH 0.75 (linear/gaussian)", s75, 0, 1.0f);
     row("the full PS1 (11.025k FILTERED, ADPCM, CRUNCH .25)", ps1, 0, 1.0f);
 #endif
     return 0;
