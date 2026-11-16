@@ -14,13 +14,13 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <div class="rules" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
 <header class="bar">
-  <a class="brand" href="./" aria-label="AFFINE"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="var(--hot)" d="M16 1 4 13h12z"/><path fill="color-mix(in srgb, var(--hot) 60%, var(--ink))" d="M16 1 28 13H16z"/><path fill="color-mix(in srgb, var(--hot) 55%, var(--bg))" d="M4 13h12v18z"/><path fill="color-mix(in srgb, var(--hot) 25%, var(--bg))" d="M16 13h12L16 31z"/></svg><b>AFFINE</b></a>
+  <a class="brand" href="./" aria-label="AFFINE"><canvas width="28" height="28" aria-hidden="true"></canvas><b>AFFINE</b></a>
   <p class="dev label"><span>Runs on</span><b>FM-1</b></p>
   <span class="acts"><button id="skin" class="skinbtn" type="button" aria-label="The skin: POLYGON. Next skin"><i aria-hidden="true"></i><span id="skin-n">POLYGON</span></button><a class="cta" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a></span>
 </header>
@@ -217,6 +217,7 @@
 
 <script src="site.js?v=2"></script>
 <script src="scene.js?v=1"></script>
+<script src="brand.js?v=1"></script>
 <script src="panel.js?v=1"></script>
 <script src="play.js?v=3"></script>
 <script src="chip.js?v=2"></script>
