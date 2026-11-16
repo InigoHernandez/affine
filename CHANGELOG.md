@@ -4,6 +4,12 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Sound:** PSX COLOR on the PSX page: COLOR (AMOUNT, RATE 44K..8K with RAW steps, CRUNCH, SMOOTH) and OUT
+  (CONSOLE, MONO, SEND, INPUT); the SPU's ADPCM round trip with an encoder you can spoil, its gaussian playback, a
+  console-out colour; PRESETS steps SUBTLE GLUE, PS1 PAD, CRUNCHY TAIL, DUB ECHO PSX. The reverb's INPUT can drive
+  it; CHAOS and DELAY's SIZE in note values; XA's clock steady.
+- **Perform:** three rows of black keys (hold FX + OCT- / OCT+): AFFINE, PUNCH (eleven signature combos), CUSTOM
+  (hold FX and a key, turn a knob); REC records the black keys into the pattern.
 - **Site:** AFFINE's hover on what you can act on (buttons, links, the keys): the rows tear as a disc skips, then
   rest washed out over a faint dither and scanlines, the words readable; cards and tiles stay still.
 - **Screen:** every text on the FM-1 at 2x at least (the owner: "everything in the UI looks very small"), every
