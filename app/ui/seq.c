@@ -13,7 +13,7 @@ static const char *const SEQ_LANE_NAME[NSEQL] = {"STEPS 1-16", "STEPS 17-32", "B
                                           * height over its rows), between this (its number inside its box) and 24 */
 #define SQ_BRK_MAX 24
 #define SQ_H 148                         /* the picture's rows (screen 44..191) */
-#define SQ_X 30                          /* the steps begin (the names before) */
+#define SQ_X 22                          /* the steps begin (the names before; AFFINE: their two letters at 2x) */
 static uint32_t text_n(const char *t) { uint32_t n = 0u; while (t[n]) n++; return n; }   /* (no libc's strlen on the FM-1) */
 static const char *const DRUM_NAME[NDRUMS] = {"BOOM", "SNARE", "HAT", "CLAP"};   /* (AFFINE: the kick is BOOM) */
 static const char *const DRUM_TAG[NDRUMS] = {"BOOM", "SN", "HH", "CP"};   /* (EDIT's tabs) */
@@ -106,6 +106,7 @@ static void seq_view_turn(int32_t d)     /* SELECT on SEQ: FULL, DRUMS, SETTINGS
         seq_view_set(v % 3u);
 }
 static void seq_value(int i, char *t);
+static void seq_text(int i, char *t, int foot);
 enum { UNDO_RANDOM = 1, UNDO_CLEAR, UNDO_LANE };   /* (UNDO_LANE + the knob) */
 static void undo_mark(uint32_t what);
 static uint32_t n_slices(void)
@@ -323,12 +324,14 @@ static void lane_sound_turn(int32_t d)   /* LOAF BREAKER: SEQ K2 on a drum lane:
     else
         perc_mem_turn(dr - 1u, d);
 }
-static void lane_sound_text(char *t)
+static void lane_sound_text(char *t, int foot)   /* (foot: the preset's name, the memory's number alone) */
 {
     uint32_t dr = sl_drum(ui.seq_lane);
     t[0] = 0;
-    text_cat(t, DRUM_NAME[dr]);
-    text_cat(t, " ");
+    if (!foot) {
+        text_cat(t, DRUM_NAME[dr]);
+        text_cat(t, " ");
+    }
     if (dr == DR_KICK)
         text_cat(t, boom_pre_name());
     else
@@ -367,7 +370,7 @@ static void lane_knob(int i, int32_t d)
             *b = (uint8_t)((*b & 0x1Fu) | (uint32_t)clamp((int32_t)(*b >> 5) + (d > 0 ? 1 : -1), 0, 7) << 5);
         ui.note_turned = 1u;
         set_dirty = 1u;
-        seq_value(i, t);
+        seq_text(i, t, 0);
         say_int(W[i & 3], (int32_t)ks + 1, "");   /* ("HITS 5": the step) */
         app_say(ui.msg[0], t);
         ui.redraw |= RG_BLOCKS | RG_FOOT;
@@ -412,7 +415,7 @@ static void lane_knob(int i, int32_t d)
         pat_lanes_out();
         seq_lane_fix();
         set_dirty = 1u;
-        seq_value(i, t);
+        seq_text(i, t, 0);
         app_say(NAME[i], t);
         ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;
         return;
@@ -431,7 +434,7 @@ static void lane_knob(int i, int32_t d)
     sl_set(pat_now(), ui.seq_lane, m);
     pat_lanes_out();
     set_dirty = 1u;
-    seq_value(i, t);
+    seq_text(i, t, 0);
     app_say(NAME[i], i == 2 ? (m ? "4X4" : "CLEARED") : t);
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
@@ -543,7 +546,7 @@ static void seq_key(uint32_t i)          /* a white key on SEQ: the step to edit
         return;
     }
     ui.seq_step = (uint8_t)(ui.seq_lane * 16u + i);
-    seq_value(0, t);
+    seq_text(0, t, 0);
     say_int("STEP", (int32_t)ui.seq_step + 1, "");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
@@ -587,13 +590,18 @@ static void note_name(int32_t n, char *t)   /* "C3", "F#4" (0: C3) */
     text_cat(t, NN[(n + 120) % 12]);
     int_text(3 + o, t + text_n(t));
 }
-static void seq_value(int i, char *t)    /* the step edited: SLICE, PITCH, HITS, REVERSE */
+static void seq_value(int i, char *t) { seq_text(i, t, 1); }   /* (the foot's: main.c's knob_value) */
+/* the knobs' values: the step edited (SLICE, PITCH, HITS, REVERSE), a drum lane's, a drum step held's. foot: as the
+ * foot shows them (AFFINE, 2x: short, beside the knob's name in its 108 pixels: "32", not "32 STEPS"); else as the
+ * header says them */
+static void seq_text(int i, char *t, int foot)
 {
     const uint8_t *b = pat_now()->st[ui.seq_step % PAT_STEPS];
     t[0] = 0;
     if (SEQ_BRK) {                       /* (LOAF BREAKER, 0.234: BREAK, K4 its rows shown) */
         if (i == 3)
-            text_cat(t, brk_view() == 0u ? "HIDDEN" : brk_view() == 1u ? "16 STEPS" : "32 STEPS");
+            text_cat(t, brk_view() == 0u ? (foot ? "OFF" : "HIDDEN") : brk_view() == 1u ? (foot ? "16" : "16 STEPS")
+                     : (foot ? "32" : "32 STEPS"));
         return;
     }
     if (ui.seq_lane >= SL_KICK && ui.note_key) {   /* LOAF BREAKER: a step held: its NOTE, HITS, CHANCE, NUDGE */
@@ -611,12 +619,13 @@ static void seq_value(int i, char *t)    /* the step edited: SLICE, PITCH, HITS,
             }
         } else if (i == 1) {
             int_text((int32_t)(sb & 3u) + 1, t);
-            text_cat(t, (sb & 3u) ? " HITS" : " HIT");
+            if (!foot)
+                text_cat(t, (sb & 3u) ? " HITS" : " HIT");
         } else if (i == 2) {             /* LOAF BREAKER TEST: CHANCE and the trig conditions */
             static const char *const C[8] = {"ALWAYS", "75%", "50%", "25%", "1:2", "2:2", "FILL", "NOT FILL"};
             text_cat(t, C[(sb >> 2 & 7u) >= 6u ? 0u : sb >> 2 & 7u]);   /* (0.244: FILL's two, ALWAYS now) */
         } else if (!(sb >> 5))
-            text_cat(t, "ON TIME");
+            text_cat(t, foot ? "0/16" : "ON TIME");
         else {
             text_cat(t, "+");
             int_text((int32_t)(sb >> 5), t + 1);
@@ -634,12 +643,14 @@ static void seq_value(int i, char *t)    /* the step edited: SLICE, PITCH, HITS,
             int_text((int32_t)n, t);
             text_cat(t, " HITS");
         } else if (i == 1)
-            lane_sound_text(t);          /* (LOAF BREAKER: what the lane plays) */
-        else if (i == 2)
-            text_cat(t, "L CLR R 4X4");
-        else {
+            lane_sound_text(t, foot);    /* (LOAF BREAKER: what the lane plays) */
+        else if (i == 2) {
+            if (!foot)                   /* (the foot: its name says it) */
+                text_cat(t, "L CLR R 4X4");
+        } else {
             int_text((int32_t)(16u * sl_bars(pat_now(), ui.seq_lane)), t);
-            text_cat(t, " STEPS");
+            if (!foot)
+                text_cat(t, " STEPS");
         }
         return;
     }
@@ -654,7 +665,9 @@ static void seq_value(int i, char *t)    /* the step edited: SLICE, PITCH, HITS,
     } else if (i == 2) {
         text_cat(t, "X");
         int_text(((b[2] >> 1) & 3u) + 1, t + 1);
-    } else
+    } else if (foot)
+        text_cat(t, b[2] & 1u ? "ON" : "OFF");   /* (REVERSE ON) */
+    else
         text_cat(t, b[2] & 1u ? "REVERSE" : "FORWARD");
 }
 static void seq_turn(int i, int32_t d)
@@ -666,7 +679,7 @@ static void seq_turn(int i, int32_t d)
         if (i == 3) {
             set.brkv = (uint8_t)(BRKV_TAG | (uint32_t)clamp((int32_t)brk_view() + (d > 0 ? 1 : -1), 0, 2));
             set_dirty = 1u;
-            seq_value(i, t);
+            seq_text(i, t, 0);
             app_say("BREAK STEPS", t);
             ui.redraw |= RG_BLOCKS | RG_FOOT;
         } else
@@ -687,7 +700,7 @@ static void seq_turn(int i, int32_t d)
         b[2] = (uint8_t)((b[2] & ~1u) | (d > 0 ? 1u : 0u));
     pat_step_out(ui.seq_step % PAT_STEPS);
     set_dirty = 1u;
-    seq_value(i, t);
+    seq_text(i, t, 0);
     say_int("STEP", (int32_t)ui.seq_step + 1, "");
     app_say(ui.msg[0], t);
     ui.redraw |= RG_BLOCKS | RG_FOOT;    /* (the knobs' values too: they show the step) */
@@ -764,12 +777,72 @@ static uint32_t keys_lit(const brk_status_t *st)   /* the white keys' lights on 
         m ^= 1u << (st->step % 16);
     return m;
 }
-/* LOAF BREAKER: the SEQ page, everything at once. Under the tabs (y 44..191, drawn in three bands), a row of 16 steps
+/* AFFINE, every text at 2x: a page's picture under the tabs (screen rows 44..191, SQ_H rows) is drawn in strips of at
+ * most 60 rows (the canvas), cut where no text crosses: a measuring pass first (each text's rows noted, nothing
+ * drawn), then the strips. The pictures' texts go through pic_text: 2x, written at the strip's own rows (a text in
+ * another strip is left out; the text audit, affont.c, sees each where it lands) */
+#define PIC_Y 44                         /* (the picture's first screen row) */
+#define PIC_TH 10                        /* (a text's capitals at 2x: its rows) */
+#define PIC_KO 16                        /* (a page's rows of text, merged: the grid's at most 12) */
+static int16_t pic_ko[PIC_KO][2];        /* (measuring: the rows texts take, from, to) */
+static int32_t pic_kn = -1;              /* (the rows noted; -1: drawing) */
+static int32_t pic_tw(const char *s) { return text_w(&FONT_T, s); }   /* (a text's width at 2x) */
+static void pic_text(int32_t x, int32_t y, const char *s, uint16_t c)   /* s at x, its capitals' top at picture row y */
+{
+    int32_t oy = cv_oy, i;
+    if (pic_kn >= 0) {                   /* measuring: its rows, merged with the rows they touch */
+        for (i = 0; i < pic_kn && !(y < pic_ko[i][1] && pic_ko[i][0] < y + PIC_TH); i++)
+            ;
+        if (i == pic_kn) {               /* (new rows; no room: the last grown) */
+            if (pic_kn < PIC_KO) {
+                pic_ko[i][0] = (int16_t)y;
+                pic_ko[i][1] = (int16_t)(y + PIC_TH);
+                pic_kn++;
+            } else
+                i = PIC_KO - 1;
+        }
+        if (y < pic_ko[i][0])
+            pic_ko[i][0] = (int16_t)y;
+        if (y + PIC_TH > pic_ko[i][1])
+            pic_ko[i][1] = (int16_t)(y + PIC_TH);
+        return;
+    }
+    if (y + oy + PIC_TH <= 0 || y + oy >= (int32_t)cv_h)
+        return;                          /* (another strip's) */
+    cv_oy = 0;
+    cv_text(x, y + oy - aff_foff(&FONT_T, aff_fz(&FONT_T), 1), &FONT_T, s, c);
+    cv_oy = oy;
+}
+static void pic_draw(void (*pic)(int32_t top))   /* pic (its rows from top on, cv_oy -top) in strips no text crosses */
+{
+    int32_t top, c, i, n, moved;
+    pic_kn = 0;
+    pic(4096);                           /* (measuring: drawn far under the canvas, nothing lands) */
+    n = pic_kn;
+    pic_kn = -1;
+    for (top = 0; top < SQ_H; top = c) {
+        c = top + 60 < SQ_H ? top + 60 : SQ_H;   /* (the canvas holds 60 rows) */
+        do {                             /* (up to the first text it would cut) */
+            moved = 0;
+            for (i = 0; i < n; i++)
+                if (pic_ko[i][0] < c && c < pic_ko[i][1] && pic_ko[i][0] > top) {
+                    c = pic_ko[i][0];
+                    moved = 1;
+                }
+        } while (moved);
+        cv_begin(240, (uint32_t)(c - top), C_BLACK);
+        pic(top);
+        cv_blit(0, (uint32_t)(PIC_Y + top));
+    }
+}
+
+/* LOAF BREAKER: the SEQ page, everything at once. Under the tabs (y 44..191, drawn in bands), a row of 16 steps
  * each: the break's half the keys edit, when they edit it (each step its slice, LOOP a dot, off a dash; the one edited
  * outlined; gone while a drum lane is picked), then every drum
  * over the length it has (the kick's 1, 2 or 4 bars, the snare's, hat's and clap's 1 or 2), named by its letters
- * ("K", "SN"; its other bars "2", "3", "4"). The rows share the height: fewer rows, bigger steps. The step playing
- * white; the lane the keys edit named lit, a line under it */
+ * ("BM", "SN"; its other bars "2", "3", "4"; AFFINE: rows too low for a name at 2x, the drum's name once, beside all
+ * its bars). The rows share the height: fewer rows, bigger steps. The step playing white; the lane the keys edit named
+ * lit, a line under it */
 static uint32_t seq_rows(uint8_t *row)   /* the rows, top to bottom (SL_*); their count */
 {
     uint32_t sl, n = 0u;
@@ -779,9 +852,27 @@ static uint32_t seq_rows(uint8_t *row)   /* the rows, top to bottom (SL_*); thei
             row[n++] = (uint8_t)sl;
     return n;
 }
-static void seq_picture(const brk_status_t *st, int32_t top)
+static void sq_num(int32_t x, int32_t w, int32_t y, uint32_t n, uint16_t c)   /* AFFINE: a slice's number at 2x
+                                          * centred in a step w wide: 10..16 with a narrow 1 (the font's, its foot left
+                                          * off), a pixel from the digit after it: two digits in a step */
+{
+    char t[4];
+    int32_t tw;
+    int_text((int32_t)(n % 10u), t);
+    tw = pic_tw(t) + (n >= 10u ? 5 : 0);
+    x += (w - tw) / 2;
+    if (n >= 10u) {
+        cv_rect(x, y, 2, 2, c);          /* (its flag, its stem) */
+        cv_rect(x + 2, y, 2, PIC_TH, c);
+        x += 5;
+    }
+    pic_text(x, y, t, c);
+}
+static const brk_status_t *sq_st;        /* (draw_seq's, for the picture's strips) */
+static void seq_picture(int32_t top)
 {
     static const char *const TAG[NDRUMS] = {"BM", "SN", "HH", "CP"};
+    const brk_status_t *st = sq_st;
     const pat_t *p = pat_now();
     uint8_t row[NSEQL];
     uint32_t i, r, n = seq_rows(row), nb = 0u;
@@ -800,34 +891,39 @@ static void seq_picture(const brk_status_t *st, int32_t top)
         int32_t ch = brk ? bh - 2 : pitch > 4 ? pitch - 2 : pitch;   /* (the break's half: tall enough for its
                                           * numbers) */
         int picked = SEQ_BRK ? brk : sl == ui.seq_lane;   /* (on BREAK: the break's rows named lit) */
-        t[0] = 0;                        /* the row's name: the drum and its length on its first bar, else the bar */
+        t[0] = 0;                        /* the row's name: the drum on its first bar, else the bar */
         if (brk)
-            text_cat(t, sl ? "BRK2" : "BRK1");
+            text_cat(t, sl ? "B2" : "B1");
         else if (SL_BAR[sl]) {
             t[0] = (char)('1' + SL_BAR[sl]);
             t[1] = 0;
         } else
             text_cat(t, TAG[sl_drum(sl)]);   /* (LOAF BREAKER: the letters alone, the length the grid shows) */
-        cv_text(SQ_X - 3 - text_w(&FONT_XS, t), y + (ch - 8) / 2, &FONT_XS, t, picked ? C_HI : brk || !SL_BAR[sl] ? C_GRAY
-                : C_DIM);
+        if (brk || ch >= PIC_TH + 2)     /* (a name a row: rows of 14 at least, the names 4 apart) */
+            pic_text(SQ_X - 2 - pic_tw(t), y + (ch - PIC_TH) / 2, t,
+                     picked ? C_HI : brk || !SL_BAR[sl] ? C_GRAY : C_DIM);
+        else if (!SL_BAR[sl]) {          /* (AFFINE: rows lower: the drum's name once, beside all its bars) */
+            int32_t gh = (int32_t)sl_bars(p, sl) * pitch - 2;
+            pic_text(SQ_X - 2 - pic_tw(t), y + (gh - PIC_TH) / 2, t,
+                     !SEQ_BRK && ui.seq_lane >= SL_KICK && sl_drum(ui.seq_lane) == sl_drum(sl) ? C_HI : C_GRAY);
+        }
         for (i = 0; i < 16u; i++) {
-            int32_t x = SQ_X + (int32_t)(i * (240u - SQ_X) / 16u), w = SQ_X + (int32_t)((i + 1u) * (240u - SQ_X) / 16u) - x - 2;
-            uint16_t c;
+            int32_t x = SQ_X + (int32_t)(i * (240u - SQ_X) / 16u);
+            int32_t w = SQ_X + (int32_t)((i + 1u) * (240u - SQ_X) / 16u) - x - 1;
+            uint16_t c;                  /* (AFFINE: a pixel between the steps, room for two digits at 2x) */
             if (brk) {                   /* a step of the break: its slice */
                 uint32_t k = sl * 16u + i, v = p->st[k][0];
                 int now = st->playing && st->step == (int32_t)k, sel = ui.seq_lane < SL_KICK && !SEQ_BRK && k == ui.seq_step;
+                uint16_t tc = now ? C_BLACK : v >= 2u ? C_HI : C_GRAY;
                 cv_rect(x, y, w, ch, sel ? C_WHITE : now ? C_BLOCK_HI : (i & 3u) ? C_BLOCK : C_LINE);
                 if (sel && ch > 4)
                     cv_rect(x + 1, y + 1, w - 2, ch - 2, now ? C_BLOCK_HI : C_BLOCK);
-                t[0] = 0;
-                if (v >= 2u)
-                    int_text((int32_t)v - 1, t);
-                else
-                    text_cat(t, v ? "." : "-");
-                if (ch >= 9)             /* (0.242: centred, clear of the mark under it) */
-                    cv_text(x + (w - text_w(&FONT_XS, t)) / 2, y + (ch - 10) / 2, &FONT_XS, t,
-                            now ? C_BLACK : v >= 2u ? C_HI : C_GRAY);
-                else if (v >= 2u)        /* (too small for its number: a mark) */
+                if (ch >= PIC_TH + 2) {  /* (0.242: centred, clear of the mark under it) */
+                    if (v >= 2u)
+                        sq_num(x, w, y + (ch - PIC_TH) / 2, v - 1u, tc);
+                    else
+                        pic_text(x + (w - pic_tw(v ? "." : "-")) / 2, y + (ch - PIC_TH) / 2, v ? "." : "-", tc);
+                } else if (v >= 2u)      /* (too small for its number: a mark) */
                     cv_rect(x + 1, y + ch / 2, w - 2, 1, now ? C_BLACK : C_HI);
                 if (p->st[k][2] & 7u && ch >= 6)   /* reversed or ratcheted: a mark */
                     cv_rect(x + 2, y + ch - 2, w - 4, 1, now ? C_BLACK : C_AMB);
@@ -858,12 +954,7 @@ static void seq_picture(const brk_status_t *st, int32_t top)
 }
 static void draw_seq(const brk_status_t *st)
 {
-    int32_t top;
     seq_lane_fix();
-    for (top = 0; top < SQ_H; top += 60) {   /* (the canvas holds 60 rows) */
-        int32_t h = SQ_H - top < 60 ? SQ_H - top : 60;
-        cv_begin(240, (uint32_t)h, C_BLACK);
-        seq_picture(st, top);
-        cv_blit(0, (uint32_t)(44 + top));
-    }
+    sq_st = st;
+    pic_draw(seq_picture);               /* (in strips: no text cut between two) */
 }
