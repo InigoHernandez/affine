@@ -1,0 +1,101 @@
+# AFFINE (16 Nov 2026, controls phase 2): EDIT's five parts, the sounds, EDIT again for the next, round: BREAK (SOUNDS'
+# BREAK, SYSTEM's code before: no items, OCT the pitch; K4 the break's LEVEL), BOOM (OCT its BOOM, SHAPE; K1 its
+# preset), the SNARE, HAT, CLAP (OCT SOUND, SHAPE, MORE, MEMORY: K1 the memory 1-10, PRESETS before; K2 COPY, K3 PASTE,
+# SEL + ARP before), BREAK again. The drums' views on GLO › SCREEN › VIEWS K1 (EDIT held before).
+#   app/build/host/affine_host tests/scenarios/nav_edit.txt app/build/scenarios
+wait 4200
+tap EDIT
+wait 300
+expect page 11
+expect items 0
+turn K4 -5 20
+wait 200
+expect brk_lvl 90
+tap OCT+
+wait 150
+expect pitch 1
+tap OCT-
+wait 150
+expect pitch 0
+shot ne_break.png
+tap EDIT
+wait 300
+expect page 4
+expect items 2
+expect kpage 0
+tap OCT+
+wait 150
+expect kpage 1
+tap OCT+
+wait 150
+expect kpage 1
+shot ne_boom.png
+tap OCT-
+wait 150
+turn K1 1 80
+wait 200
+expect kpreset 1
+tap EDIT
+wait 300
+expect page 7
+expect einst 1
+expect items 4
+# (SHAPE: memory 1's preset, the third; MEMORY: it copied, memory 2 pasted from it)
+tap OCT+
+wait 150
+expect ppage 1
+turn K3 2 80
+wait 200
+expect ppre 2
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+expect ppage 3
+expect item 3
+shot ne_memory.png
+turn K2 1 80
+wait 200
+turn K1 1 80
+wait 200
+expect ppre 0
+turn K3 1 80
+wait 300
+expect ppre 2
+shot ne_paste.png
+turn K1 -1 80
+wait 200
+expect ppre 2
+tap EDIT
+wait 300
+expect einst 2
+expect ppage 3
+tap EDIT
+wait 300
+expect einst 3
+tap EDIT
+wait 300
+expect page 11
+tap EDIT
+wait 300
+expect page 4
+# (the drums' views: GLO › SCREEN, OCT to VIEWS, K1)
+tap GLO
+wait 150
+tap GLO
+wait 150
+tap GLO
+wait 300
+expect gpage 3
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+expect gpage 7
+turn K1 2 80
+wait 200
+expect kview 2
+shot ne_views.png
+turn K1 -2 80
+wait 200
+expect kview 0

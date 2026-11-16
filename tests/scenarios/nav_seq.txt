@@ -1,0 +1,97 @@
+# AFFINE (16 Nov 2026, controls phase 2): SEQ's three parts, SEQ again for the next, round: STEPS (the break's rows
+# and the drums: SELECT's FULL before), DRUMS (the drums alone), SETTINGS (SWING, BREAK ROWS, FOLLOW). On STEPS and
+# DRUMS, OCT the lanes top to bottom with their bars (ALGORITHM before), the ends stay; from another domain, the BOOM
+# lane first. SETTINGS: no items, OCT the pitch. SEQ held + key 1-4: a bar copied, no part at its release; SEQ held
+# 0.7 s: CLEAR P1?, SEQ again clears it.
+#   app/build/host/affine_host tests/scenarios/nav_seq.txt app/build/scenarios
+wait 4200
+tap SEQ
+wait 300
+expect page 6
+expect seq_lane 2
+expect items 10
+expect item 2
+tap OCT-
+wait 150
+expect seq_lane 1
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+expect seq_lane 0
+expect pitch 0
+tapkey w0
+wait 100
+shot nq_steps.png
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+expect seq_lane 3
+tap OCT+
+wait 150
+expect seq_lane 6
+tapkey w4
+wait 100
+expect lane_mask 16
+# (DRUMS: the drums' lanes alone, each its two bars, the lane kept)
+tap SEQ
+wait 300
+expect page 6
+expect brkview 0
+expect items 8
+expect seq_lane 6
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+expect seq_lane 2
+expect item 0
+shot nq_drums.png
+# (SETTINGS: no items, OCT the pitch)
+tap SEQ
+wait 300
+expect page 3
+expect gpage 6
+expect items 0
+tap OCT+
+wait 150
+expect pitch 1
+tap OCT-
+wait 150
+expect pitch 0
+turn K1 4 40
+wait 200
+expect swing 54
+shot nq_settings.png
+# (round: STEPS)
+tap SEQ
+wait 300
+expect page 6
+expect brkview 2
+# (SEQ held + key 1: the bar copied, the part stays)
+press SEQ
+wait 100
+tapkey w0
+wait 100
+release SEQ
+wait 300
+expect page 6
+expect brkview 2
+# (SEQ held 0.7 s: CLEAR P1?; SEQ again: cleared, the part stays)
+tap OCT+
+wait 150
+tapkey w8
+wait 100
+press SEQ
+wait 900
+release SEQ
+wait 200
+expect page 6
+tap SEQ
+wait 300
+expect page 6
+expect brkview 2
+expect lane_mask 0

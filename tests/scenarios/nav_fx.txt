@@ -1,0 +1,133 @@
+# AFFINE (16 Nov 2026, controls phase 2): FX's five parts, FX again for the next, round. PLAY: the white keys the
+# sixteen effects (the OVERLAY's, ARP's before), OCT the black keys' rows AFFINE, PUNCH. CHAIN: the four slots, OCT the
+# slot; K1 TYPE (PRESETS before), K2 MIX, K3 ON / OFF (SEL + FX before), K4 POSITION (FX held + ALGORITHM before): the
+# slot moves, the focus with it. SLOT: the slot CHAIN chose, OCT MAIN, MORE, MOD (the ends stay), its knobs. PSX: OCT
+# PRESET (K1 the four presets, PRESETS before), VERB .. OUT. SENDS (MIX's before): K1 FX. On CHAIN the white keys
+# stay slices. FX held 0.7 s alone: the fader, no page.
+#   app/build/host/affine_host tests/scenarios/nav_fx.txt app/build/scenarios
+wait 4200
+tap PLAY
+wait 500
+tap FX
+wait 300
+expect page 9
+expect items 2
+expect row 0
+key w2 down
+wait 300
+expect ovl_on 4
+shot nf_play.png
+key w2 up
+wait 100
+expect ovl_on 0
+tap OCT+
+wait 150
+expect row 3
+tap OCT+
+wait 150
+expect row 3
+tap OCT-
+wait 150
+expect row 0
+# (CHAIN)
+tap FX
+wait 300
+expect page 2
+expect fxpart 0
+expect fx_focus 0
+tap OCT+
+wait 150
+expect fx_focus 1
+turn K1 3 80
+wait 300
+expect fx_type 4
+expect fx_on 1
+turn K3 -1 80
+wait 200
+expect fx_on 0
+turn K3 1 80
+wait 200
+expect fx_on 1
+turn K2 -10 20
+wait 200
+shot nf_chain.png
+turn K4 1 80
+wait 200
+expect fx_focus 2
+expect fx_type 4
+turn K4 1 80
+turn K4 1 80
+wait 200
+expect fx_focus 3
+expect fx_type 4
+turn K4 -2 80
+wait 200
+expect fx_focus 1
+expect fx_type 4
+# (the white keys: slices here)
+key w4 down
+wait 300
+expect key 4
+key w4 up
+wait 100
+# (SLOT: slot 2's effect, its parts on OCT)
+tap FX
+wait 300
+expect fxpart 1
+expect fx_focus 1
+expect fx_page 0
+expect items 3
+turn K1 5 20
+wait 200
+tap OCT+
+wait 150
+expect fx_page 1
+shot nf_slot.png
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+expect fx_page 2
+# (PSX: PRESET first, K1 the presets)
+tap FX
+wait 300
+expect fxpart 2
+expect items 7
+expect pp_part 0
+turn K1 2 80
+wait 300
+expect px_preset 2
+shot nf_psx.png
+tap OCT+
+wait 150
+expect pp_part 1
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+expect pp_part 0
+# (SENDS: no items, OCT the pitch)
+tap FX
+wait 300
+expect fxpart 3
+expect items 0
+turn K1 -10 20
+wait 200
+expect fx_wet 80
+shot nf_sends.png
+tap OCT+
+wait 150
+expect pitch 1
+tap OCT-
+wait 150
+expect pitch 0
+# (round to PLAY; FX held 0.7 s: the fader, the page stays)
+tap FX
+wait 300
+expect page 9
+press FX
+wait 900
+release FX
+wait 200
+expect page 9
+expect fx_wet 0
