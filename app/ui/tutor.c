@@ -3,17 +3,19 @@
  * Each step says one thing to do in the header (when no other message is up) and blinks the button or keys that do
  * it; when it is done (tut_done), "OK!" and the next: at once, or for a step with a result to hear (an effect, a
  * kick: its `wait`, FLEXOR 0.213) 5 s later (TUT_WAIT). The lessons
- * (HOME first: the PERFORM menu): the break, HOME, the effects, the pattern, the sounds (EDIT, keys 1-4 stopped; AFFINE:
- * LOAF BREAKER's lessons on its hardcore kick gone), the drums (SELECT, PRESET, FX), the FX page, the drop, SAVE.
+ * (HOME first: the PERFORM menu): the break, HOME, the effects (FX's PLAY, the rows on OCT), the pattern, the sounds
+ * (EDIT: the BREAK, BOOM, keys 1-4 stopped; AFFINE: LOAF BREAKER's lessons on its hardcore kick gone), the drums (EDIT
+ * again, PRESET, FX), the FX (the CHAIN, K1 an effect), the drop (ENV's DROP, a white key), SAVE.
  * Started from SYSTEM › SETUP K3 (right; left quits) and on a new FM-1 (TUTORIAL or PLAY); GLO quits it, SEL + GLO
  * skips a step. set.tut: 0 off, 1..TUT_N the step running (kept with SAVE), TUT_DONE finished. AFFINE (16 Nov 2026, the
  * owner: one mode for everyone): it runs in LOAF BREAKER's BEGINNER, its steps written for it (set.novice while it
  * runs, app.c NOVICE); the full AFFINE before and after it.
  * (Part of app.c's unity: included there in order, before screen.c, which draws the header.) */
 
-enum { TC_HGEN = 100, TC_HSET, TC_HVIEW, TC_HBACK, TC_HHOLD };   /* (0.9.2, FLEXOR: HOME's tabs) */
-enum { TC_HOME, TC_PLAY, TC_SLICES, TC_BRK, TC_PAD, TC_OVLPG, TC_OVLKEY, TC_EDIT, TC_STOP, TC_KEYS4,
-       TC_SNPG, TC_PPRE, TC_PFX, TC_SEQ, TC_KICKS, TC_SNARE, TC_FXPG, TC_FXT, TC_DROP, TC_SAVE, TC_END };
+enum { TC_HSET = 100, TC_HBACK };      /* (0.9.2, FLEXOR: HOME's tabs; AFFINE, controls phase 2: SETTINGS and back) */
+enum { TC_HOME, TC_PLAY, TC_SLICES, TC_BRK, TC_PAD, TC_OVLPG, TC_OVLKEY, TC_ROW, TC_ROWA, TC_EDITB, TC_EDIT, TC_STOP,
+       TC_KEYS4, TC_SNPG, TC_PPRE, TC_PFX, TC_SEQ, TC_KICKS, TC_SNARE, TC_FXPG, TC_FXCH, TC_FXT, TC_DROPPG, TC_DROP,
+       TC_SAVE, TC_END };
 #define TK_WHITE 1u                      /* (the keys a step blinks: the white ones, the black ones) */
 #define TK_BLACK 2u
 #define TK_DRUMS 4u                      /* (keys 1-4: BOOM, the snare, the hat, the clap, stopped) */
@@ -25,34 +27,39 @@ static const struct {
     uint8_t lesson, cond, keys, wait;    /* (wait: 1, its result to hear: 5 s before the next; 0: at once) */
     uint16_t btn;                        /* (the buttons it blinks: bit B_*) */
     const char *say;
-} TUT[] = {                              /* (LOAF BREAKER, 0.235, FLEXOR: 23 steps (0.244: 25, the OVERLAY page; 0.246, FLEXOR: 24, the ARP key's step gone; 0.252: 26, THE PATTERN before THE KICK, the kick and the snare heard stopped on keys 1-4), BEGINNER as he chose it: its KICK's
-                                          * pages, the drums' PRESET and FX by SELECT, the FX page; AFFINE: every
-                                          * line fits the header's at 2x, 216 px, as tut_away's do) */
+} TUT[] = {                              /* (LOAF BREAKER, 0.235, FLEXOR: 23 steps .. 0.252: 26; AFFINE: every line fits
+                                          * the header's at 2x, 216 px, as tut_away's do. Controls phase 2, 16 Nov 2026:
+                                          * 28, the new navigation: a page button opens its first part, again the
+                                          * next; OCT the items (the rows, the lanes); FX's PLAY the white-key effects
+                                          * (ARP's before); EDIT the BREAK first; the drop on ENV › DROP's white keys
+                                          * (SEL + ENV before); the effect on CHAIN's K1 (PRESETS before)) */
     {0u, TC_HOME, 0u, 0u, 1u << B_HOME, "PRESS HOME: PERFORM"},
     {0u, TC_PLAY, 0u, 1u, 1u << B_PLAY, "PRESS PLAY: THE BREAK"},
     {0u, TC_SLICES, TK_WHITE, 1u, 0u, "PLAY THE WHITE KEYS"},
     {0u, TC_BRK, 0u, 1u, 0u, "ALGORITHM: NEXT BREAK"},
-    {9u, TC_HGEN, 0u, 0u, 1u << B_HOME, "HOME AGAIN: GENERATOR"},   /* (0.9.2, FLEXOR: HOME's tabs) */
     {9u, TC_HSET, 0u, 0u, 1u << B_HOME, "HOME AGAIN: SETTINGS"},
-    {9u, TC_HVIEW, 0u, 0u, 0u, "KNOB 1 RIGHT: SLICES"},
-    {9u, TC_HBACK, 0u, 1u, 1u << B_HOME, "HOME: PERFORM IN SLICES"},
-    {9u, TC_HHOLD, 0u, 1u, 1u << B_HOME, "HOLD HOME: WAVEFORM"},
+    {9u, TC_HBACK, 0u, 0u, 1u << B_HOME, "HOME AGAIN: PERFORM"},
     {1u, TC_PAD, TK_BLACK, 1u, 0u, "HOLD A BLACK KEY"},
-    {1u, TC_OVLPG, 0u, 0u, 1u << B_ARP, "PRESS ARP: EFFECTS"},   /* (0.244: the OVERLAY page back) */
+    {1u, TC_OVLPG, 0u, 0u, 1u << B_FX, "PRESS FX: PLAY"},
     {1u, TC_OVLKEY, TK_WHITE, 1u, 0u, "HOLD TWO WHITE KEYS"},
+    {1u, TC_ROW, TK_BLACK, 1u, 1u << B_OCTUP, "OCT+: THE PUNCH ROW"},
+    {1u, TC_ROWA, 0u, 0u, 1u << B_OCTDN, "OCT-: BACK TO AFFINE"},
     {4u, TC_SEQ, 0u, 0u, 1u << B_SEQ, "PRESS SEQ: THE PATTERN"},   /* (0.252, FLEXOR: THE PATTERN before THE
                                           * KICK: kicks in it first) */
     {4u, TC_KICKS, TK_WHITE, 1u, 0u, "WHITE KEYS: ADD 2 BOOMS"},
-    {4u, TC_SNARE, TK_WHITE, 1u, 0u, "ALGORITHM: SNARE, ADD 1"},
-    {2u, TC_EDIT, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: BOOM"},
+    {4u, TC_SNARE, TK_WHITE, 1u, 1u << B_OCTUP, "OCT+: SNARE, ADD 1"},
+    {2u, TC_EDITB, 0u, 0u, 1u << B_EDIT, "PRESS EDIT: THE BREAK"},
+    {2u, TC_EDIT, 0u, 0u, 1u << B_EDIT, "EDIT AGAIN: BOOM"},
     {2u, TC_STOP, 0u, 0u, 1u << B_PLAY, "PRESS PLAY: STOP"},   /* (0.252, FLEXOR: heard stopped, keys 1-4) */
     {2u, TC_KEYS4, TK_DRUMS, 1u, 0u, "KEYS 1-4: THE DRUMS"},
-    {3u, TC_SNPG, 0u, 0u, 0u, "TURN SELECT: THE SNARE"},
+    {3u, TC_SNPG, 0u, 0u, 1u << B_EDIT, "EDIT AGAIN: THE SNARE"},
     {3u, TC_PPRE, TK_KEY2, 1u, 0u, "KNOB 1, KEY 2: PRESETS"},
     {3u, TC_PFX, TK_KEY2, 1u, 0u, "KNOB 2, KEY 2: ITS FX"},
     {5u, TC_FXPG, 0u, 0u, 1u << B_FX, "PLAY, THEN PRESS FX"},   /* (0.252: playing again) */
-    {5u, TC_FXT, 0u, 1u, 0u, "TURN PRESETS: AN EFFECT"},
-    {6u, TC_DROP, 0u, 1u, 1u << B_SEL | 1u << B_ENV, "HOLD SEL, PRESS ENV"},
+    {5u, TC_FXCH, 0u, 0u, 1u << B_FX, "FX AGAIN: THE CHAIN"},
+    {5u, TC_FXT, 0u, 1u, 0u, "KNOB 1: AN EFFECT"},
+    {6u, TC_DROPPG, 0u, 0u, 1u << B_ENV, "ENV 3 TIMES: DROP"},
+    {6u, TC_DROP, TK_WHITE, 1u, 0u, "A WHITE KEY: THE DROP"},
     {7u, TC_SAVE, 0u, 0u, 1u << B_SAVE, "PRESS SAVE: ALL KEPT"},
     {8u, TC_END, 0u, 0u, 0u, "ENJOY! SEE THE MANUAL"},
 };
@@ -128,7 +135,7 @@ static void tut_start(void)              /* SETUP K3 right: from where it was le
 #define TUT_ASK 0xFDu
 static uint8_t ask_sel = 1u, ask_drawn = 0xFFu;
 static const char *const ASK_NAME[2] = {"TUTORIAL", "PLAY"};
-static const char *const ASK_TEXT[2] = {"26 GUIDED STEPS", "EVERYTHING, NOW"};   /* (TUT_N; a line each at 2x) */
+static const char *const ASK_TEXT[2] = {"28 GUIDED STEPS", "EVERYTHING, NOW"};   /* (TUT_N; a line each at 2x) */
 static void tut_quit(void);
 static void ask_pick(uint32_t c)
 {
@@ -201,16 +208,10 @@ static void tut_quit(void)
 static int tut_done(uint32_t c, const brk_status_t *st)
 {
     switch (c) {
-    case TC_HGEN:                        /* (0.9.2: HOME's tabs, PERFORM, GENERATOR, SETTINGS, the VIEW) */
-        return ui.page == PG_GEN;
-    case TC_HSET:
+    case TC_HSET:                        /* (0.9.2: HOME's tabs; AFFINE, controls phase 2: SETTINGS, PERFORM) */
         return ui.page == PG_HSET;
-    case TC_HVIEW:
-        return ui.page == PG_HSET && ui.blocks;
     case TC_HBACK:
         return ui.page == PG_HOME;
-    case TC_HHOLD:
-        return ui.page == PG_HOME && !ui.blocks;
     case TC_HOME:                        /* (HOME pressed, PERFORM: on it already, it stays: tut_home_stay) */
         return tut_home != tut_at.home && ui.page == PG_HOME;
     case TC_PLAY:
@@ -221,10 +222,16 @@ static int tut_done(uint32_t c, const brk_status_t *st)
         return set.brk != tut_at.brk;
     case TC_PAD:
         return tut_padn != tut_at.padn;
-    case TC_OVLPG:
+    case TC_OVLPG:                       /* (AFFINE, controls phase 2: FX's PLAY, ARP's OVERLAY before) */
         return ui.page == PG_OVL;
     case TC_OVLKEY:                      /* (two of its effects played) */
         return tut_ovl - tut_at.ovlk >= 2u;
+    case TC_ROW:                         /* (OCT on PLAY: the black keys' rows) */
+        return bk_preset() == BKP_PUNCH;
+    case TC_ROWA:
+        return bk_preset() == BKP_AFFINE;
+    case TC_EDITB:
+        return ui.page == PG_BREAK;
     case TC_EDIT:
         return ui.page == PG_KICK;
     case TC_STOP:
@@ -238,7 +245,9 @@ static int tut_done(uint32_t c, const brk_status_t *st)
     case TC_PFX:
         return perc_x(PV_SNARE)[PX_FX] != tut_at.pfx && (tut_heard & 2u);
     case TC_FXPG:                        /* (0.252: playing again) */
-        return ui.page == PG_FX && st->playing;
+        return (ui.page == PG_OVL || ui.page == PG_FX) && st->playing;
+    case TC_FXCH:
+        return FX_ON(FXP_CHAIN);
     case TC_FXT:
         return tut_fx_sig() != tut_at.fx;
     case TC_SEQ:
@@ -247,6 +256,8 @@ static int tut_done(uint32_t c, const brk_status_t *st)
         return ui.page == PG_SEQ && sl_kick(ui.seq_lane) && tut_lane - tut_at.lane >= 2u;
     case TC_SNARE:
         return ui.page == PG_SEQ && sl_drum(ui.seq_lane) == DR_SNARE && tut_lane != tut_at.lane;
+    case TC_DROPPG:
+        return ui.page == PG_TRACK && ui.tpage == 2u;
     case TC_DROP:
         return drop_n != tut_at.drop;
     case TC_SAVE:
@@ -259,54 +270,42 @@ static int tut_done(uint32_t c, const brk_status_t *st)
  * button); NULL: on the way */
 static const char *tut_away(uint32_t c, uint16_t *btn)
 {
-    int home = ui.page == PG_HOME || ui.page == PG_GEN, kick = ui.page == PG_KICK;
+    int kick = ui.page == PG_KICK;
     *btn = 0u;
     switch (c) {
-    case TC_HVIEW:                       /* (0.9.2: off HOME's SETTINGS) */
-        if (ui.page != PG_HSET) {
-            *btn = 1u << B_HOME;
-            return "HOME: BACK TO SETTINGS";
-        }
-        return 0;
-    case TC_HHOLD:
-        if (ui.page != PG_HOME) {
-            *btn = 1u << B_HOME;
-            return "HOME: BACK TO PERFORM";
-        }
-        return 0;
     case TC_SLICES:
     case TC_BRK:
-        if (!home) {
+        if (ui.page != PG_HOME) {
             *btn = 1u << B_HOME;
             return "HOME: BACK TO THE BREAK";
         }
         return 0;
     case TC_OVLKEY:
-        if (ui.page != PG_OVL || ui.opage) {
-            *btn = 1u << B_ARP;
-            return "ARP: BACK TO EFFECTS";
+    case TC_ROW:
+    case TC_ROWA:
+        if (ui.page != PG_OVL) {
+            *btn = 1u << B_FX;
+            return "FX: BACK TO PLAY";
         }
         return 0;
     case TC_KEYS4:
         if (!kick) {
             *btn = 1u << B_EDIT;
-            return "PRESS EDIT: BACK TO BOOM";
+            return "EDIT: BACK TO BOOM";
         }
         return 0;
     case TC_SNPG:
         if (!kick && ui.page != PG_PERC) {
             *btn = 1u << B_EDIT;
-            return "PRESS EDIT: BACK TO BOOM";
+            return "EDIT: TO THE SNARE";
         }
         return 0;
     case TC_PPRE:
     case TC_PFX:
         if (ui.page == PG_PERC && ui.einst == DR_SNARE)
             return 0;
-        if (kick || ui.page == PG_PERC)
-            return "SELECT: BACK TO SNARE";
         *btn = 1u << B_EDIT;
-        return "EDIT, THEN SELECT: SNARE";
+        return "EDIT: BACK TO SNARE";
     case TC_KICKS:
     case TC_SNARE:
         if (ui.page != PG_SEQ) {
@@ -314,12 +313,18 @@ static const char *tut_away(uint32_t c, uint16_t *btn)
             return "SEQ: BACK TO PATTERN";
         }
         if (c == TC_KICKS && !sl_kick(ui.seq_lane))
-            return "ALGORITHM: THE BOOM LANE";
+            return "OCT: THE BOOM LANE";
         return 0;
     case TC_FXT:
-        if (ui.page != PG_FX) {
+        if (!FX_ON(FXP_CHAIN)) {
             *btn = 1u << B_FX;
-            return "FX: BACK TO EFFECTS";
+            return "FX: BACK TO THE CHAIN";
+        }
+        return 0;
+    case TC_DROP:
+        if (ui.page != PG_TRACK || ui.tpage != 2u) {
+            *btn = 1u << B_ENV;
+            return "ENV: BACK TO DROP";
         }
         return 0;
     default:
@@ -423,8 +428,8 @@ static void tut_leds(uint32_t *b, uint32_t *k, int playing)   /* the step's butt
         }
     }
     *b |= TUT[s].btn;
-    if ((TUT[s].cond == TC_DROP || TUT[s].cond == TC_FXPG || TUT[s].cond == TC_FXT) && !playing)   /* (the drop, the
-                                          * FX: PLAY first) */
+    if ((TUT[s].cond == TC_DROP || TUT[s].cond == TC_FXPG || TUT[s].cond == TC_FXT || TUT[s].cond == TC_DROPPG) &&
+        !playing)                        /* (the drop, the FX: PLAY first) */
         *b |= 1u << B_PLAY;
     for (i = 0; i < 16u && TUT[s].keys & TK_WHITE; i++)
         *k |= 1u << WK[i];

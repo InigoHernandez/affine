@@ -102,6 +102,7 @@ int main(int argc, char **argv)
     h.brk = "JUNGLE 175";
     h.bpm_x10 = 1750;
     h.pat = 0;
+    h.pat_next = -1;
     h.playing = 1;
     h.g[0] = -0.45f; h.gvp[0] = "1.2K"; h.gl[0] = "FILTER";
     h.g[1] = 0.62f; h.gvp[1] = "6 BIT"; h.gl[1] = "CRUSH";

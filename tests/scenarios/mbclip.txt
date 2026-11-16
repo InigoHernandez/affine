@@ -1,19 +1,38 @@
-# CHOPPAH: MULTIBAND and CLIP in the FX chain
+# CHOPPAH: MULTIBAND and CLIP in the FX chain. AFFINE, controls phase 2: FX twice: CHAIN, K1 slot 1 to MB COMP; FX:
+# SLOT 1, its knobs; HOME, FX twice: CHAIN again, OCT+ to slot 2, K1 to CLIP; FX: SLOT 2, its knobs.
 #   app/build/host/affine_host tests/scenarios/mbclip.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 400
 tap FX
+tap FX
 wait 200
-turn PRESET 10 10
+expect fxpart 0
+expect fx_focus 0
+turn K1 9 80
 wait 200
+expect fx_type 12
+tap FX
+wait 200
+expect fxpart 1
 turn K1 20 10
 turn K2 10 10
 wait 800
 shot c_multiband.png
-turn SELECT 1 10
-turn PRESET 12 10
+tap HOME
+tap FX
+tap FX
 wait 200
+expect fxpart 0
+tap OCT+
+wait 100
+expect fx_focus 1
+turn K1 11 80
+wait 200
+expect fx_type 13
+tap FX
+wait 200
+expect fxpart 1
 turn K1 10 10
 turn K3 10 10
 wait 400

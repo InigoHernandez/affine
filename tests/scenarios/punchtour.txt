@@ -1,7 +1,8 @@
 # AFFINE (16 Nov 2026): the PUNCH row heard, for the owner: the break (OLDSKOO 160 at 170 BPM, a BOOM on every beat)
 # one bar dry, then each PUNCH key held one bar, in turn (keys 1-11), then a bar dry: punch_tour.wav, copied to
 # build/review/sounds/affine-punch-tour.wav with its times (tools: the levels measured there). A key goes down 20 ms
-# before its bar (a roll arms for the next 16th) and up 20 ms before the next. MASTER full (MAX OUT -3 dB).
+# before its bar (a roll arms for the next 16th) and up 20 ms before the next. MASTER full (MAX OUT -3 dB). The BOOMs
+# written on SEQ: BOOM 1-16, then OCT+ to BOOM 17-32 (controls phase 2: ALGORITHM the break now).
 #   app/build/host/affine_host tests/scenarios/punchtour.txt app/build/scenarios
 wait 4200
 press FX
@@ -20,7 +21,7 @@ tapkey w0
 tapkey w4
 tapkey w8
 tapkey w12
-turn ALGO 1 10
+tap OCT+
 wait 200
 expect seq_lane 3
 tapkey w0

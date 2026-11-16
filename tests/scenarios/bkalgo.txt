@@ -1,9 +1,10 @@
 # LOAF BREAKER 0.9.26 (FLEXOR): ARP › BLACK KEYS, ALGORITHM moved along the keys as K2 did. AFFINE (16 Nov 2026, the
-# owner): the BLACK KEYS tab gone with CUSTOM (the rows: FX + OCT- AFFINE, FX + OCT+ PUNCH); ARP's one tab, ARP
-# EFFECTS: SELECT the tempo there (the tab stays), ALGORITHM the next break, as on HOME.
+# owner): the BLACK KEYS tab gone with CUSTOM (the rows: FX + OCT- AFFINE, FX + OCT+ PUNCH); the ARP EFFECTS page is
+# FX › PLAY since controls phase 2 (FX, page 9): SELECT the tempo there (the page stays), ALGORITHM the next break, as
+# on every page.
 #   app/build/host/affine_host tests/scenarios/bkalgo.txt app/build/scenarios
 wait 4200
-tap ARP
+tap FX
 wait 300
 expect page 9
 turn SELECT 1 10

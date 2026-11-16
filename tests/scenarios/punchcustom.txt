@@ -1,8 +1,8 @@
 # AFFINE (16 Nov 2026, the owner): CUSTOM gone (it was: FX + a black key + any knob gave that key a function or a
 # combo, the row CUSTOM; ARP › BLACK KEYS edited the layout). Now FX + a black key: the key plays, the row stays, FX
 # let go after it: no page, no fader; the knob turned meanwhile is the key's own (HALF SPEED's). A save holding the
-# CUSTOM row (bk_row 2) plays AFFINE's (key 4 REVERSE) and says AFFINE, after a reboot too. ARP: the OVERLAY page, one
-# tab (ARP EFFECTS): SELECT there the tempo, the tab stays; a black key on it plays.
+# CUSTOM row (bk_row 2) plays AFFINE's (key 4 REVERSE) and says AFFINE, after a reboot too. FX: PLAY (the OVERLAY page,
+# ARP's until controls phase 2, one tab): SELECT there the tempo, the page stays; a black key on it plays.
 #   app/build/host/affine_host tests/scenarios/punchcustom.txt app/build/scenarios
 wait 4200
 expect row 0
@@ -42,8 +42,8 @@ wait 300
 reboot
 wait 4200
 expect row 0
-# ARP: one tab
-tap ARP
+# FX: PLAY, one tab
+tap FX
 wait 300
 expect page 9
 expect opage 0

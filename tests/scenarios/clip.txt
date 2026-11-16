@@ -1,23 +1,27 @@
-# LOAF BREAKER (0.9.26, FLEXOR): on the drums, SEL + ARP copies the drum's memory, on another memory of it pastes it
-# (AFFINE: the kick's copy gone with KICK 1-20). Then SEL alone: the combinations card.
+# LOAF BREAKER (0.9.26, FLEXOR): a drum's memory copied, pasted onto another memory of it (AFFINE: the kick's copy gone
+# with KICK 1-20; controls phase 2: no more SEL + ARP: EDIT to the snare, OCT+ to its MEMORY item, K2 COPY, K1 the next
+# memory, K3 PASTE). Then SEL alone: the combinations card.
 #   app/build/host/affine_host tests/scenarios/clip.txt app/build/scenarios
 wait 4200
+tap EDIT
+wait 150
 tap EDIT
 wait 300
 expect page 4
 tap EDIT
 wait 300
 expect page 7
-press SEL
-tap ARP
-release SEL
+tap OCT+
+tap OCT+
+tap OCT+
+wait 150
+expect ppage 3
+turn K2 1 10
 wait 200
 shot cl_copied.png
-turn PRESET 1 10
+turn K1 1 10
 wait 200
-press SEL
-tap ARP
-release SEL
+turn K3 1 10
 wait 300
 shot cl_drum.png
 wait 1500

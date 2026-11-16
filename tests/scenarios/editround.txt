@@ -1,11 +1,14 @@
-# LOAF BREAKER (0.266, FLEXOR): EXPERT, EDIT goes round the sounds: BOOM, the SNARE, the HAT, the CLAP, BOOM again
-# (AFFINE: BOOM's parts on ALGORITHM, BOOM and SHAPE, the one left kept; SELECT goes round the sounds too).
+# LOAF BREAKER (0.266, FLEXOR): EDIT goes round the sounds (AFFINE, controls phase 2: BREAK first): BREAK, BOOM, the
+# SNARE, the HAT, the CLAP, BREAK and BOOM again (BOOM's items on OCT, BOOM and SHAPE, the one left kept), the SNARE.
 #   app/build/host/affine_host tests/scenarios/editround.txt app/build/scenarios
 wait 4200
 tap EDIT
 wait 300
+expect page 11
+tap EDIT
+wait 300
 expect page 4
-turn ALGO 1 10
+tap OCT+
 wait 300
 expect kpage 1
 tap EDIT
@@ -20,9 +23,12 @@ wait 300
 expect einst 3
 tap EDIT
 wait 300
+expect page 11
+tap EDIT
+wait 300
 expect page 4
 expect kpage 1
-turn SELECT 1 10
+tap EDIT
 wait 300
 expect page 7
 expect einst 1

@@ -1,21 +1,41 @@
-# CHOPPAH: EQ and TAPE in the FX chain
+# CHOPPAH: EQ and TAPE in the FX chain. AFFINE, controls phase 2: FX twice: CHAIN; OCT+ to slot 2, K1 to EQ; FX: SLOT
+# 2, its knobs; HOME, FX twice: CHAIN again, OCT+ to slot 3, K1 to TAPE; FX: SLOT 3, its knobs.
 #   app/build/host/affine_host tests/scenarios/eqtape.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 400
 tap FX
+tap FX
 wait 200
-turn SELECT 1 10
-turn PRESET 9 10
+expect fxpart 0
+tap OCT+
+wait 100
+expect fx_focus 1
+turn K1 8 80
 wait 200
+expect fx_type 10
+tap FX
+wait 200
+expect fxpart 1
 turn K1 8 10
 turn K3 -5 10
 turn K4 6 10
 wait 400
 shot e_eq.png
-turn SELECT 1 10
-turn PRESET 9 10
+tap HOME
+tap FX
+tap FX
 wait 200
+expect fxpart 0
+tap OCT+
+wait 100
+expect fx_focus 2
+turn K1 5 80
+wait 200
+expect fx_type 11
+tap FX
+wait 200
+expect fxpart 1
 turn K1 10 10
 turn K3 10 10
 wait 400

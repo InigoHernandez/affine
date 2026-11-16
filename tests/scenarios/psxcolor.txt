@@ -1,8 +1,9 @@
-# AFFINE: the PSX colour (16 Nov 2026). The PSX page's COLOR part (AMOUNT, RATE with RAW in its steps, CRUNCH with PCM
-# below 0, SMOOTH; a turn of K2-K4 switches GRIT on) and OUT (CONSOLE, MONO, SEND, INPUT in dB); SIZE in note values on
-# CHAOS; PRESETS through the four presets, each setting every stage (and the header says its name); a tweak after one
-# kept by SAVE over a reboot; then the settings saved as a firmware before the colour wrote them (store_old: shorter):
-# the colour loads as it was (GRIT's rate, AMOUNT 100, CONSOLE 0, no SEND, INPUT 0 dB), the bus's own fields kept.
+# AFFINE: the PSX colour (16 Nov 2026). FX's PSX part (FX four times; controls phase 2: its items on OCT, PRESET VERB
+# CODEC COLOR LOFI SKIP OUT): COLOR (AMOUNT, RATE with RAW in its steps, CRUNCH with PCM below 0, SMOOTH; a turn of
+# K2-K4 switches GRIT on) and OUT (CONSOLE, MONO, SEND, INPUT in dB); SIZE in note values on CHAOS; PRESET's K1 (PRESETS
+# before) through the four presets, each setting every stage (and the header says its name); a tweak after one kept by
+# SAVE over a reboot; then the settings saved as a firmware before the colour wrote them (store_old: shorter): the
+# colour loads as it was (GRIT's rate, AMOUNT 100, CONSOLE 0, no SEND, INPUT 0 dB), the bus's own fields kept.
 #   app/build/host/affine_host tests/scenarios/psxcolor.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -10,18 +11,27 @@ wait 300
 turn K4 25 20
 wait 300
 tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
 wait 300
-turn SELECT 4 80
-wait 300
-expect fx_focus 4
+expect page 2
+expect fxpart 2
 expect pp_part 0
 expect codec 0
 expect px_rate 0
 expect px_amount 100
 expect px_console 0
-turn ALGO 2 80
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
 wait 300
-expect pp_part 2
+expect pp_part 3
 turn K2 5 80
 wait 200
 expect px_rate 5
@@ -42,9 +52,13 @@ expect px_crunch -1
 turn K3 1 80
 wait 200
 expect px_crunch 0
-turn ALGO 3 80
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
 wait 300
-expect pp_part 5
+expect pp_part 6
 turn K1 30 30
 turn K2 1 80
 turn K3 15 30
@@ -55,7 +69,20 @@ expect px_mono 1
 expect px_send 30
 expect px_input 200
 shot pp_out.png
-turn PRESET 1 80
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
+wait 300
+expect pp_part 0
+turn K1 1 80
 wait 400
 expect px_preset 1
 expect px_rate 2
@@ -67,7 +94,7 @@ expect cmix 50
 expect codec 1
 expect vtype 0
 shot pp_preset_glue.png
-turn PRESET 1 80
+turn K1 1 80
 wait 300
 expect px_preset 2
 expect px_rate 4
@@ -78,7 +105,7 @@ expect cmix 100
 expect vtype 4
 expect px_send 30
 shot pp_preset_pad.png
-turn PRESET 1 80
+turn K1 1 80
 wait 300
 expect px_preset 3
 expect px_rate 7
@@ -86,7 +113,7 @@ expect px_crunch 70
 expect px_smooth 50
 expect px_input 200
 expect vtype 2
-turn PRESET 1 80
+turn K1 1 80
 wait 300
 expect px_preset 4
 expect px_rate 2
@@ -95,25 +122,44 @@ expect vtype 6
 expect px_send 45
 expect vtone 30
 shot pp_preset_dub.png
-turn PRESET 1 80
+turn K1 1 80
 wait 300
 expect px_preset 4
-turn PRESET -2 80
-wait 1500
+turn K1 -2 80
+wait 300
 expect px_preset 2
 expect px_rate 4
 expect vtype 4
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
+wait 150
+tap OCT+
+wait 1500
+expect pp_part 6
 shot pp_out_pad.png
-turn ALGO 3 80
+tap OCT-
+wait 150
+tap OCT-
+wait 150
+tap OCT-
 wait 300
-expect pp_part 2
+expect pp_part 3
 turn K1 -25 30
 wait 1500
 expect px_amount 50
 shot pp_color_pad.png
-turn ALGO -2 80
+tap OCT-
+wait 150
+tap OCT-
 wait 1500
-expect pp_part 0
+expect pp_part 1
 shot pp_verb_pad.png
 turn K1 3 80
 wait 200

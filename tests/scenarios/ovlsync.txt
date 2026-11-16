@@ -1,10 +1,10 @@
 # LOAF BREAKER 0.9.27 (FLEXOR): the OVERLAY page and the ARP key share one effect: a white key touched on the page is
 # the ARP key's effect (and the effect K1 tunes); the ARP key's K1 turns it, the page follows. AMOUNT, RATE and SWEEP
 # were shared already. On the page, the white keys of the effects on are lit (held, latched, the ARP key's). (AFFINE:
-# the ARP key from a recording, CUSTOM gone.)
+# the ARP key from a recording, CUSTOM gone; controls phase 2: the page is FX › PLAY, where FX opens.)
 #   app/build/host/affine_host tests/scenarios/ovlsync.txt app/build/scenarios
 wait 4200
-tap ARP
+tap FX
 wait 300
 expect page 9
 expect opage 0

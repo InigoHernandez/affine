@@ -1,34 +1,39 @@
-# LOAF BREAKER: the drums' big view. SEL + EDIT from BOOM: the DRUMS (the SNARE); SELECT (0.264, FLEXOR: the tabs at
-# the top) the sounds one by one, the HAT, the CLAP, BOOM (AFFINE), the SNARE again, not the tempo; SEL + EDIT from the
-# CLAP: SOUNDS' BREAK, again: BOOM.
+# LOAF BREAKER: the drums' big view. AFFINE, controls phase 2: EDIT walks its parts, round: BREAK, BOOM, the SNARE, the
+# HAT, the CLAP, BREAK again (SOUNDS' BREAK moved here), BOOM, the SNARE; EDIT twice more: the CLAP, key 2 heard
+# (stopped); EDIT: BREAK, again: BOOM.
 #   app/build/host/affine_host tests/scenarios/drumbig.txt app/build/scenarios
 wait 4200
 tap EDIT
-wait 300
-expect page 4
-press SEL
+wait 150
 tap EDIT
-release SEL
+wait 150
+tap EDIT
 wait 300
 expect page 7
 expect einst 1
 shot d_big_snare.png
-turn SELECT 1 10
+tap EDIT
 wait 300
+expect einst 2
 shot d_big_hat.png
-turn SELECT 1 10
+tap EDIT
 wait 300
 expect einst 3
 shot d_big_clap.png
-turn SELECT 1 10
+tap EDIT
+wait 300
+expect page 11
+tap EDIT
 wait 300
 expect page 4
 expect einst 0
-turn SELECT 1 10
+tap EDIT
 wait 300
 expect page 7
 expect einst 1
-turn SELECT -2 10
+tap EDIT
+wait 150
+tap EDIT
 wait 300
 expect page 7
 expect einst 3
@@ -36,15 +41,10 @@ key w1 down
 key w1 up
 wait 40
 shot d_big_clap_play.png
-press SEL
 tap EDIT
-release SEL
 wait 300
-expect page 3
-expect gpage 1
+expect page 11
 shot d_break.png
-press SEL
 tap EDIT
-release SEL
 wait 300
 expect page 4

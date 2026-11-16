@@ -1,34 +1,37 @@
-# LOAF BREAKER: GLO MORE, PRESETS: WAVE ZOOM, how much of the past HOME's scrolling wave (PERFORM's CDJ view)
-# holds: 1/2, 2/3, 5/6, 1 (as it was), 1 1/4, 1 1/2, 2 bars. Playing, HOME's CDJ view (its default): the wave at 1/2, 1 and 2.
+# LOAF BREAKER: WAVE ZOOM, how much of the past the scrolling wave (the CDJ view) holds: 1/2, 2/3, 5/6, 1 (as it was),
+# 1 1/4, 1 1/2, 2 bars. Controls phase 2: HOME › SETTINGS K3 (HOME on PERFORM: SETTINGS; was GLO MORE's PRESETS); the
+# wave on ARP's GENERATOR (HOME's PERFORM shows its picture). Playing: the wave at 1/2, 1 and 2.
 #   app/build/host/affine_host tests/scenarios/wavezoom.txt app/build/scenarios
 wait 4200
 tap PLAY
 wait 3000
-tap GLO
-wait 100
-tap GLO
+tap HOME
 wait 200
-turn PRESET -3 10
+expect page 10
+turn K3 -3 10
 wait 200
 shot wz_more.png
-tap HOME
+tap ARP
 wait 500
+expect page 1
 shot wz_half.png
-tap GLO
-wait 100
-tap GLO
-wait 200
-turn PRESET 3 10
-wait 200
 tap HOME
+wait 100
+tap HOME
+wait 200
+expect page 10
+turn K3 3 10
+wait 200
+tap ARP
 wait 500
 shot wz_one.png
-tap GLO
-wait 100
-tap GLO
-wait 200
-turn PRESET 3 10
-wait 200
 tap HOME
+wait 100
+tap HOME
+wait 200
+expect page 10
+turn K3 3 10
+wait 200
+tap ARP
 wait 500
 shot wz_two.png

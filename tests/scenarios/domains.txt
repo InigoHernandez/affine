@@ -1,35 +1,12 @@
-# LOAF BREAKER 0.201: the pages by domain. SEL + EDIT walks SOUNDS' sources (from BOOM: DRUMS, BREAK, BOOM again; the
-# MELODY out in 0.209); EDIT on the DRUMS: the next drum; SELECT round the sounds (AFFINE: BOOM, SNARE, HAT, CLAP). The BREAK: K1-K3 PITCH, GRAIN, SNAP, K4
-# its LEVEL, ALGORITHM the break. SEQ's SELECT (ALGORITHM until 0.9.26) before its first lane: BREAK (0.234), then PATTERN's GROOVE (K1 SWING); SEL + ARP too.
-# MIX: LEVELS, SENDS (K1 FX). SYSTEM (GLO): MIDI, SETUP, EFFECTS, FX SET, RESET (EVERYTHING: RESET ALL, 15 turns).
+# LOAF BREAKER 0.201: the pages by domain (AFFINE, controls phase 2: a page button opens its domain's first part, again
+# the next, round). EDIT: BREAK (K4 its LEVEL; ALGORITHM the break, on every page), again BOOM, SNARE, HAT, CLAP, BREAK.
+# SEQ: STEPS (BOOM's lane), DRUMS, SETTINGS (the GROOVE: K1 SWING), again STEPS; OCT- up to its first lane, the break's.
+# FX five times: SENDS (was MIX's; K1 FX). GLO: MIDI, SETUP, SCREEN, RESET (EVERYTHING: RESET ALL, 15 turns).
 #   app/build/host/affine_host tests/scenarios/domains.txt app/build/scenarios
 wait 4200
 tap EDIT
 wait 300
-expect page 4
-press SEL
-tap EDIT
-release SEL
-wait 200
-expect page 7
-expect einst 1
-tap EDIT
-wait 100
-expect einst 2
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-expect page 4
-turn SELECT 1 10
-wait 200
-expect einst 1
-press SEL
-tap EDIT
-release SEL
-wait 300
-expect page 3
-expect gpage 1
+expect page 11
 turn K4 -5 10
 wait 100
 expect brk_lvl 90
@@ -37,43 +14,71 @@ turn ALGO 1 10
 wait 200
 expect brk 1
 shot dm_break.png
-press SEL
 tap EDIT
-release SEL
+wait 300
+expect page 4
+expect einst 0
+tap EDIT
+wait 200
+expect page 7
+expect einst 1
+tap EDIT
+wait 150
+expect einst 2
+tap EDIT
+wait 150
+expect einst 3
+tap EDIT
+wait 200
+expect page 11
+tap EDIT
 wait 200
 expect page 4
 tap SEQ
 wait 300
+expect page 6
 expect seq_lane 2
-turn SELECT -4 10
+tap SEQ
+wait 150
+tap SEQ
 wait 200
 expect page 3
 expect gpage 6
 turn K1 5 10
 shot dm_groove.png
-turn ALGO 1 10
+tap SEQ
 wait 200
 expect page 6
+tap OCT-
+tap OCT-
+tap OCT-
+wait 150
 expect seq_lane 0
 expect seq_brk 0
-tap LFO
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
 wait 200
-turn SELECT 1 10
-wait 200
-expect mpage 1
+expect page 2
+expect fxpart 3
 turn K1 -10 10
 shot dm_sends.png
 tap GLO
 wait 200
 expect gpage 0
-turn SELECT 1 10
+tap GLO
 wait 200
 expect gpage 2
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
-wait 100
-turn SELECT 1 10
+tap GLO
+wait 200
+expect gpage 3
+tap GLO
 wait 200
 expect gpage 5
 turn K1 20 10

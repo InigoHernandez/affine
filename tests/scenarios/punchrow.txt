@@ -3,6 +3,7 @@
 # no pitch. FX held 0.7 s alone toggles the fader at its release (no more while held). Then each PUNCH key held: its
 # functions together (fheld, bit BKF_*), the pads it holds (pads, bit PAD_*), the PSX bus's keys (psx_held: VRB 1,
 # SKP 2, CRS 4), BOOM quiet (kil), its settings in (cmb 32..42), its key lit (cmb_lit, bit CB_*), all let go with it.
+# (Controls phase 2: FX tapped opens FX › PLAY, where OCT walks the same two rows as its items.)
 #   app/build/host/affine_host tests/scenarios/punchrow.txt app/build/scenarios
 wait 4200
 expect row 0
@@ -54,10 +55,11 @@ wait 800
 release FX
 wait 200
 expect fx_wet 100
-# FX tapped: EFFECTS, as ever
+# FX tapped: its PLAY (controls phase 2; EFFECTS before), the row shown as its item (PUNCH, the second)
 tap FX
 wait 300
-expect page 2
+expect page 9
+expect item 1
 tap HOME
 wait 300
 expect page 0

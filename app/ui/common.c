@@ -249,7 +249,12 @@ static void skin_apply(uint32_t s)
 #undef C_BLACK                           /* (AFFINE: the ground is the skin's too, POLYGON's night) */
 #define C_BLACK skin_bg
 
-enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_TRACK, PG_OVL, PG_HSET, NPAGES };
+enum { PG_HOME, PG_GEN, PG_FX, PG_GLOBAL, PG_KICK, PG_MIX, PG_SEQ, PG_PERC, PG_TRACK, PG_OVL, PG_HSET, PG_BREAK, NPAGES };
+/* (AFFINE, 16 Nov 2026, controls phase 2: PG_BREAK, EDIT's BREAK, out of SYSTEM's code; PG_OVL is FX's PLAY, PG_GEN ARP's
+ * GENERATOR. The numbers are the editor's too: never renumbered) */
+enum { FXP_CHAIN, FXP_SLOT, FXP_PSX, FXP_SENDS };   /* (PG_FX's part, ui.fxpart: FX's CHAIN, SLOT, PSX, SENDS) */
+#define FX_ON(p) (ui.page == PG_FX && ui.fxpart == (p))
+#define FX_PSX() FX_ON(FXP_PSX)
 /* (LOAF BREAKER, 0.9.2, FLEXOR: PG_HSET, HOME's SETTINGS after PERFORM and GENERATOR; PG_TRACK, ENV's TRACKS, PLAY, DROP
  * where TAP TEMPO was. AFFINE: PG_KICK is BOOM's page; LOAF's KICK EQ page gone) */
 /* LOAF BREAKER (11 Nov 2026): the black keys' functions' names (app.c BKF_*), as the strip shows them */
@@ -378,12 +383,15 @@ static struct {
     uint32_t pad_since, fx_drawn;        /* when it was pressed; the animation's last frame */
     float reel;                          /* the tape stop's reels, turns */
     uint8_t redraw;                      /* RG_* bits: the regions to draw again */
+    uint8_t fxpart;                      /* AFFINE (controls phase 2): FX's part on PG_FX (FXP_*; PLAY is PG_OVL) */
+    uint8_t bitem;                       /* (ENV's BUILD: its item, 0 BUILD, 1 TEMPO RISE) */
 } ui;
 /* the white keys play slices (or, on the SEQ, KICK and SNARE / HAT pages, steps) */
 static void page_say(void);              /* the header: the page's button and part, as its tabs (main.c) */
 #define SEQ_BRK (ui.seq_brk && !NOVICE)
 static int slices_page(void) { return (ui.page != PG_SEQ || SEQ_BRK) && ui.page != PG_TRACK && ui.page != PG_OVL &&
-                                         !(ui.page == PG_GLOBAL && ui.gpage == 3u); }   /* (GLO EFFECTS: keys 1-7) */   /* (ARP: overlays) */
+                                         !(ui.page == PG_GLOBAL && ui.gpage == 3u); }   /* (GLO SCREEN's EFFECTS: keys
+                                          * 1-7; FX's PLAY: the effects; ENV: its own) */
 enum { RG_HEAD = 1, RG_WAVE = 2, RG_BLOCKS = 4, RG_FOOT = 8, RG_ALL = 15, RG_FX = 16 };
 
 static void text_cat(char *d, const char *s)

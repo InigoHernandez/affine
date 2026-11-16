@@ -2,21 +2,24 @@
 /* CHOPPAH: the SNARE / HAT page (ENV). (Part of app.c's unity: included there in order.) */
 
 /* ---- the SNARE / HAT page (ENV): ALGORITHM the voice, ENV again SOUND or SHAPE, PRESETS its presets */
-static const char *const PERC_KNOB[PERC_VOICES][4][4] = {   /* (AFFINE, 2x: the foot's, DECAY and METAL/NZ short
+static const char *const PERC_KNOB[PERC_VOICES][5][4] = {   /* (AFFINE, 2x: the foot's, DECAY and METAL/NZ short
                                           * there: snd_long) */
     {{"LEVEL", "TUNE", "DEC", "TONE"}, {"SNAP", "DRIVE", "PRESET", "DIRT"}, {"DROP", "TIME", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DEC"}},
+     {"PRESET", "FX", "LEVEL", "DEC"}, {"MEMORY", "COPY", "PASTE", ""}},
     {{"LEVEL", "TUNE", "DEC", "NOISE"}, {"CUT", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DEC"}},
+     {"PRESET", "FX", "LEVEL", "DEC"}, {"MEMORY", "COPY", "PASTE", ""}},
     {{"LEVEL", "TUNE", "DEC", "TONE"}, {"SPREAD", "DRIVE", "PRESET", "DIRT"}, {"", "", "LIFT", "ROOM"},
-     {"PRESET", "FX", "LEVEL", "DEC"}},
-    {{"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}}};   /* (LOAF BREAKER: the clap's; SHAPE's
+     {"PRESET", "FX", "LEVEL", "DEC"}, {"MEMORY", "COPY", "PASTE", ""}},
+    {{"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}, {"", "", "", ""}}};
+                                         /* (AFFINE, controls phase 2: the fifth, MEMORY: its memory 1-10 (PRESETS
+                                          * until then), COPY and PASTE (SEL + ARP)) */   /* (LOAF BREAKER: the clap's; SHAPE's
                                           * K3 PRESET, the memory back to a built-in sound; the fourth, the MELODY's,
                                           * gone in 0.209; 0.225: SHAPE's K4 DIRT, MORE (DROP, TIME, LIFT, ROOM), and
                                           * BEGINNER's one page: PRESET, FX, LEVEL, TUNE; 0.229 DECAY for TUNE) */
-static const char *const PPAGE_NAME[4] = {"SOUND", "SHAPE", "MORE", "PRESET"};
-static uint32_t perc_pg(void) { return NOVICE ? 3u : ui.ppage % 3u; }
-static const char *perc_kname(uint32_t v, uint32_t pg, int i) { return PERC_KNOB[v % PERC_VOICES][pg & 3u][i & 3]; }
+static const char *const PPAGE_NAME[5] = {"SOUND", "SHAPE", "MORE", "PRESET", "MEMORY"};
+#define PERC_ITEMS 4u                    /* (the drums' items: SOUND, SHAPE, MORE, MEMORY; ui.ppage 0..3) */
+static uint32_t perc_pg(void) { return NOVICE ? 3u : ui.ppage % PERC_ITEMS == 3u ? 4u : ui.ppage % PERC_ITEMS; }
+static const char *perc_kname(uint32_t v, uint32_t pg, int i) { return PERC_KNOB[v % PERC_VOICES][pg % 5u][i & 3]; }
 
 /* LOAF BREAKER (11 Nov 2026): the drums' presets: the four built-in sounds of each, then FLEXOR's picks (the industrial
  * snares, chosen by ear on the listening pages, docs/sounds/PERC_PRESETS.md), each with the FX it was chosen with.
@@ -141,6 +144,32 @@ static void perc_mem_turn(uint32_t v, int32_t d)
     ui.redraw |= RG_BLOCKS | RG_FOOT;
     changed();
 }
+/* MEMORY's COPY and PASTE (LOAF BREAKER 0.9.26, SEL + ARP on the drums until controls phase 2): a drum's sound and
+ * extras copied, onto another memory of the same drum pasted */
+static int8_t clip_pv = -1, clip_ps;
+static perc_voice_t clip_pvoice;
+static uint8_t clip_px[PX_N];
+static void perc_copy(void)
+{
+    uint32_t v = ui.pvoice % PERC_VOICES;
+    clip_pv = (int8_t)v;
+    clip_ps = (int8_t)(*perc_slot(v) % PERC_MEMS);
+    clip_pvoice = *perc_voice(v);
+    memcpy(clip_px, perc_x(v), PX_N);
+    say_int("COPIED", clip_ps + 1, "");
+}
+static void perc_paste(void)
+{
+    uint32_t v = ui.pvoice % PERC_VOICES;
+    if (clip_pv != (int8_t)v) {
+        app_say("PASTE", "COPY FIRST");
+        return;
+    }
+    *perc_voice(v) = clip_pvoice;
+    memcpy(perc_x(v), clip_px, PX_N);
+    say_int("PASTED TO", (int32_t)(*perc_slot(v) % PERC_MEMS) + 1, "");
+    changed();
+}
 static float *perc_param(int i)
 {
     perc_voice_t *v = perc_voice(ui.pvoice);
@@ -172,6 +201,15 @@ static void perc_value(int i, char *t)
     }
     if (pg == 3u && i == 1) {
         text_cat(t, PFX_NAME[x[PX_FX] % PFX_N]);
+        return;
+    }
+    if (pg == 4u) {                      /* MEMORY: its number; the memory copied, from */
+        if (i == 0)
+            int_text((int32_t)(*perc_slot(v) % PERC_MEMS) + 1, t);
+        else if (i == 2 && clip_pv == (int8_t)v)
+            int_text(clip_ps + 1, t);
+        else if (i == 2)
+            text_cat(t, "-");
         return;
     }
     if (pg == 1u && i == 3) {
@@ -271,6 +309,16 @@ static void perc_turn(int i, int32_t d)
         changed();
         return;
     }
+    if (pg == 4u) {                      /* MEMORY: K1 the memory, K2 copy it, K3 paste the copy onto it */
+        if (i == 0)
+            perc_mem_turn(v, d);
+        else if (i == 1)
+            perc_copy();
+        else if (i == 2)
+            perc_paste();
+        ui.redraw |= RG_BLOCKS | RG_FOOT;
+        return;
+    }
     if (pg == 1u && i == 3) {            /* DIRT: SOFT, HARD, FOLD, BITS */
         x[PX_DIRT] = (uint8_t)clamp((int32_t)x[PX_DIRT] + (d > 0 ? 1 : -1), 0, DIRT_N - 1);
         perc_value(i, t);
@@ -296,6 +344,20 @@ static void perc_turn(int i, int32_t d)
     changed();
 }
 
+static uint32_t pw_sig = 1u;
+static void drum_view_turn(int32_t d)    /* GLO › SCREEN › VIEWS K1: the drums' view, RGB, WAVE, CLASSIC (EDIT held
+                                          * until controls phase 2) */
+{
+    static const char *const N[3] = {"RGB", "WAVE", "CLASSIC"};
+    int32_t v = clamp((ui.kclassic ? 2 : (int32_t)ui.kview) + (d > 0 ? 1 : -1), 0, 2);
+    ui.kclassic = (uint8_t)(v == 2);
+    ui.kview = (uint8_t)(v == 1);
+    ui.pbig = (uint8_t)!ui.kclassic;
+    pw_sig = 1u;
+    app_say("DRUM VIEW", N[v]);
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
+
 /* LOAF BREAKER: the drums' big view (SELECT from BOOM: the snare, the hat, the clap, each in it; EDIT held: the WAVE, then
  * the classic view, as ever): the drum's hit drawn large over its level (its window ~1.4 times its decay, the decay
  * marked by an amber line), its name and memory, its preset (or its sample's name); the four sounds along the bottom,
@@ -304,7 +366,7 @@ static void perc_turn(int i, int32_t d)
 #define PW_W 232u
 static uint8_t pw_px[PW_W];
 static int8_t pw_wave[PW_W];
-static uint32_t pw_sig = 1u, pw_ms = 300u;
+static uint32_t pw_ms = 300u;   /* (pw_sig above: 0 at the start, a hit drawn at once) */
 static uint8_t pw_rgb[PW_W][4];          /* (the RGB view: each column's lows, mids, highs and peak) */
 static float perc_knob_f(int i)          /* the part's knob i, 0..1 (its card's bar) */
 {

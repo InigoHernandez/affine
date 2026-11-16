@@ -107,6 +107,7 @@ int main(void)
         base = b - a;
     }
     memset(&h, 0, sizeof h);
+    h.pat_next = -1;
     h.brk = "OLDSKOO 160"; h.bpm_x10 = 1700; h.playing = 1; h.tape = 1.0f; h.gate = 1.0f; h.t_ms = 1000u;
     h.gl[0] = "FILTER"; h.gl[1] = "CRUSH"; h.gl[2] = "REDUX"; h.gl[3] = "VERB";
     h.gvp[0] = h.gvp[1] = h.gvp[2] = h.gvp[3] = "OFF";
@@ -125,6 +126,7 @@ int main(void)
 #define PART(name, body) a = instr(); for (n = 0; n < 50; n++) for (t = 0; t < 240; t += 60) { body; sink += cv_px[(n * 13 + t) % 14400]; } \
         printf("    %-12s %7.1f k\n", name, (double)(instr() - a) / 50.0 / 1000.0);
         memset(&h, 0, sizeof h);
+        h.pat_next = -1;
         h.brk = "OLDSKOO 160"; h.bpm_x10 = 1700; h.playing = 1; h.tape = 1.0f; h.gate = 1.0f; h.t_ms = 1000u; h.slice = 5;
         h.gl[0] = "FILTER"; h.gl[1] = "CRUSH"; h.gl[2] = "REDUX"; h.gl[3] = "VERB";
         h.gvp[0] = h.gvp[1] = h.gvp[2] = h.gvp[3] = "OFF"; h.bip = 1u;

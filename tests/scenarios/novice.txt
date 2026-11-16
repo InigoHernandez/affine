@@ -1,8 +1,9 @@
 # AFFINE (16 Nov 2026, the owner: "one mode for everyone"): LOAF BREAKER's SYSTEM › SETUP MODE (K3: BEGINNER, EXPERT)
 # gone, the full AFFINE always; BEGINNER runs inside the TUTORIAL alone (tutorial.txt). K3 is the TUTORIAL's now: left,
 # with it not running, nothing. A save from LOAF's BEGINNER (novice_old: set.novice 1) loads as the full AFFINE: BOOM's
-# SHAPE part on ALGORITHM, EDIT round BOOM SN HH CP (after the CLAP, BOOM), the MIXER's four tabs, EFFECTS' four slots
-# (was: BOOM's part alone, the SNARE after the CLAP, LEVELS and SENDS, two slots).
+# SHAPE item on OCT+, EDIT round BREAK BOOM SN HH CP (after the CLAP, BREAK, then BOOM), the MIXER's three parts on LFO
+# and FX's SENDS, CHAIN's four slots on OCT (was: BOOM's part alone, the SNARE after the CLAP, LEVELS and SENDS, two
+# slots). Controls phase 2: GLO x2 SETUP; EDIT x2 BOOM.
 #   app/build/host/affine_host tests/scenarios/novice.txt app/build/scenarios
 wait 4200
 novice_old
@@ -10,7 +11,7 @@ wait 100
 expect novice 0
 tap GLO
 wait 150
-turn SELECT 1 10
+tap GLO
 wait 300
 expect gpage 2
 turn K3 -1 10
@@ -19,14 +20,18 @@ expect tut 0
 expect novice 0
 shot nv_more.png
 tap EDIT
+wait 150
+tap EDIT
 wait 300
 expect page 4
 expect kpage 0
-turn ALGO 1 10
+expect items 2
+tap OCT+
 wait 150
 expect kpage 1
-turn ALGO -1 10
+tap OCT-
 wait 150
+expect kpage 0
 turn K1 1 60
 wait 200
 expect kpreset 1
@@ -46,21 +51,38 @@ wait 300
 expect einst 3
 tap EDIT
 wait 300
+expect page 11
+tap EDIT
+wait 300
 expect page 4
 tap LFO
 wait 150
-turn SELECT 1 10
-wait 150
-expect mpage 1
-turn SELECT 1 10
+expect mpage 0
+tap LFO
 wait 150
 expect mpage 2
-turn SELECT 1 10
+tap LFO
 wait 150
 expect mpage 3
 tap FX
 wait 300
+expect page 9
+tap FX
+wait 300
 expect page 2
-turn SELECT 3 80
+expect fxpart 0
+expect items 4
+tap OCT+
+wait 60
+tap OCT+
+wait 60
+tap OCT+
 wait 300
 expect fx_focus 3
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 300
+expect fxpart 3

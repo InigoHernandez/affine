@@ -1,6 +1,7 @@
-# LOAF BREAKER: GLO's EFFECTS (GLO four times): white keys 1-7 turn the screen effects on and off, several at once
-# (CRT, VHS, GRAIN, RGB, SHAKE, STROBE, 8-BIT; none to start); K1 points at one (from the last one touched), K2 turns it on or off. Playing, each
-# alone on the HOME page, then VHS and RGB together; the EFFECTS page itself.
+# LOAF BREAKER: GLO's EFFECTS (controls phase 2: GLO x3, SCREEN, its first item EFFECTS): white keys 1-7 turn the
+# screen effects on and off, several at once (CRT, VHS, GRAIN, RGB, SHAKE, STROBE, 8-BIT; none to start); K1 points at
+# one (from the last one touched), K2 turns it on or off. Playing, each alone on the HOME page, then VHS and RGB
+# together; the EFFECTS page itself.
 #   app/build/host/affine_host tests/scenarios/effects.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -21,9 +22,9 @@ tap PLAY
 wait 300
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 expect gpage 3
 expect sfx_on 0
@@ -31,9 +32,9 @@ tap HOME
 wait 200
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w0 down
 wait 30
@@ -45,9 +46,9 @@ wait 600
 shot fx_crt.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w0 down
 wait 30
@@ -61,9 +62,9 @@ wait 600
 shot fx_vhs.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w1 down
 wait 30
@@ -77,9 +78,9 @@ wait 600
 shot fx_grain.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w2 down
 wait 30
@@ -93,9 +94,9 @@ wait 600
 shot fx_rgb.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w3 down
 wait 30
@@ -109,9 +110,9 @@ wait 600
 shot fx_shake.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w4 down
 wait 30
@@ -125,9 +126,9 @@ wait 600
 shot fx_strobe.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w5 down
 wait 30
@@ -141,9 +142,9 @@ wait 600
 shot fx_8bit.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 key w6 down
 wait 30
@@ -162,9 +163,9 @@ wait 600
 shot fx_vhs_rgb.png
 tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 100
-turn SELECT 1 10
+tap GLO
 wait 300
 turn K1 2 10
 turn K2 -1 10

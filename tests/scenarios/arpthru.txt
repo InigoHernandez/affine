@@ -1,6 +1,7 @@
 # LOAF BREAKER (0.9.29; 0.9.31, FLEXOR: SENDS alone): LFO › SENDS K3 ARP, what the ARP's effects take: BREAK, KICK,
-# THRU (the whole mix, as to start); the ARP key's THRU. The kick sounds the same whatever (0.9.31: limited with the
-# rest, as ever): ARP_THRU.wav then ARP_BREAK.wav, nothing of the ARP's on, the same.
+# THRU (the whole mix, as to start); the ARP key's THRU. AFFINE, controls phase 2: SENDS is FX's (FX five times), LFO's
+# LEVELS K4 nothing. The kick sounds the same whatever (0.9.31: limited with the rest, as ever): ARP_THRU.wav then
+# ARP_BREAK.wav, nothing of the ARP's on, the same.
 #   app/build/host/affine_host tests/scenarios/arpthru.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -13,9 +14,18 @@ expect arp_thru 0
 turn K4 -1 10
 wait 100
 expect arp_thru 0
-turn SELECT 1 10
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
+wait 150
+tap FX
 wait 300
-expect mpage 1
+expect page 2
+expect fxpart 3
 wav ARP_THRU.wav
 wait 2800
 wavstop

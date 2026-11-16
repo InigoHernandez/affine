@@ -1,38 +1,42 @@
-# LOAF BREAKER: ENV's TRACK. TRACKS: track 1 as it starts (P1 x4, P2 x4, a DROP, P3 x8); track 2 (PRESETS) made:
-# P1 (white key 1), a DROP (K2 left of P1), P2 (white key 2); DROP: no build (K1 to NONE); PLAY: track 2 played (PLAY:
-# HOME, T2 in the header): P1's two bars, the drop at its end into P2, P2's two bars, P1 again (LOOP). Then on
-# track 1, SEL + ENV: the build from the next bar.
+# LOAF BREAKER: ENV's TRACK. TRACKS: track 1 as it starts (P1 x4, P2 x4, a DROP, P3 x8); track 2 (TRACKS K1) made:
+# P1 (white key 1), a DROP (K2 left of P1), OCT+, P2 (white key 2); ENV again: PLAY; ENV again: DROP: no build (K1 to
+# NONE); ENV twice more: PLAY: track 2 played (PLAY: HOME, T2 in the header): P1's two bars, the drop at its end into
+# P2, P2's two bars, P1 again (LOOP). Then track 1 (PLAY K1) played; ENV three times (DROP), white key 2: the build
+# into P2 from the next bar (HOME to watch it).
 #   app/build/host/affine_host tests/scenarios/track.txt app/build/scenarios
 wait 4200
 tap ENV
 wait 300
 expect page 8
 shot t_tracks.png
-turn PRESET 1 10
+turn K1 1 10
 key w0 down
 key w0 up
 turn K2 1 10
 turn K2 -1 10
-turn ALGO 1 10
+tap OCT+
 key w1 down
 key w1 up
 wait 200
 shot t_put.png
-turn SELECT 1 10
+tap ENV
 wait 300
+expect tpage 1
 shot t_play.png
-turn SELECT 1 10
+tap ENV
 wait 300
+expect tpage 2
 turn K1 -3 10
 turn K2 4 10
 wait 200
 shot t_drop.png
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 300
+expect tpage 1
 tap PLAY
 wait 300
 expect page 0
@@ -50,25 +54,32 @@ wait 300
 expect trk_on 0
 tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
 turn K1 -1 10
-turn SELECT 1 10
+tap ENV
 wait 200
 turn K1 3 10
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
-turn SELECT 1 10
+tap ENV
 wait 200
+expect tpage 1
 tap PLAY
 wait 300
 expect trk_on 1
-wait 1700
-press SEL
+wait 600
 tap ENV
-release SEL
+wait 150
+tap ENV
+wait 150
+tap ENV
+wait 300
+expect tpage 2
+tapkey w1
+tap HOME
 wait 2500
 shot t_build.png
 tap PLAY

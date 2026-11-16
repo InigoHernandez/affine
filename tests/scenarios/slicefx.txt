@@ -1,4 +1,6 @@
-# CHOPPAH: each slice's own effect (a key held, FX: its effect layer) and the chain's DELAY (the DUB pad throws into it)
+# CHOPPAH: each slice's own effect (a key held, FX: its effect layer, no page) and the chain's DELAY (the DUB pad throws
+# into it). AFFINE, controls phase 2: FX twice: CHAIN, OCT+ to slot 4, K1 to DELAY; FX: SLOT 4, the white keys slices
+# there.
 #   app/build/host/affine_host tests/scenarios/slicefx.txt app/build/scenarios
 wait 4200
 tap PLAY
@@ -7,6 +9,7 @@ key w4 down
 wait 300
 tap FX
 wait 100
+expect page 0
 turn K1 1 10
 turn K2 15 10
 turn K4 -10 10
@@ -15,11 +18,22 @@ shot x_key_fx.png
 key w4 up
 wait 400
 shot x_tags.png
-turn ALGO 1 10
+tap FX
+tap FX
 wait 200
-turn SELECT 3 10
-turn PRESET 3 10
+expect fxpart 0
+tap OCT+
+tap OCT+
+tap OCT+
+wait 100
+expect fx_focus 3
+turn K1 2 80
+wait 200
+expect fx_type 9
+expect fx_on 1
+tap FX
 wait 300
+expect fxpart 1
 shot x_delay_slot.png
 key w0 down
 wait 300

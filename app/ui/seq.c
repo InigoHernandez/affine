@@ -58,13 +58,6 @@ static void seq_lane_fix(void)           /* a lane the pattern hasn't (a length 
     if (!sl_active(p, ui.seq_lane))
         ui.seq_lane = (uint8_t)(ui.seq_lane - SL_BAR[ui.seq_lane % NSEQL]);
 }
-static uint32_t seq_last_lane(void)      /* the pattern's last lane (its clap's, or the one before) */
-{
-    uint32_t sl = NSEQL - 1u;
-    while (sl > SL_BREAK1 && !sl_active(&pats.p[set.pattern % NPAT], sl))
-        sl--;
-    return sl;
-}
 static int brk_shown(uint32_t sl)         /* (a break row on the grid: SELECT's FULL view, BREAK ROWS 16 or 32; 0.9.31,
                                           * FLEXOR: BEGINNER too) */
 {
@@ -96,14 +89,6 @@ static void seq_view_set(uint32_t v)     /* SEQ's view (0.9.31, FLEXOR, SELECT):
     ui.seq_brk = 0u;
     if (!lane_ok(ui.seq_lane))
         seq_lane_step(1);
-}
-static void seq_view_turn(int32_t d)     /* SELECT on SEQ: FULL, DRUMS, SETTINGS (GP_FILL), round */
-{
-    uint32_t v = (brk_view() ? 0u : 1u) + (d > 0 ? 1u : 2u);
-    if (v % 3u == 2u)
-        global_part(GP_FILL);
-    else
-        seq_view_set(v % 3u);
 }
 static void seq_value(int i, char *t);
 static void seq_text(int i, char *t, int foot);

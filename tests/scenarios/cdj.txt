@@ -1,6 +1,7 @@
 # LOAF BREAKER: PERFORM and GENERATOR show the mix scrolling past the playhead (right edge) as on a CDJ, rekordbox's RGB
-# colours (a 4X4 kick in: its lows red). HOME held: the slice blocks instead, still PERFORM (not GENERATOR); held
-# again: the waveform. HOME pressed: GENERATOR, the waveform there too.
+# colours (a 4X4 kick in: its lows red). Controls phase 2: HOME's hold is gone, the view is HOME › SETTINGS K1 (VIEW):
+# HOME, again: SETTINGS; K1 right: the slice blocks; HOME: PERFORM, in them; SETTINGS K1 left: the waveform again. ARP:
+# the GENERATOR (was HOME twice), the waveform there too.
 #   app/build/host/affine_host tests/scenarios/cdj.txt app/build/scenarios
 wait 4200
 tap SEQ
@@ -12,19 +13,25 @@ wait 300
 tap PLAY
 wait 3000
 shot c_cdj.png
-press HOME
-wait 600
-release HOME
+tap HOME
+wait 300
+expect page 10
+turn K1 1 10
+wait 200
+tap HOME
 wait 300
 expect page 0
 shot c_back.png
-press HOME
-wait 600
-release HOME
+tap HOME
+wait 300
+expect page 10
+turn K1 -1 10
+wait 200
+tap HOME
 wait 300
 expect page 0
 shot c_still.png
-tap HOME
+tap ARP
 wait 1000
 expect page 1
 shot c_cdj_gen.png

@@ -1,25 +1,26 @@
-# LOAF BREAKER TEST: the menus rearranged. HOME: PERFORM, GENERATOR, SETTINGS (and back). LFO (three times: MIX, HOME,
-# MIX), SELECT twice: MASTER (COMP, RATIO, DUCK, MAX OUT). (AFFINE: EDIT KICK's EQ, FX, TERROR and KNOBS parts gone with the hardcore kick; SEL + K1-K4
-# free: turning them changes nothing.)
+# LOAF BREAKER TEST: the menus rearranged. Controls phase 2: HOME: PERFORM, SETTINGS (and back); ARP the GENERATOR.
+# LFO: LEVELS; again: MASTER (COMP, RATIO, DUCK, MAX OUT). (AFFINE: EDIT KICK's EQ, FX, TERROR and KNOBS parts gone
+# with the hardcore kick; SEL + K1-K4 free: turning them changes nothing.)
 #   app/build/host/affine_host tests/scenarios/reorg.txt app/build/scenarios
 wait 4200
-tap HOME
-wait 200
-expect page 1
+expect page 0
 tap HOME
 wait 200
 expect page 10
 tap HOME
 wait 200
 expect page 0
-tap LFO
-wait 100
-tap LFO
-wait 100
+tap ARP
+wait 200
+expect page 1
+tap HOME
+wait 200
+expect page 0
 tap LFO
 wait 300
 expect page 5
-turn SELECT 2 10
+expect mpage 0
+tap LFO
 wait 200
 expect mpage 2
 turn K1 20 10

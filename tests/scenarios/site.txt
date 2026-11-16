@@ -1,15 +1,29 @@
 # LOAF BREAKER: the site's screenshots the other scenarios don't give (tools/site_shots.sh copies them into
-# app/docs/img): playing (the CDJ view), HOME held (the slices), the SEL card, a key held, RESET ALL's screen.
+# app/docs/img): playing (the CDJ view, on ARP's GENERATOR), the slices (controls phase 2: HOME › SETTINGS K1, was HOME
+# held; on the GENERATOR), the SEL card, a key held (on HOME), RESET ALL's screen (GLO x4, RESET; K4 to RESET ALL, K2
+# five clicks, GLO).
 #   app/build/host/affine_host tests/scenarios/site.txt app/build/scenarios
 wait 4200
 tap PLAY
-wait 1800
+wait 200
+tap ARP
+wait 1600
+expect page 1
 shot site_cdj.png
-press HOME
+tap HOME
+wait 100
+tap HOME
+wait 200
+expect page 10
+turn K1 1 10
+wait 100
+tap ARP
 wait 700
+expect page 1
 shot site_slices.png
-release HOME
+tap HOME
 wait 400
+expect page 0
 tap SEL
 wait 900
 expect help 1
@@ -31,12 +45,12 @@ wait 100
 tap GLO
 wait 100
 tap GLO
-wait 100
-tap GLO
 wait 200
+expect gpage 5
 turn K4 20 10
 turn K2 5 10
 wait 200
 tap GLO
 wait 400
+expect lobo 1
 shot site_lobo.png
