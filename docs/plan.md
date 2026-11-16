@@ -128,8 +128,10 @@ first AFFINE build, read while playing.
    screen (felucca-bsp's today).
 7. **Motion record and scenes.**
 8. **Device:** the owner's FM-1 test, the CPU meter read; then the manual, the hub kit.
-9. **The site** (begun 2026-11-16, `web/`, local): MONO2K's structure in POLYGON, the firmware in the page. Still:
-   the import page restyled (LOAF's `app/site/import.html`), the installer, a manual, GitHub Pages when the repo goes up.
+9. **The site** (done 2026-11-16, live on GitHub Pages): MONO2K's structure in POLYGON, the firmware in the page,
+   the installer. Still: the import page restyled (LOAF's `app/site/import.html`), a manual.
+10. **Release 0.1** (done 2026-11-16, at the owner's "publish", untested on hardware): v0.1 and the installer. The Hub
+   mail after the FM-1 tests (`../FIRMWARE-HUB-HANDBOOK.md` section 5); decide the identity (FM-1_9NN for the Hub's resume).
 
 ## 7. Open, for the owner
 
