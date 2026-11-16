@@ -564,7 +564,9 @@ static void home_gem(const aff_home_t *h, int32_t band)
     int32_t levels = h->crush > 0.8f ? 2 : h->crush > 0.5f ? 3 : (int32_t)A_RAMP, n, g;
     float bob = h->playing ? 0.0f : 2.5f * brk_sin_turns(an.bob), breath = h->playing ? 0.0f : 0.03f *
                 brk_sin_turns(an.bob * 0.5f);
-    float cy = 72.0f + an.gem_dy + bob - an.lift + an.sink, r = 26.0f * an.gem_sc * (1.0f + 0.12f * an.pulse + breath);
+    float cy = 82.0f + an.gem_dy + bob - an.lift + an.sink, r = 26.0f * an.gem_sc * (1.0f + 0.12f * an.pulse + breath);
+    /* (82, the owner, 16 Nov 2026: "move a little bit down the polygon": its top vertex at cy - 1.32 r stays below the
+     * header's second line (rows 24-34) even lifted and pulsing, its foot (cy + 0.87 r) above the horizon at rest) */
     float bright = 1.0f + 0.35f * an.pulse, shimmer = (h->pads >> PAD_FREEZE & 1u) ? (float)(h->t_ms % 4000u) / 4000.0f
                    : 0.0f;
     float echo = h->send > (h->pads >> PAD_DUB & 1u ? 0.6f : 0.0f) ? h->send : (h->pads >> PAD_DUB & 1u ? 0.6f : 0.0f);

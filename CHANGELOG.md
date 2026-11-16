@@ -4,6 +4,7 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Screen:** HOME's gem a little lower (the owner), clear of the header's second line even on the beat.
 - **Controls:** two rows of black keys, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM and ARP's BLACK KEYS tab gone; a
   saved CUSTOM row plays AFFINE's, and what REC recorded still plays). No clear without a question: REC just records
   (SEL + REC, REC held, SEQ + REC clears gone); SEQ held, then SEQ, clears the pattern. SEL + SELECT, SEL +
