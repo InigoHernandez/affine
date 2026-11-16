@@ -105,7 +105,8 @@ file in `web/firmware/` and the installer in `web/install/` (fm1-base's, themed 
 ready, the mail waits for the tests on a real FM-1; its resume of an interrupted update wants `FM-1_9NN`, which
 AFFINE's identity is not (the owner's call). 0.1: 2026-11-16 at the owner's word ("publish"), before any FM-1 had
 run it (sha 98eb4c10). 0.2: 2026-11-16 on the site's installer only (the owner: "upload for instaling fast"),
-untested on an FM-1 (sha aa1b17ac); then tag v0.2 (188bac2) and its GitHub release at the owner's word ("Yes, now").
+untested on an FM-1 (sha aa1b17ac); then tag v0.2 (188bac2) and its GitHub release at the owner's word ("Yes, now"). 0.3: 2026-11-16 on the installer (the owner: "update go"), the
+controls redesign, untested on an FM-1 (sha 5337d76b); no tag or GitHub release yet.
 
 ## Layout
 

@@ -4,8 +4,7 @@
 #   app/build/host/affine_host tests/scenarios/affkeys.txt app/build/scenarios
 wait 4200
 expect bk_pre 0
-tap HOME
-wait 300
+expect page 0
 wav affkeys.wav
 tap PLAY
 wait 2500

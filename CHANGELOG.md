@@ -4,6 +4,9 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Release 0.3:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,
+  a beta not yet run on an FM-1: the new controls (both phases) and the lower gem; the site's FM-1 runs 0.3, its
+  screens and keys today's. No GitHub release for it yet.
 - **Controls:** the same encoders on every page: SELECT the tempo, ALGORITHM the break, PRESETS the pattern (playing:
   NEXT Pn until it comes in). A page button opens its first part, pressed again the next, as you let it go; OCT- /
   OCT+ step through the part's items (the header names them), or change the pitch where there are none. FX holds
