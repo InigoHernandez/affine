@@ -30,6 +30,7 @@
   color-scheme: dark;
 }
 @media (max-width: 700px) { :root { --display: 400 calc(var(--pu) * 4) / 1 var(--pix); } }
+@media (max-width: 360px) { :root { --display: 400 calc(var(--pu) * 3) / 1 var(--pix); } }   /* (the titles on one line on the narrowest phones) */
 
 * { box-sizing: border-box; }
 html { background: var(--bg); scroll-behavior: smooth; overflow-x: clip; }
@@ -248,6 +249,8 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 /* tiles: a big number and its words */
 .tile { position: relative; isolation: isolate; display: grid; gap: var(--s1); align-content: start; padding: var(--s2); border: 1px solid var(--line); background: var(--bg); }
 .tile b { font: 400 calc(var(--pu) * 6) / 1 var(--pix); color: var(--ink); font-variant-numeric: tabular-nums; }
+.tile { container-type: inline-size; }
+@container (max-width: 200px) { .tile b { font-size: calc(var(--pu) * 4); } }   /* (a narrow tile: the number a step down, whole) */
 .tile span { font: var(--label); text-transform: uppercase; color: var(--gray); }
 .tile.hot { background: var(--hot); border-color: var(--hot); }
 .tile.hot b, .tile.hot span { color: var(--bg); }
@@ -266,33 +269,23 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 .perf__name h3 { font: var(--title); text-transform: uppercase; }
 .perf__line { font: var(--body); min-height: 48px; }
 .bks { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; padding: var(--s2); border: 1px solid var(--line); background: var(--bg); }
-.bk { position: relative; display: grid; justify-items: center; gap: 6px; padding: var(--s2) 0 var(--s1); cursor: pointer; border: 0;
-  color: var(--ink); background: var(--dim); border-radius: 999px; font: var(--label); text-transform: uppercase; touch-action: none;
-  transition: transform 60ms steps(2); }
+.bk { position: relative; display: grid; place-content: center; justify-items: center; gap: 4px; min-width: 0; min-height: 72px;
+  padding: var(--s1) 2px; cursor: pointer; border: 0; color: var(--ink); background: var(--dim); border-radius: 999px;
+  font: var(--label); text-transform: uppercase; touch-action: none; transition: transform 60ms steps(2); }
+.bk span { white-space: nowrap; }
 .bk small { font: var(--label); color: var(--bg); opacity: 0.8; }
-.bk span { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: -2px; }
 .bk:hover { background: color-mix(in srgb, var(--cool) 40%, var(--dim)); }
 .bk[aria-pressed="true"] { background: var(--cool); color: var(--bg); transform: translateY(2px); }
 .knobs4 { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gut); }
-.knobs4 li { display: grid; gap: var(--s1); padding-top: var(--s1); border-top: 1px dotted var(--line); }
+.knobs4 li { display: flex; flex-direction: column; gap: var(--s1); padding-top: var(--s1); border-top: 1px dotted var(--line); }
+.knobs4 .gauge { margin-top: auto; }   /* (the gauges on one line, however the words wrap) */
 .knobs4 b { font: var(--label); text-transform: uppercase; }
 .knobs4 span { font: var(--small); color: var(--gray); }
 .gauge { height: 6px; background: var(--d-dots) 0 0 / 4px 4px; image-rendering: pixelated; position: relative; }
 .gauge i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--cool); transition: width 400ms steps(8); }
 .knobs4 li:hover .gauge i { width: 100%; }
 
-/* 04 skins: the firmware's five; the page wears the one picked */
-.skins { grid-column: 1 / -1; list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gut); }
-.skin { width: 100%; display: grid; gap: var(--s1); padding: var(--s2); cursor: pointer; text-align: left; font: inherit; color: var(--ink);
-  border: 1px solid var(--line); position: relative; }
-.skin b { font: var(--label); text-transform: uppercase; }
-.skin .sw { display: grid; grid-template-columns: repeat(8, 1fr); height: var(--s3); }
-.skin .sw i { display: block; }
-.skin .mini { display: block; width: 100%; height: auto; aspect-ratio: 2; image-rendering: pixelated; }
-.skin[aria-pressed="true"] { outline: 3px solid var(--hot); outline-offset: -3px; }
-.skin[aria-pressed="true"] b::after { content: " ●"; color: var(--hot); }
-
-/* 05 how it was made: four steps, the numbers, the facts */
+/* 04 how it was made: four steps, the numbers, the facts */
 .strip { grid-column: 1 / -1; list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gut); }
 .strip li { position: relative; display: flex; align-items: center; gap: var(--s1); padding: var(--s1) 0; border-top: 3px solid var(--hot); outline: none; cursor: default; }
 .strip i { display: grid; place-items: center; width: 40px; height: 40px; font: var(--label); font-style: normal; color: var(--bg); background: var(--hot); flex: 0 0 auto; }
@@ -340,10 +333,10 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
 
 /* narrower */
 @media (max-width: 1100px) {
+  .bks { grid-template-columns: repeat(6, minmax(0, 1fr)); }   /* (two rows: each name fits its key) */
   .chain { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .stage__go { padding: var(--s1); }
   .stage__go i { display: none; }
-  .skins { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 860px) {
   .bar > * { grid-column: span 6; }
@@ -372,11 +365,8 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; font: 400 16px / 
   .chip__facts, .knobs4 { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--s2); }
   .nums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .facts { grid-template-columns: 1fr; }
-  .skins { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .todo { grid-template-columns: 1fr; }
-  .bks { gap: 3px; padding: var(--s1); }
   .start { min-width: 0; width: calc(100% - 32px); padding: var(--s2) var(--s3); }
-  .bk small { display: none; }
   .playbar { flex-wrap: wrap; }
   .cpu { display: none; }
   .brand b { display: none; }

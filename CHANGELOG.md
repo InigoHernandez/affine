@@ -4,6 +4,9 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Site:** no Skins section (the header's switch does it); the black keys' names fit their pills, in one row or
+  two; no text past its box or the screen at any width (the numbers a size down in narrow tiles, shorter titles);
+  the knobs' gauges level; the installer's title on one line.
 - **Screen:** HOME draws in a quarter of the time (the same picture, pixel for pixel), and comes later while the
   sound is busy, so the FM-1 shows the performance effects instead of falling behind; LOAF's header no longer
   flashes over HOME on every beat.

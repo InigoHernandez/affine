@@ -27,7 +27,8 @@ h2 { font: 400 24px/1.1 "AFF Pixel", ui-monospace, monospace; text-transform: up
 button { border-radius: 0; font: 400 16px/1 "AFF Pixel", ui-monospace, monospace; text-transform: uppercase; padding: 12px 20px; }
 button:hover:not(:disabled) { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.plain { border-color: var(--line); }
-.lang { font: 400 16px/1 "AFF Pixel", ui-monospace, monospace; text-decoration: none; color: var(--dim); border: 1px solid var(--line); padding: 6px 8px; }
+.lang { font: 400 16px/1 "AFF Pixel", ui-monospace, monospace; text-decoration: none; color: var(--dim); border: 1px solid var(--line); padding: 6px 8px;
+  float: none; position: absolute; top: 9px; right: 16px; }   /* (in the bar: the title has the page's width) */
 #go { font-size: 32px; padding: 20px 32px; }
 progress { height: 12px; accent-color: var(--accent); }
 #log, textarea { border-radius: 0; border-color: var(--line); background: var(--card); }
@@ -41,9 +42,11 @@ dialog { border-radius: 0; border: 1px solid var(--accent); }
 .affbar span { color: var(--dim); }
 .affnote { padding: 12px 14px; border: 1px solid var(--focus); color: var(--fg); }
 .affnote b { font: 400 16px/1 "AFF Pixel", ui-monospace, monospace; text-transform: uppercase; color: var(--focus); }
+@media (max-width: 480px) { h1 { font-size: 32px; gap: 12px; } h1::before { width: 28px; height: 28px; } }   /* (one line on a phone) */
+@media (max-width: 360px) { h1 { font-size: 24px; gap: 10px; } h1::before { width: 22px; height: 22px; } }
 </style>
 """
-BAR = """<nav class="affbar" aria-label="AFFINE"><a href="../"><svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="crispEdges"><path fill="#ff5c28" d="M16 1 4 13h12z"/><path fill="#f6a382" d="M16 1 28 13H16z"/><path fill="#8a3a22" d="M4 13h12v18z"/><path fill="#4a2018" d="M16 13h12L16 31z"/></svg>AFFINE</a><span>Install</span></nav>
+BAR = """<nav class="affbar" aria-label="AFFINE"><a href="../"><svg viewBox="0 0 32 32" aria-hidden="true" shape-rendering="crispEdges"><path fill="#ff5c28" d="M16 1 4 13h12z"/><path fill="#f6a382" d="M16 1 28 13H16z"/><path fill="#8a3a22" d="M4 13h12v18z"/><path fill="#4a2018" d="M16 13h12L16 31z"/></svg>AFFINE</a></nav>
 """
 NOTE = """  <p class="affnote"><b>First release.</b> This build has not run on an FM-1 yet. If it misbehaves, the same page puts M-VAVE's firmware back (below).</p>
 """
@@ -55,6 +58,7 @@ def main(src, dst, untested):
         if html.count(mark) != 1:
             raise SystemExit(f"install_theme: {mark!r} not found once in {src}: fm1-base's installer changed")
     html = html.replace("</head>", STYLE + "</head>", 1).replace("<body>\n", "<body>\n" + BAR, 1)
+    html = html.replace("<h1>Install AFFINE</h1>", "<h1>Install</h1>", 1)   # (the bar says AFFINE: one word, one line)
     if untested:
         html = html.replace('  <p data-t="warn">', NOTE + '  <p data-t="warn">', 1)
     open(dst, "w", encoding="utf-8").write(html)

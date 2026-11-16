@@ -85,7 +85,6 @@
       btn.setAttribute("aria-label", `The skin: ${s.name}. Next skin`);
       btn.querySelector("i").innerHTML = [4, 3, 6, 1].map((k) => `<b style="background:${hex(c[k])}"></b>`).join("");
     }
-    document.querySelectorAll(".skin").forEach((b, k) => b.setAttribute("aria-pressed", k === cur ? "true" : "false"));
     if (save) try { localStorage.setItem("affine.skin", String(cur)); } catch (e) { /* private window */ }
     recolorAll();
     dispatchEvent(new CustomEvent("affine:skin", { detail: { index: cur, skin: s, ramps: R } }));
@@ -135,58 +134,6 @@
   }
   function recolorAll() { document.querySelectorAll("canvas[data-src]").forEach((cv) => draw(cv)); }
 
-  // ---------------------------------------------------------------- the skin list (04)
-  function skinList() {
-    const ul = document.getElementById("skin-list");
-    if (!ul) return;
-    SKINS.forEach((s, i) => {
-      const li = document.createElement("li");
-      li.className = "rv-up";
-      li.style.setProperty("--i", i);
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "skin";
-      b.style.background = hex(s.c[7]);
-      b.style.color = hex(s.c[6]);
-      b.style.borderColor = hex(s.c[0]);
-      b.setAttribute("aria-pressed", "false");
-      const mini = document.createElement("canvas");
-      mini.className = "mini";
-      mini.width = 96; mini.height = 48;
-      miniScene(mini, s.c);
-      b.append(mini);
-      b.insertAdjacentHTML("beforeend", `<b>${s.name}</b><span class="sw" aria-hidden="true">${[7, 5, 0, 1, 2, 3, 4, 6].map((k) => `<i style="background:${hex(s.c[k])}"></i>`).join("")}</span>`);
-      b.addEventListener("click", () => apply(i, true));
-      li.append(b);
-      ul.append(li);
-    });
-  }
-  // a skin's own little HOME: its sky, its floor's lanes, one lit
-  function miniScene(cv, c) {
-    const r = ramps(c), g = cv.getContext("2d"), W = cv.width, H = cv.height, im = g.createImageData(W, H), HOR = 22;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      let col;
-      if (y < HOR) col = dith(r.sky, Math.trunc(y * 256 / HOR), x, y);
-      else if (y === HOR) col = c[1];
-      else {
-        const z = 26 / (y - HOR + 0.5), u = (x - W / 2 + 0.5) * z / 9 + 8, lane = Math.floor(u), fr = u - lane, row = Math.floor(z / 0.55);
-        const depth = Math.min(1, Math.max(0, (z - 1) / 12)), lit = Math.trunc((1 - depth * 0.45) * 200) + 40;
-        if (u < 0 || u >= 16) col = c[7];
-        else if (fr < 0.06 * z || fr > 1 - 0.06 * z) col = dith(r.floor1, lit * 3 >> 2, x, y);
-        else if (lane === 9) col = dith((lane + row) & 1 ? r.lane : r.lane2, lit + 40, x, y);
-        else col = dith((lane + row) & 1 ? r.floor1 : r.floor0, (lane + row) & 1 ? lit : lit * 3 >> 2, x, y);
-      }
-      const o = (y * W + x) * 4;
-      im.data[o] = col[0]; im.data[o + 1] = col[1]; im.data[o + 2] = col[2]; im.data[o + 3] = 255;
-    }
-    // the gem, two triangles' worth
-    g.putImageData(im, 0, 0);
-    g.fillStyle = hex(c[4]);
-    g.beginPath(); g.moveTo(48, 4); g.lineTo(40, 13); g.lineTo(48, 19); g.closePath(); g.fill();
-    g.fillStyle = hex(mix(c[4], c[7], 45));
-    g.beginPath(); g.moveTo(48, 4); g.lineTo(56, 13); g.lineTo(48, 19); g.closePath(); g.fill();
-  }
-
   // ---------------------------------------------------------------- motion: reveals, counts, the section in view
   function reveals() {
     if (!motion || !("IntersectionObserver" in window)) return;
@@ -230,7 +177,6 @@
 
   window.affine = { SKINS, ramps, dith, mix, hex, rgba, apply, draw, motion, get skin() { return cur; }, get R() { return R; } };
   document.addEventListener("DOMContentLoaded", () => {
-    skinList();
     document.getElementById("skin")?.addEventListener("click", () => apply(cur + 1, true));
     apply(+(document.documentElement.dataset.skin || 0), false);
     reveals();
