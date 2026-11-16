@@ -4,6 +4,9 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Screen:** HOME draws in a quarter of the time (the same picture, pixel for pixel), and comes later while the
+  sound is busy, so the FM-1 shows the performance effects instead of falling behind; LOAF's header no longer
+  flashes over HOME on every beat.
 - **Site:** the background grid closed on the right, its last column ruled like the others.
 - **Release 0.1:** the first public build, a beta not yet run on an FM-1: the installer on the site
   (<https://inigohernandez.github.io/affine/install/>) and the GitHub release v0.1 carry the same file. The site's

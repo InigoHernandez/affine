@@ -116,6 +116,19 @@ static void home_gest_text(int i, char *t, int compact)
 
 /* AFFINE: HOME drawn whole in the POLYGON look (app/ui/aff.c): the header, the floor, the gem, the panel of the four
  * knobs as they are now (the gestures; a pad or a key held: its own settings) */
+/* AFFINE: the POLYGON pages (HOME, PSX) draw the whole screen each frame. The FM-1's main loop shares its core with
+ * the sound's interrupt, so a frame comes later while the sound takes more (MONO2K's rule: 50 or 66 ms apart over 70
+ * or 85 % of the audio's time), and a change asked for draws at once but never two frames within AFF_FRAME_MIN: a
+ * screen that keeps up shows the performance's pictures; one that tries to draw 30 a second under a heavy sound shows
+ * none of them (the owner's FM-1, 0.1: "performance effects are not showing", the screen "a bit overload or buggy").
+ * Their cost: tests/look/bench.c */
+#define AFF_FRAME_MIN 20u
+static uint32_t aff_frame_ms(uint32_t base)
+{
+    uint32_t c = plat_cpu_pct();
+    return c > 85u ? base * 2u : c > 70u ? base * 3u / 2u : base;
+}
+
 static void home_draw(const brk_status_t *st, uint32_t now)
 {
     static int32_t slice_was = -2;
@@ -1734,6 +1747,7 @@ void app_frame(void)
     brk_status_t st;
     const brk_break_t *b;
     uint32_t now = plat_ms(), hdr;
+    uint8_t aff_pg;
     input();
     wipe_step();                         /* (LOAF BREAKER, 0.263: WIPE MEMORY, a sector a frame) */
     {                                    /* LOAF BREAKER TEST: GLO MORE's METER: the audio's load (average and peak, % of
@@ -2119,7 +2133,11 @@ void app_frame(void)
         ui.last_hdr = hdr;
         ui.redraw |= RG_HEAD;
     }
-    if (ui.redraw & RG_HEAD)
+    aff_pg = (uint8_t)((ui.page == PG_HOME && ui.shown >= -1) || (FX_PSX() && ui.shown == -1)) && !RST_ON &&
+             !(set.tut && set.tut <= TUT_N);   /* AFFINE: a POLYGON page (HOME, PSX), which draws its own header */
+    if ((ui.redraw & RG_HEAD) && !aff_pg)   /* (AFFINE: not on them: LOAF's header changes with every beat and the
+                                          * BOOM's flash, and was drawn there, then covered, a flash on the FM-1's
+                                          * screen each beat) */
         draw_head(&st, b, now);
     if (ui.meter_x > 0 && now - ui.meter_drawn >= 33u &&   /* the level meter, about 30 times a second (AFFINE: not
                                           * on the POLYGON pages, HOME and PSX: they draw their own header) */
@@ -2145,8 +2163,7 @@ void app_frame(void)
     {                                    /* AFFINE: off a POLYGON page (HOME, PSX) onto LOAF's: everything drawn again (their
                                           * pictures covered rows LOAF's strips leave alone) */
         static uint8_t was_aff;
-        uint8_t is_aff = (uint8_t)((ui.page == PG_HOME && ui.shown >= -1) || (FX_PSX() && ui.shown == -1)) &&
-                         !RST_ON && !(set.tut && set.tut <= TUT_N);
+        uint8_t is_aff = aff_pg;
         if (was_aff && !is_aff) {
             ui.redraw |= RG_ALL;
             rows_forget(0u, 240u);
@@ -2155,22 +2172,22 @@ void app_frame(void)
     }
     if (FX_PSX() && !RST_ON && ui.shown == -1 && !(set.tut && set.tut <= TUT_N)) {
         static uint32_t psx_t;           /* AFFINE: the PSX page, whole, in the POLYGON look */
-        if (ui.redraw || now - psx_t >= 50u) {
+        if ((ui.redraw && now - psx_t >= AFF_FRAME_MIN) || now - psx_t >= aff_frame_ms(50u)) {
             psx_t = now;
             psxp_draw(now);
+            ui.redraw = 0u;
         }
-        ui.redraw = 0u;
         return;
     }
     if (ui.page == PG_HOME && !RST_ON && ui.shown >= -1 && !(set.tut && set.tut <= TUT_N)) {
         static uint32_t home_t;          /* AFFINE: HOME in the POLYGON look, whole, about 30 times a second (the
                                           * floor scrolls, the gem turns), in place of LOAF's deck; the tutorial, RESET
                                           * and the shortcuts card keep LOAF's screens for now */
-        if (ui.redraw || now - home_t >= 33u) {
+        if ((ui.redraw && now - home_t >= AFF_FRAME_MIN) || now - home_t >= aff_frame_ms(33u)) {
             home_t = now;
             home_draw(&st, now);
+            ui.redraw = 0u;              /* (a change asked for meanwhile: drawn with the next frame) */
         }
-        ui.redraw = 0u;
         return;
     }
     if (!ui.redraw)

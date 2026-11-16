@@ -8,22 +8,45 @@
 #include "brk_math.h"
 #include "brk.h"
 static uint16_t fb[240 * 240];
+/* fm1-base's canvas (device/gfx.c): 240 x 60, byte-swapped pixels, clipped to the band; each band copied into fb */
+static uint16_t cv_px[240 * 60];
+static int32_t cv_oy, cv_y0, cv_y1 = 60;
+static uint32_t cv_w = 240u;
 static int32_t g_band;                   /* the band being drawn: the canvas's row 0 is the screen's g_band */
-static void cv_pset(int32_t x, int32_t y, uint16_t c)
+static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
+static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
 {
-    y += g_band;
-    if (x >= 0 && x < 240 && y >= g_band && y < g_band + 60 && y < 240)
-        fb[y * 240 + x] = c;
+    uint32_t i;
+    (void)w; (void)h;
+    for (i = 0; i < 240u * 60u; i++)
+        cv_px[i] = swap16(bg);
+}
+static void cv_blit(uint32_t x, uint32_t y)
+{
+    uint32_t i;
+    (void)x;
+    for (i = 0; i < 240u * 60u && y * 240u + i < 240u * 240u; i++)
+        fb[y * 240u + i] = swap16(cv_px[i]);
+}
+static inline void cv_pset(int32_t x, int32_t y, uint16_t c)
+{
+    y += cv_oy;
+    if ((uint32_t)x < 240u && y >= cv_y0 && y < cv_y1)
+        cv_px[(uint32_t)y * 240u + (uint32_t)x] = swap16(c);
 }
 static void cv_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
 {
-    int32_t i, j;
-    for (j = y; j < y + h; j++)
-        for (i = x; i < x + w; i++)
-            cv_pset(i, j, c);
+    int32_t x1 = x + w, y1 = y + h + cv_oy, i;
+    uint16_t sc = swap16(c);
+    y += cv_oy;
+    if (x < 0) x = 0;
+    if (y < cv_y0) y = cv_y0;
+    if (x1 > 240) x1 = 240;
+    if (y1 > cv_y1) y1 = cv_y1;
+    for (; y < y1; y++)
+        for (i = x; i < x1; i++)
+            cv_px[(uint32_t)y * 240u + (uint32_t)i] = sc;
 }
-static void cv_begin(uint32_t w, uint32_t h, uint16_t bg) { (void)w; (void)h; (void)bg; }   /* (aff_title's canvas: the */
-static void cv_blit(uint32_t x, uint32_t y) { (void)x; (void)y; }                       /* frame here is whole) */
 typedef struct { uint8_t h; } felucca_font_t;   /* (fm1-base's faces, their line heights alone: affont.c's wrappers) */
 static const felucca_font_t FONT_T = {12}, FONT_XS = {15}, FONT_B = {16};
 #include "ui/affont.c"
@@ -32,10 +55,13 @@ static void frame(const aff_home_t *h, const char *path)
 {
     FILE *f;
     int32_t i;
-    memset(fb, 0xAA, sizeof fb);         /* (a grey: a pixel left undrawn shows) */
+    memset(fb, 0xAA, sizeof fb);
     aff_tick(h);
-    for (g_band = 0; g_band < 240; g_band += 60)
+    for (g_band = 0; g_band < 240; g_band += 60) {
+        cv_begin(240, 60, A_BG0);
         aff_home_band(h, g_band);
+        cv_blit(0, (uint32_t)g_band);
+    }
     f = fopen(path, "wb");
     fprintf(f, "P6 240 240 255\n");
     for (i = 0; i < 240 * 240; i++) {
@@ -50,8 +76,11 @@ static void splash_frame(uint32_t el, const char *path)
     FILE *f;
     int32_t i;
     memset(fb, 0xAA, sizeof fb);
-    for (g_band = 0; g_band < 240; g_band += 60)
+    for (g_band = 0; g_band < 240; g_band += 60) {
+        cv_begin(240, 60, A_BG0);
         aff_title_band(g_band, 50000u + el, el, "DEV", "JUNGLE 175", "PRESS PLAY", "BUILT ON LOAF BREAKER AND CHOPPAH");
+        cv_blit(0, (uint32_t)g_band);
+    }
     f = fopen(path, "wb");
     fprintf(f, "P6 240 240 255\n");
     for (i = 0; i < 240 * 240; i++) {

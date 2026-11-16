@@ -174,6 +174,77 @@ static inline uint16_t a_dithq(const a_ramp_t *r, int32_t t, int32_t x, int32_t 
     return r->c[ri];
 }
 
+/* ---------------------------------------------------------------------------------------- spans (speed) --- */
+/* The picture's cost on the FM-1 (tests/look/bench.c): a dither's colour depends on the pixel only through the 4x4
+ * matrix, so along a row a run of one ramp and level repeats every 4 pixels (4 << k with CRUSH's coarser grain). A
+ * row's run is its pattern worked out once, then written straight into the canvas (fm1-base's gfx.c: cv_px, the
+ * band's rows cv_y0 .. cv_y1, colours byte-swapped as the panel takes them). The same pixels as a_dithq's, a pixel
+ * at a time: 2.2 M instructions a frame before (a whole FM-1 core at 30 frames a second) */
+#define A_PAT_MAX 16
+typedef uint32_t a_u32a __attribute__((may_alias));   /* (two pixels a store, the canvas being uint16_t) */
+typedef struct { uint16_t c[A_PAT_MAX]; uint32_t mask; } a_pat_t;
+static void a_pat(a_pat_t *p, const a_ramp_t *r, int32_t t, int32_t y, int32_t k, int32_t levels)
+{
+    int32_t j, n = 4 << k;
+    for (j = 0; j < n; j++)
+        p->c[j] = swap16(a_dithq(r, t, j, y, k, levels));
+    p->mask = (uint32_t)n - 1u;
+}
+static void a_pat1(a_pat_t *p, uint16_t c)        /* (one colour) */
+{
+    p->c[0] = swap16(c);
+    p->mask = 0u;
+}
+/* x0 .. x1 - 1 of the band's row y (the canvas's), every pixel (step 1) or every other one of parity par (step 2:
+ * the console's half-transparency) */
+static inline void a_span(int32_t x0, int32_t x1, int32_t y, const a_pat_t *p, int32_t step, int32_t par)
+{
+    uint16_t *row;
+    int32_t x;
+    y += cv_oy;
+    if (y < cv_y0 || y >= cv_y1)
+        return;
+    if (x0 < 0)
+        x0 = 0;
+    if (x1 > (int32_t)cv_w)
+        x1 = (int32_t)cv_w;
+    row = cv_px + (uint32_t)y * cv_w;
+    if (step == 2 && ((x0 + par) & 1))
+        x0++;
+    if (step == 1 && p->mask <= 3u && x1 - x0 >= 8) {   /* (a period of 1, 2 or 4: two pixels a store) */
+        union { uint16_t h[2]; uint32_t w; } pa, pb;
+        a_u32a *w;
+        int32_t n, i;
+        if (x0 & 1) {
+            row[x0] = p->c[(uint32_t)x0 & p->mask];
+            x0++;
+        }
+        if (((uintptr_t)(row + x0) & 3u) == 0u) {
+            pa.h[0] = p->c[(uint32_t)x0 & p->mask];
+            pa.h[1] = p->c[(uint32_t)(x0 + 1) & p->mask];
+            pb.h[0] = p->c[(uint32_t)(x0 + 2) & p->mask];
+            pb.h[1] = p->c[(uint32_t)(x0 + 3) & p->mask];
+            w = (a_u32a *)(row + x0);
+            n = (x1 - x0) >> 1;
+            for (i = 0; i + 1 < n; i += 2) {
+                w[i] = pa.w;
+                w[i + 1] = pb.w;
+            }
+            if (i < n)
+                w[i] = pa.w;
+            x0 += n * 2;
+        }
+    }
+    for (x = x0; x < x1; x += step)
+        row[x] = p->c[(uint32_t)x & p->mask];
+}
+static int32_t a_ceil(float v) { int32_t i = (int32_t)v; return (float)i < v ? i + 1 : i; }
+static int32_t a_floor(float v) { int32_t i = (int32_t)v; return (float)i > v ? i - 1 : i; }
+static int32_t a_floordiv(int32_t n, int32_t d)   /* (d > 0) */
+{
+    return n >= 0 ? n / d : -((-n + d - 1) / d);
+}
+
 static float a_clamp01(float v) { return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v; }
 
 /* once a frame: the clock, the speeds the performance sets, the pulse from the break's level, the afterglow */
@@ -261,6 +332,56 @@ static void home_floor(const aff_home_t *h, int32_t band)
     float lp = h->dj < 0.0f ? -h->dj : 0.0f, hp = h->dj > 0.0f ? h->dj : 0.0f;
     if (y1 <= y0)
         return;
+    if (blk == 1) {                      /* row by row, lane by lane: spans (the blocks below are few anyway) */
+        for (y = y0; y < y1; y++) {
+            float d = (float)(y - AH_HORIZ) + 0.5f, z = 80.0f / d, tile = z / AH_ROWLEN + an.scroll, depth, fog;
+            float s, w, xa;
+            int32_t row = (int32_t)tile, lit_row, lane;
+            a_pat_t pl, pf[2], p;
+            if (tile < 0.0f && (float)row != tile)
+                row--;
+            depth = a_clamp01((z - 1.0f) / 12.0f);
+            fog = 1.0f - depth * (0.45f + 0.55f * lp) - lp * 0.45f - (1.0f - depth) * 0.85f * hp;
+            lit_row = (int32_t)(a_clamp01(fog) * 200.0f) + 40;
+            a_pat(&pl, &ar_floor1, lit_row * 3 / 4, y, dk, levels);   /* the lines */
+            a_pat(&pf[0], &ar_floor0, lit_row * 3 / 4, y, dk, levels);   /* the tiles, even and odd */
+            a_pat(&pf[1], &ar_floor1, lit_row, y, dk, levels);
+            s = AH_LANE / z;             /* (a lane's width in pixels on this row) */
+            w = 0.045f * z;              /* (a line's share of the lane, each side) */
+            for (lane = 0; lane < 16; lane++) {
+                int32_t odd = (lane + row) & 1, s0, s1, s2, s3;
+                const a_pat_t *pm;
+                xa = ((float)lane - 8.0f) * s + (float)AH_VX - 0.5f;   /* (pixel x where u reaches the lane) */
+                if (xa >= 240.0f)
+                    break;
+                if (xa + s <= 0.0f)
+                    continue;
+                if (lane == h->slice) {
+                    a_pat(&p, odd ? &ar_lane : &ar_lane2, lit_row + 40, y, dk, levels);
+                    pm = &p;
+                } else if (an.glow[lane] > 0.2f) {
+                    a_pat(&p, &ar_lane, (int32_t)((float)lit_row * (0.1f + 0.4f * an.glow[lane])), y, dk, levels);
+                    pm = &p;
+                } else {
+                    pm = &pf[odd];
+                }
+                s0 = a_ceil(xa);
+                s3 = a_ceil(xa + s);
+                if (w < 0.5f) {
+                    s1 = a_ceil(xa + w * s);
+                    s2 = a_floor(xa + s - w * s) + 1;
+                    if (s2 < s1)
+                        s2 = s1;
+                    a_span(s0, s1, y - band, &pl, 1, 0);
+                    a_span(s1, s2, y - band, pm, 1, 0);
+                    a_span(s2, s3, y - band, &pl, 1, 0);
+                } else {
+                    a_span(s0, s3, y - band, &pl, 1, 0);
+                }
+            }
+        }
+        return;
+    }
     y0 = y0 / blk * blk;                 /* (REDUX's blocks on a grid of their own) */
     for (y = y0; y < y1; y += blk) {
         float d = (float)(y - AH_HORIZ) + 0.5f * (float)blk, z, depth, fog;
@@ -377,6 +498,39 @@ static void gem_draw(int32_t band, float cx, float cy, float r, float ang, float
                 const a_ramp_t *rp = best < 6u ? &ar_gem_hi : &ar_gem_lo;
                 if (ghost)
                     l = l / 2;
+                if (blk == 1) {          /* a row at a time: the three edges give the row's span, exactly */
+                    static const int8_t E[3][2] = {{0, 1}, {1, 2}, {2, 0}};
+                    int32_t vxs[3] = {ax, bx, qx}, vys[3] = {ay, by, qy}, e;
+                    if (y0 < band)
+                        y0 = band;
+                    if (y1 >= band + 60)
+                        y1 = band + 59;
+                    for (y = y0; y <= y1; y++) {
+                        int32_t lo = x0 < 0 ? 0 : x0, hi = x1 > 239 ? 239 : x1, empty = 0;
+                        a_pat_t p;
+                        for (e = 0; e < 3; e++) {   /* (edge P -> Q: (Qx - Px)(y - Py) - (Qy - Py)(x - Px) >= 0) */
+                            int32_t px = vxs[E[e][0]], py = vys[E[e][0]], qx2 = vxs[E[e][1]], qy2 = vys[E[e][1]];
+                            int32_t A = -(qy2 - py), C = (qx2 - px) * (y - py) + (qy2 - py) * px;
+                            if (A > 0) {
+                                int32_t m = -a_floordiv(C, A);
+                                if (m > lo)
+                                    lo = m;
+                            } else if (A < 0) {
+                                int32_t m = a_floordiv(C, -A);
+                                if (m < hi)
+                                    hi = m;
+                            } else if (C < 0) {
+                                empty = 1;
+                            }
+                        }
+                        if (empty || lo > hi)
+                            continue;
+                        a_pat(&p, rp, l, y, dk, levels);
+                        a_span(lo, hi + 1, y - band, &p, ghost ? 2 : 1, y & 1);
+                    }
+                    f[0] = 255u;
+                    continue;
+                }
                 x0 = x0 / blk * blk;
                 y0 = y0 / blk * blk;
                 if (y0 < band - blk)
@@ -487,17 +641,16 @@ static void aff_knob_cell(int32_t x, int32_t y, int32_t w, const char *name, con
 
 static void aff_home_band(const aff_home_t *h, int32_t band)
 {
-    int32_t x, y, i;
+    int32_t y, i;
     char t[24];
     aff_check();
     /* the sky: night down to the horizon, dithered */
-    for (y = band; y < band + 60 && y < AH_PANEL; y++) {
-        int32_t k = y < AH_HORIZ ? y * 256 / AH_HORIZ : 0;
-        for (x = 0; x < 240; x++)
-            cv_pset(x, y - band, y < AH_HORIZ ? a_dith(&ar_sky, k, x, y) : A_BG0);
+    for (y = band; y < band + 60 && y < AH_HORIZ; y++) {   /* (a row's pattern, then the row: see a_span) */
+        a_pat_t p;
+        a_pat(&p, &ar_sky, y * 256 / AH_HORIZ, y, 0, (int32_t)A_RAMP);
+        a_span(0, 240, y - band, &p, 1, 0);
     }
-    if (band + 60 > AH_PANEL)
-        cv_rect(0, AH_PANEL - band, 240, 240 - AH_PANEL, A_BG0);
+    /* (the rows under the horizon: the canvas's own ground, A_BG0, cv_begin's; the lanes over it) */
     if (band <= AH_HORIZ && band + 60 > AH_HORIZ)
         cv_rect(0, AH_HORIZ - band, 240, 1, A_DIM);
     home_floor(h, band);
@@ -682,7 +835,7 @@ static void aff_title_band(int32_t band, uint32_t now, uint32_t el, const char *
                            const char *l3)
 {
     aff_home_t h;
-    int32_t x, y, i;
+    int32_t y, i;
     uint8_t *z = (uint8_t *)&h;
     float slide[LG_STRIPES], lit[LG_STRIPES], reveal, glint = -1.0f, e = (float)el;
     for (i = 0; i < (int32_t)sizeof h; i++)
@@ -726,13 +879,12 @@ static void aff_title_band(int32_t band, uint32_t now, uint32_t el, const char *
         if (g < 450.0f)
             glint = 26.0f + (LG_W - 20.0f) * g / 450.0f;
     }
-    for (y = band; y < band + 60 && y < AH_PANEL; y++) {
-        int32_t k = y < AH_HORIZ ? y * 256 / AH_HORIZ : 0;
-        for (x = 0; x < 240; x++)
-            cv_pset(x, y - band, y < AH_HORIZ ? a_dith(&ar_sky, k, x, y) : A_BG0);
+    for (y = band; y < band + 60 && y < AH_HORIZ; y++) {   /* (a row's pattern, then the row: see a_span) */
+        a_pat_t p;
+        a_pat(&p, &ar_sky, y * 256 / AH_HORIZ, y, 0, (int32_t)A_RAMP);
+        a_span(0, 240, y - band, &p, 1, 0);
     }
-    if (band + 60 > AH_PANEL)
-        cv_rect(0, AH_PANEL - band, 240, 240 - AH_PANEL, A_BG0);
+    /* (the rows under the horizon: the canvas's own ground, A_BG0, cv_begin's; the lanes over it) */
     if (band <= AH_HORIZ && band + 60 > AH_HORIZ)
         cv_rect(0, AH_HORIZ - band, 240, 1, A_DIM);
     if (e < 1100.0f && band < AH_HORIZ) {   /* the rush: streaks out of the vanishing point, longer the faster */
