@@ -5,8 +5,10 @@
  * kick: its `wait`, FLEXOR 0.213) 5 s later (TUT_WAIT). The lessons
  * (HOME first: the PERFORM menu): the break, HOME, the effects, the pattern, the sounds (EDIT, keys 1-4 stopped; AFFINE:
  * LOAF BREAKER's lessons on its hardcore kick gone), the drums (SELECT, PRESET, FX), the FX page, the drop, SAVE.
- * Started from SYSTEM › SETUP K3 MODE (TUTORIAL, left of BEGINNER) and on a new FM-1; GLO
- * quits it, SEL + GLO skips a step. set.tut: 0 off, 1..TUT_N the step running (kept with SAVE), TUT_DONE finished.
+ * Started from SYSTEM › SETUP K3 (right; left quits) and on a new FM-1 (TUTORIAL or PLAY); GLO quits it, SEL + GLO
+ * skips a step. set.tut: 0 off, 1..TUT_N the step running (kept with SAVE), TUT_DONE finished. AFFINE (16 Nov 2026, the
+ * owner: one mode for everyone): it runs in LOAF BREAKER's BEGINNER, its steps written for it (set.novice while it
+ * runs, app.c NOVICE); the full AFFINE before and after it.
  * (Part of app.c's unity: included there in order, before screen.c, which draws the header.) */
 
 enum { TC_HGEN = 100, TC_HSET, TC_HVIEW, TC_HBACK, TC_HHOLD };   /* (0.9.2, FLEXOR: HOME's tabs) */
@@ -88,48 +90,60 @@ static void tut_mark(void)
     tut_at.t = plat_ms();
     tut_drs = 0u;
 }
+static void tut_mode(int on)             /* (AFFINE: LOAF BREAKER's BEGINNER while it runs, the full AFFINE after) */
+{
+    set.novice = on ? 1u : 0u;
+    if (on) {
+        ui.meter_on = 0u;                /* (the METER: not in it) */
+        ui.fx_page = 0u;                 /* (the FX page: MAIN only) */
+        if (ui.fx_focus >= FX_EASY_SLOTS)
+            ui.fx_focus = 0u;            /* (the chain's two slots) */
+    }
+    changed();                           /* (fx_send: the chain's slots, two in it, all four after) */
+    ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
 static void tut_go(uint32_t step)        /* step 1..TUT_N (past the last: finished) */
 {
     set.tut = (uint8_t)(step > TUT_N ? TUT_DONE : step);
-    if (step > TUT_N)
+    if (step > TUT_N) {
         set.auto_save = 1u;              /* (LOAF BREAKER, 0.250, FLEXOR: AUTO SAVE off for the tutorial, on after it) */
+        tut_mode(0);
+    }
     set_dirty = 1u;
     tut_ok = 0u;
     tut_mark();
     ui.redraw |= RG_HEAD;
 }
-static void tut_start(void)              /* SETUP K3 left of BEGINNER: from where it was left, or the first step */
+static void tut_start(void)              /* SETUP K3 right: from where it was left, or the first step */
 {
     set.auto_save = 0u;                  /* (0.250: off while it runs; on again at its end, or quit) */
     tut_go(set.tut >= 1u && set.tut <= TUT_N ? set.tut : 1u);
+    tut_mode(1);
     app_say("TUTORIAL", "GLO QUIT, SEL+GLO SKIP");
 }
-/* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): a new FM-1 (or RESET ALL) asks first: TUTORIAL, BEGINNER or EXPERT. set.tut
- * TUT_ASK while it asks (after the start screen); a knob or ALGORITHM moves the choice, PLAY (or white key 1-3) takes
- * it. The FM-1 and the web emulator only (the simulator's scenarios start EXPERT, LOAF_ASK set: it asks) */
+/* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): a new FM-1 (or RESET ALL) asks first. set.tut TUT_ASK while it asks (after
+ * the start screen); a knob or ALGORITHM moves the choice, PLAY (or white key 1-2) takes it. AFFINE (16 Nov 2026, the
+ * owner): TUTORIAL or PLAY, one mode for everyone (LOAF's BEGINNER and EXPERT gone). The FM-1 and the web emulator only
+ * (the simulator's scenarios start playing, LOAF_ASK set: it asks) */
 #define TUT_ASK 0xFDu
 static uint8_t ask_sel = 1u, ask_drawn = 0xFFu;
-static const char *const ASK_NAME[3] = {"TUTORIAL", "BEGINNER", "EXPERT"};
-static const char *const ASK_TEXT[3] = {"26 GUIDED STEPS", "THE ESSENTIALS", "EVERYTHING"};   /* (TUT_N; AFFINE: a
-                                          * line each at 2x, LOAF's second lines gone: "THE BUTTONS TO PRESS BLINK",
-                                          * "PLAY RIGHT AWAY", "EVERY SETTING, EVERY PAGE") */
+static const char *const ASK_NAME[2] = {"TUTORIAL", "PLAY"};
+static const char *const ASK_TEXT[2] = {"26 GUIDED STEPS", "EVERYTHING, NOW"};   /* (TUT_N; a line each at 2x) */
 static void tut_quit(void);
 static void ask_pick(uint32_t c)
 {
-    set.novice = c < 2u ? 1u : 0u;
     set.tut = TUT_DONE;
-    if (set.novice)
-        novice_lengths();
-    if (c == 1u)                         /* (0.250, FLEXOR: a first start, BEGINNER: AUTO SAVE on; the TUTORIAL: off
-                                          * while it runs, on after it; EXPERT: as it was) */
-        set.auto_save = 1u;
-    if (c == 0u) {
+    if (c == 0u) {                       /* (the TUTORIAL: AUTO SAVE off while it runs, on after it) */
         set.auto_save = 0u;
         set.tut = 0u;
         tut_go(1u);
+        tut_mode(1);
         app_say("TUTORIAL", "GLO QUIT, SEL+GLO SKIP");
-    } else
-        app_say("MODE", ASK_NAME[c % 3u]);
+    } else {                             /* (PLAY: AUTO SAVE on, as LOAF's first start had it) */
+        set.auto_save = 1u;
+        tut_mode(0);
+        app_say("PLAY", "TUTORIAL: SETUP K3");
+    }
     set_dirty = 1u;
     changed();
     lcd_fill(0, 0, 240, 240, C_BLACK);
@@ -144,12 +158,12 @@ static void ask_draw(void)
         lcd_fill(0, 0, 240, 240, C_BLACK);
     ask_drawn = ask_sel;
     cv_begin(240, 60, C_BLACK);          /* the question (AFFINE: its lines at 2x, rows 32-41 and 46-55) */
-    cv_text2((240 - text2_w(&FONT_B, "YOUR MODE")) / 2, 1, &FONT_B, "YOUR MODE", C_WHITE);
+    cv_text2((240 - text2_w(&FONT_B, "WELCOME")) / 2, 1, &FONT_B, "WELCOME", C_WHITE);
     cv_text((240 - text_w(&FONT_XS, "TURN A KNOB, PRESS PLAY")) / 2, 30, &FONT_XS, "TURN A KNOB, PRESS PLAY", C_AMB);
     cv_text((240 - text_w(&FONT_XS, "LATER: GLO, SETUP, KNOB 3")) / 2, 44, &FONT_XS, "LATER: GLO, SETUP, KNOB 3", C_DIM);
     cv_blit(0, 0);
-    for (c = 0; c < 3u; c++) {           /* the three, one a strip: the name, a line under it (AFFINE: 2x, centred in
-                                          * the card) */
+    for (c = 0; c < 2u; c++) {           /* the two, one a strip: the name, a line under it (AFFINE: 2x, centred in
+                                          * the card; the strips at rows 76 and 146) */
         int on = c == ask_sel;
         char n[16];
         cv_begin(240, 60, C_BLACK);
@@ -159,15 +173,15 @@ static void ask_draw(void)
         cv_text(24, 12, &FONT_B, n, on ? C_BLACK : C_DIM);
         cv_text(44, 12, &FONT_B, ASK_NAME[c], on ? C_BLACK : C_WHITE);
         cv_text(44, 29, &FONT_XS, ASK_TEXT[c], on ? C_BLACK : C_GRAY);
-        cv_blit(0, 60u + c * 60u);
+        cv_blit(0, 76u + c * 70u);
     }
 }
 static void ask_input(uint32_t kdn, uint32_t bdn, int32_t d)
 {
     uint32_t i;
     if (d)
-        ask_sel = (uint8_t)clamp((int32_t)ask_sel + (d > 0 ? 1 : -1), 0, 2);
-    for (i = 0; i < 3u; i++)
+        ask_sel = (uint8_t)clamp((int32_t)ask_sel + (d > 0 ? 1 : -1), 0, 1);
+    for (i = 0; i < 2u; i++)
         if (kdn >> WK[i] & 1u) {
             ask_pick(i);
             return;
@@ -179,6 +193,7 @@ static void tut_quit(void)
 {
     set.tut = TUT_DONE;
     set.auto_save = 1u;                  /* (0.250: on after the tutorial) */
+    tut_mode(0);
     set_dirty = 1u;
     app_say("TUTORIAL", "QUIT (SETUP K3: AGAIN)");
     ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;

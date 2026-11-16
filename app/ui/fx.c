@@ -9,7 +9,7 @@
 #define FX_EASY ((1u << FXT_EMPTY) | (1u << FXT_FILTER) | (1u << FXT_CRUNCH) | (1u << FXT_DRIVE) | (1u << FXT_FLANGER) | \
                  (1u << FXT_DELAY) | (1u << FXT_TAPE) | (1u << FXT_CLIP))   /* (AFFINE: REVERB retired, SPU VERB's) */
 #define FX_EASY_SLOTS 2u
-static uint32_t fx_nslots(void) { return set.novice ? FX_EASY_SLOTS : BRK_FX_SLOTS; }
+static uint32_t fx_nslots(void) { return NOVICE ? FX_EASY_SLOTS : BRK_FX_SLOTS; }
 static brk_fxslot_t *fx_sl(uint32_t k) { return &set.fx.slot[k % BRK_FX_SLOTS]; }
 static brk_fxx_t *fxx_at(uint32_t k) { return &set.fxx[k % BRK_FX_SLOTS]; }
 static brk_mbc_t *mbc_at(uint32_t k) { return &set.mbc[k % BRK_FX_SLOTS]; }
@@ -331,9 +331,9 @@ static void fx_algo(int32_t d, uint32_t sel);
 static void fx_next_part(void)
 {
     uint32_t n = fx_npages(fx_sl(fx_foc())->type);
-    if (set.novice) {                    /* (LOAF BREAKER, BEGINNER: the slot's MAIN only; MORE, MOD: EXPERT) */
+    if (NOVICE) {                    /* (LOAF BREAKER, BEGINNER: the slot's MAIN only; MORE, MOD: EXPERT) */
         ui.fx_page = 0u;
-        app_say("FX", "MORE, MOD: EXPERT");
+        easy_no();                       /* (AFFINE: the TUTORIAL's; LOAF said EXPERT) */
         ui.redraw |= RG_BLOCKS | RG_FOOT;
         return;
     }
@@ -346,7 +346,7 @@ static void fx_part_turn(int32_t d)      /* (LOAF BREAKER, 0.9.2, FLEXOR: ALGORI
                                           * both ways; SELECT the slots) */
 {
     uint32_t n = fx_npages(fx_sl(fx_foc())->type);
-    if (d > 0 || set.novice) {
+    if (d > 0 || NOVICE) {
         fx_next_part();
         return;
     }
@@ -617,7 +617,7 @@ static void fx_type_turn(int32_t d)
                                           * retired, the reverb is SPU VERB's, the PSX page) */
         if (q == FXT_REVERB)
             continue;
-        if (set.novice && !(FX_EASY >> q & 1u))
+        if (NOVICE && !(FX_EASY >> q & 1u))
             continue;
         list[n++] = q;
     }

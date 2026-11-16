@@ -102,7 +102,8 @@ typedef struct {
     uint8_t comp;                        /* COMP, the whole mix compressed, 0 off .. 100 (its threshold 0 .. -36 dB) */
     union {                              /* (LOAF BREAKER, 11 Nov 2026: the STAB's sound, unused since 0.209, holds the
                                           * black keys' layout: bk[0] BK_TAG, bk[1] the preset BKP_*, bk[2..12] the
-                                          * CUSTOM layout, a function BKF_* each key) */
+                                          * CUSTOM layout, a function BKF_* each key: AFFINE, 16 Nov 2026, unused, the
+                                          * CUSTOM row gone) */
         perc_voice_t pstab_was;
         uint8_t bk[24];
     } bkeys;
@@ -128,7 +129,9 @@ typedef struct {
     uint8_t sfx_kick, sfx_drop, sfx_len; /* GLO FX SET K2-K4, the screen effects on a BOOM, at the drop, how long; 0..100,
                                           * 50 as it was */
     uint8_t sfx_on;                      /* GLO EFFECTS, the screen effects on, several at once: bit e - 1 for SFX_* e */
-    uint8_t novice;                      /* SYSTEM › SETUP K3 MODE: 1 BEGINNER, 0 EXPERT */
+    uint8_t novice;                      /* (LOAF BREAKER's MODE, 1 BEGINNER. AFFINE, 16 Nov 2026, the owner: one mode
+                                          * for everyone, the full AFFINE; 1 only while the TUTORIAL runs, its steps
+                                          * written for BEGINNER: NOVICE below. A save's 1 alone loads as the full AFFINE) */
     uint8_t pgrp;                        /* LOAF BREAKER: the patterns' group in RAM, 0..3 (P1-16 .. P49-64); pattern
                                           * its slot there */
     uint8_t brkv;                        /* LOAF BREAKER (0.234): EXPERT's SEQ grid, the break's rows shown, BRKV_TAG |
@@ -165,18 +168,23 @@ static float rel_ms(uint32_t v) { return 20.0f * brk_exp2f_c((float)(v > 100u ? 
 _Static_assert(SET_SIZE_PXC % 4u == 0u && sizeof(psx_color_t) == 28u, "the PSX colour appended, no gap before it");
 _Static_assert(sizeof(settings_t) <= 3840u, "a store object holds 3840 bytes");
 static settings_t set;
+static int tut_on(void);                 /* (tutor.c: the TUTORIAL running) */
+/* AFFINE (16 Nov 2026, the owner: "one mode for everyone"): LOAF BREAKER's BEGINNER only while the TUTORIAL runs (its
+ * steps were written for it: tut_start sets set.novice, its end and quit clear it); never else, whatever a save holds */
+#define NOVICE (set.novice && tut_on())
 /* LOAF BREAKER (11 Nov 2026, FLEXOR): the black keys' functions, BKF_*: the eleven pads (brk.h PAD_*: FREEZE and DUB
  * back), then ARP (an OVERLAY effect), KIL (the sequencer's kicks quiet). A layout: the function of each key, left to
  * right. Presets: CHOPPAH (CHOPPAH's keys), CUSTOM (each key its own: ARP › BLACK KEYS). (AFFINE: DST, SUB, DRV and
- * the FLEXOR LAYOUT gone with the hardcore kick) */
+ * the FLEXOR LAYOUT gone with the hardcore kick; 16 Nov 2026, the owner: two rows, AFFINE and PUNCH, CUSTOM gone: a save
+ * holding it plays AFFINE's, and GATE, RANDOM, DUB, ARP, KIL alone only from what REC recorded) */
 enum { BKF_ARP = BRK_NPADS, BKF_KIL, BKF_VRB, BKF_SKP, BKF_CRS, BKF_N };   /* (AFFINE: VRB the mix thrown into SPU
                                           * VERB, SKP the disc slipping, CRS the bits dropped, each while held) */
 enum { BKP_AFFINE, BKP_CHOPPAH, BKP_CUSTOM, BKP_PUNCH, BKP_N };   /* (AFFINE's first: a new FM-1's. The values are saved
-                                          * (bk[1]): AFFINE 16 Nov 2026 adds PUNCH at the end; CHOPPAH leaves the rows'
-                                          * cycle (FX + OCT, K1 PRESET) but a save holding it still plays its layout) */
+                                          * (bk[1]): AFFINE 16 Nov 2026 adds PUNCH at the end; CHOPPAH leaves the rows
+                                          * (FX + OCT) but a save holding it still plays its layout; CUSTOM: AFFINE's) */
 /* AFFINE (16 Nov 2026, the owner): the PUNCH row, eleven fixed combos, each several of the functions above held
  * together with its own settings while held (an EP-133 punch-in's way: a signature, not editable). Codes 32..42:
- * bk_fn gives them on the PUNCH row, and CUSTOM may hold them too (bk[2 + j]). BKC_T below: each one's functions and
+ * bk_fn gives them on the PUNCH row (and REC records them). BKC_T below: each one's functions and
  * settings; never saved, applied to copies (pads_push, fx_send) while one is held or plays from the pattern */
 #define BKC_0 32u
 #define BKC_N 11u
@@ -206,42 +214,29 @@ static int lat_bit(uint32_t pad)         /* (a pad's place in bk_lat, -1: none) 
 {
     return pad == PAD_REVERSE ? 0 : pad == PAD_FREEZE ? 1 : pad == PAD_GATE ? 2 : pad == PAD_RANDOM ? 3 : -1;
 }
-static uint32_t bk_preset(void)          /* the preset in use (0.9.23, FLEXOR: BEGINNER keeps the one EXPERT left; a new
-                                          * FM-1 and RESET ALL: CHOPPAH) */
+static uint32_t bk_preset(void)          /* the row in use (a new FM-1 and RESET ALL: AFFINE; AFFINE, 16 Nov 2026: a save
+                                          * holding CUSTOM, gone, AFFINE) */
 {
-    if (set.bkeys.bk[0] != BK_TAG || set.bkeys.bk[1] >= BKP_N)
+    if (set.bkeys.bk[0] != BK_TAG || set.bkeys.bk[1] >= BKP_N || set.bkeys.bk[1] == BKP_CUSTOM)
         return BKP_AFFINE;
     return set.bkeys.bk[1];
 }
 static uint32_t bk_fn(uint32_t j)        /* black key j's (0..10) function (AFFINE: or its PUNCH combo, BKC_0..) */
 {
-    uint32_t f, p = bk_preset();
+    uint32_t p = bk_preset();
     j %= 11u;
     if (p == BKP_PUNCH)
         return BKC_0 + j;
-    if (p != BKP_CUSTOM)
-        return p == BKP_AFFINE ? BK_LAY_AFF[j] : BK_LAY[j];
-    f = set.bkeys.bk[2u + j];
-    return f < BKF_N || BKC(f) ? f : BK_LAY_AFF[j];   /* (a code it doesn't know: AFFINE's) */
+    return p == BKP_CHOPPAH ? BK_LAY[j] : BK_LAY_AFF[j];
 }
 static void bk_defaults(void)
 {
     uint32_t j;
-#if defined(PLAT_HOST) && !defined(PLAT_WEB)
-    static const uint8_t HOST_LAY[11] = {PAD_ROLL8, PAD_ROLL16, PAD_ROLL32, PAD_RANDOM, PAD_HALF, PAD_FILTER, BKF_ARP,
-                                         PAD_TAPESTOP, BKF_KIL, PAD_REVERSE, PAD_FREEZE};
-#endif
     set.bkeys.bk[0] = BK_TAG;
-#if defined(PLAT_HOST) && !defined(PLAT_WEB)
-    set.bkeys.bk[1] = BKP_CUSTOM;        /* (TEST: the simulator's scenarios, written for LOAF BREAKER's FLEXOR LAYOUT:
-                                          * a CUSTOM one as it was, keys 10 and 11 (DST, SUB) REVERSE and FREEZE) */
+    set.bkeys.bk[1] = BKP_AFFINE;        /* (a new FM-1, RESET ALL, and the simulator: AFFINE's; the simulator's own
+                                          * CUSTOM layout gone with CUSTOM, 16 Nov 2026) */
     for (j = 0; j < 11u; j++)
-        set.bkeys.bk[2u + j] = HOST_LAY[j];
-#else
-    set.bkeys.bk[1] = BKP_AFFINE;        /* (a new FM-1, RESET ALL: AFFINE's) */
-    for (j = 0; j < 11u; j++)
-        set.bkeys.bk[2u + j] = BK_LAY_AFF[j];   /* (CUSTOM begins as AFFINE's) */
-#endif
+        set.bkeys.bk[2u + j] = BK_LAY_AFF[j];   /* (CUSTOM's old place: unused) */
     set.bkeys.bk[BK_BHALF] = 0u;
     set.bkeys.bk[BK_PLAT] = 0xA0u;
     set.bkeys.bk[BK_FTHRU] = 0xC0u;
@@ -290,17 +285,15 @@ static void settings_defaults(void)
     set.sfx_on = 0u;                     /* (the screen effects: none at the start and after RESET ALL; the site's
                                           * screenshots clean) */
     set.wzoom = 3u;                      /* (the scrolling wave: a bar across, as it was) */
-    bk_defaults();                       /* (LOAF BREAKER: the black keys: CHOPPAH) */
+    bk_defaults();                       /* (the black keys: AFFINE's row) */
     set.skin = 0x80u;                    /* (AFFINE: POLYGON, common.c's SKIN_NEW | SKIN_DEFAULT) */
+    set.novice = 0u;                     /* (AFFINE: one mode, the full AFFINE; BEGINNER only inside the TUTORIAL) */
 #if defined(PLAT_HOST) && !defined(PLAT_WEB)
-    set.novice = 0u;                     /* (TEST: the simulator's scenarios and the manual's screens see it all: EXPERT;
-                                          * a scenario turns GLO MORE's K1 for BEGINNER) */
     if (getenv("LOAF_ASK"))              /* (LOAF BREAKER, 0.229: the first start's question, for its scenario) */
         set.tut = 0xFDu;
 #else
-    set.novice = 1u;                     /* (TEST: BEGINNER to start, on the FM-1 and the web emulator) */
-    set.tut = 0xFDu;                     /* (LOAF BREAKER, 0.229: the mode asked first, tutor.c TUT_ASK; 0.211-0.228 the
-                                          * TUTORIAL straight away) */
+    set.tut = 0xFDu;                     /* (LOAF BREAKER, 0.229: the first start asks, tutor.c TUT_ASK; AFFINE: TUTORIAL
+                                          * or PLAY) */
 #endif
     set.sfx_kick = set.sfx_drop = set.sfx_len = 50u;
     set.tempo_x10 = 1700u;               /* jungle tempo */
@@ -470,12 +463,13 @@ static void pads_push(void)              /* the pads' settings to the engine: th
     brk_half_master(BKC(cmb_on) && (BKC_T[cmb_on - BKC_0].fm & BF(PAD_HALF)) && BKC_T[cmb_on - BKC_0].mt ? 0
                     : !(set.half_mt_off & 1u));
 }
-static void fx_send(void)                /* the FX chain's settings to the engine (BEGINNER's two slots; a combo's
+static void fx_send(void)                /* the FX chain's settings to the engine (the TUTORIAL's two slots; a combo's
                                           * FILTER and DUB over the player's) */
 {
     brk_fx_t f = set.fx;
     uint32_t k;
-    if (set.novice)                      /* (LOAF BREAKER, 0.229: BEGINNER's chain two slots, the others muted) */
+    if (NOVICE)                          /* (LOAF BREAKER, 0.229: BEGINNER's chain two slots, the others muted; AFFINE:
+                                          * the TUTORIAL's) */
         for (k = 2u; k < BRK_FX_SLOTS; k++)
             f.slot[k].on = 0u;
     if (BKC(cmb_on)) {
@@ -1088,20 +1082,6 @@ static void pat_lanes_out(void)
     for (d = 0; d < NDRUMS; d++)
         for (l = 0; l < 4u; l++)
             drum_now[d][l] = (uint16_t)drum_bar(p, d, l % drum_bars(p, d));
-}
-/* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.227): BEGINNER turned on, the group in RAM's patterns: every drum 32 steps
- * (0.9.32, FLEXOR: as a new pattern's, whatever the mode; their other bars kept, for EXPERT's LENGTH) */
-static void novice_lengths(void)
-{
-    uint32_t i;
-    for (i = 0; i < NPAT; i++) {
-        uint8_t *len = &PAT_LEN(&pats.p[i]), v = PAT_ALL32;   /* (0.9.32, FLEXOR: every drum 32; 0.246-0.9.31 the kick 16) */
-        if (*len != v) {
-            *len = v;
-            set_dirty = 1u;
-        }
-    }
-    pat_lanes_out();                     /* (the black keys: their layout kept, 0.9.23, FLEXOR) */
 }
 static void pat_apply(void)              /* the pattern playing, all of it to the engine */
 {

@@ -107,8 +107,8 @@ static void seq_view_turn(int32_t d)     /* SELECT on SEQ: FULL, DRUMS, SETTINGS
 }
 static void seq_value(int i, char *t);
 static void seq_text(int i, char *t, int foot);
-enum { UNDO_RANDOM = 1, UNDO_CLEAR, UNDO_LANE };   /* (UNDO_LANE + the knob) */
-static void undo_mark(uint32_t what);
+enum { UNDO_RANDOM = 1, UNDO_CLEAR, UNDO_INIT, UNDO_LANE };   /* (UNDO_LANE + the knob) */
+static int undo_mark(uint32_t what);
 static uint32_t n_slices(void)
 {
     const brk_break_t *b = brk_get_break();
@@ -116,8 +116,9 @@ static uint32_t n_slices(void)
 }
 static pat_t *pat_now(void) { return &pats.p[set.pattern % NPAT]; }
 
-/* undo: a copy of the pattern taken before a change that wipes (SEL + ARP, SEL + REC, the drum lanes' FILL, CLEAR /
- * 4X4, COPY); a burst of the same change within 1.5 s is one. SEL + SAVE swaps it back in, and again swaps it out (redo) */
+/* undo: a copy of the pattern taken before a change that wipes (SEQ's CLEAR, INIT, the drum lanes' FILL, CLEAR / 4X4,
+ * a paste); a burst of the same change within 1.5 s is one. SEL + SAVE swaps it back in, and again swaps it out (redo).
+ * AFFINE: INIT's also holds the effects it took off (undo_ifx, below) */
 static pat_t undo_pat;
 static uint8_t undo_kn[13];              /* (LOAF BREAKER: its kick notes kept apart, pats.kn; its drums' HITS) */
 static uint8_t undo_steps[STEPB_N];
@@ -125,10 +126,15 @@ static uint16_t undo_dx[6];              /* (0.9.30: its drums' bars 3 and 4) */
 static uint8_t undo_fx[PAT_STEPS];       /* (AFFINE: its black keys recorded) */
 static uint8_t undo_idx = 0xFFu, undo_what;
 static uint32_t undo_t;
-static void undo_mark(uint32_t what)     /* what: which change (UNDO_*), a burst of the same one is one */
+static uint8_t undo_has_fx;              /* (AFFINE: the undo is INIT's: the effects swap with the pattern, below) */
+static void undo_fx_swap(void);
+static int undo_mark(uint32_t what)      /* what: which change (UNDO_*), a burst of the same one is one; 1: a fresh copy */
 {
     uint32_t now = plat_ms(), k;
+    int fresh = 0;
     if (undo_idx != set.pattern % NPAT || what != undo_what || now - undo_t > 1500u) {
+        fresh = 1;
+        undo_has_fx = 0u;                /* (another change: the pattern's alone) */
         undo_what = (uint8_t)what;
         undo_pat = *pat_now();
         undo_idx = (uint8_t)(set.pattern % NPAT);
@@ -142,6 +148,7 @@ static void undo_mark(uint32_t what)     /* what: which change (UNDO_*), a burst
             undo_fx[k] = fxr_pat(undo_idx)[k];
     }
     undo_t = now;
+    return fresh;
 }
 static void undo_swap(void)
 {
@@ -179,6 +186,8 @@ static void undo_swap(void)
         fxr_dirty = 1u;
     }
     undo_t = 0u;                         /* (the next change takes a fresh copy) */
+    if (undo_has_fx)                     /* (AFFINE: INIT's: the effects back too, or off again) */
+        undo_fx_swap();
     if (undo_idx == set.pattern % NPAT)
         pat_apply();
     set_dirty = 1u;
@@ -376,13 +385,13 @@ static void lane_knob(int i, int32_t d)
     static const char *const NAME[4] = {"FILL", "SOUND", "LANE", "LENGTH"};
     uint32_t m = sl_get(pat_now(), ui.seq_lane), n = 0u, k;
     char t[16];
-    if (set.novice && ui.note_key) {
+    if (NOVICE && ui.note_key) {
         easy_no();                       /* (BEGINNER: no step menu) */
         return;
     }
-    if (set.novice && i == 3 && !sl_kick(ui.seq_lane)) {   /* (0.227, FLEXOR: BEGINNER's LENGTH the kick's alone, 16,
+    if (NOVICE && i == 3 && !sl_kick(ui.seq_lane)) {   /* (0.227, FLEXOR: BEGINNER's LENGTH the kick's alone, 16,
                                           * 32 or 64; the drums 16) */
-        app_say("16 STEPS", "LONGER: EXPERT MODE");
+        easy_no();                       /* (AFFINE: the TUTORIAL's; LOAF said EXPERT MODE) */
         return;
     }
     if (ui.note_key && sl_notes(ui.seq_lane) && (i || !sl_tuned(ui.seq_lane))) {   /* LOAF BREAKER: a step held, K2
@@ -555,19 +564,6 @@ static void seq_rotate(int32_t d)
     app_say("SHIFT", d > 0 ? "A STEP LATER" : "A STEP EARLIER");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-static void seq_clear_drums(void)
-{
-    pat_t *p = pat_now();
-    uint32_t d, b;
-    undo_mark(UNDO_LANE + 6u);
-    for (d = 0; d < NDRUMS; d++)
-        for (b = 0; b < 4u; b++)
-            drum_bar_set(p, d, b, 0u);
-    pat_lanes_out();
-    set_dirty = 1u;
-    app_say("DRUMS", "CLEARED (THE BREAK KEPT)");
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
 static void seq_key(uint32_t i)          /* a white key on SEQ: the step to edit, or a drum step on and off */
 {
     char t[8];
@@ -581,40 +577,142 @@ static void seq_key(uint32_t i)          /* a white key on SEQ: the step to edit
     say_int("STEP", (int32_t)ui.seq_step + 1, "");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-/* SEL + REC: 0 the whole pattern (elsewhere), 1 on SEQ the lane shown; LOAF BREAKER: 2 REC held on SEQ, the break's
- * steps, both halves (1-16, 17-32), the drums kept */
-static void seq_clear(int mode)
+/* the whole pattern playing cleared: the break's steps (each follows the loop), every drum lane, the kick's notes, every
+ * drum step's own settings, the black keys recorded (SEL + SAVE takes it back). SEQ held 0.7 s, then SEQ again; and
+ * INIT. (AFFINE, 16 Nov 2026, the owner: SEL + REC's clears of the pattern or a lane, REC held on PATTERN's of the
+ * break's steps, SEQ held + REC's of the drums: gone, no question asked) */
+static void pat_clear_now(void)
 {
     pat_t *p = pat_now();
     uint32_t k;
-    undo_mark(UNDO_CLEAR);
-    if (mode != 1 || ui.seq_lane < SL_KICK)
-        for (k = 0; k < PAT_STEPS; k++)
-            if (mode != 1 || k / 16u == ui.seq_lane) {
-                p->st[k][0] = 1u;
-                p->st[k][1] = 0u;
-                p->st[k][2] &= 0xF8u;    /* (bits 3-7: the MELODY's, 0.200-0.208) */
-            }
-    if (mode != 1)                       /* (AFFINE: the black keys recorded: with the pattern, or the break's steps) */
-        fxr_clear(set.pattern, 0u, PAT_STEPS);
-    else if (ui.seq_lane < SL_KICK)      /* (its half, with that half's steps) */
-        fxr_clear(set.pattern, ui.seq_lane * 16u, 16u);
-    if (!mode) {
-        for (k = SL_KICK; k < NSEQL; k++)
-            sl_set(p, k, 0u);
-        for (k = 0; k < PAT_STEPS; k++)  /* (LOAF BREAKER: the old MELODY's bits too, and the kick's notes) */
-            p->st[k][2] &= 0x07u;
-        for (k = 0; k < 64u; k++)
-            kick_note_set(p, k, 0);
-        for (k = 0; k < STEPB_N; k++)    /* (and every drum step's own settings) */
-            steps.b[set.pattern % NPAT][k] = 0u;
+    for (k = 0; k < PAT_STEPS; k++) {
+        p->st[k][0] = 1u;
+        p->st[k][1] = 0u;
+        p->st[k][2] &= 0xF8u;            /* (bits 3-7: the MELODY's, 0.200-0.208) */
     }
-    else if (mode == 1 && ui.seq_lane >= SL_KICK)
-        sl_set(p, ui.seq_lane, 0u);
+    fxr_clear(set.pattern, 0u, PAT_STEPS);   /* (AFFINE: the black keys recorded) */
+    for (k = SL_KICK; k < NSEQL; k++)
+        sl_set(p, k, 0u);
+    for (k = 0; k < PAT_STEPS; k++)      /* (LOAF BREAKER: the old MELODY's bits too, and the kick's notes) */
+        p->st[k][2] &= 0x07u;
+    for (k = 0; k < 64u; k++)
+        kick_note_set(p, k, 0);
+    for (k = 0; k < STEPB_N; k++)        /* (and every drum step's own settings) */
+        steps.b[set.pattern % NPAT][k] = 0u;
     pat_apply();
     set_dirty = 1u;
-    app_say("CLEARED", mode == 1 ? SEQ_LANE_NAME[ui.seq_lane] : mode ? "BREAK 1-32" : "PATTERN");
+}
+static void seq_clear(void)
+{
+    undo_mark(UNDO_CLEAR);
+    pat_clear_now();
+    app_say("CLEARED", "PATTERN");
     ui.redraw |= RG_BLOCKS | RG_FOOT;
+}
+/* AFFINE (16 Nov 2026, the owner): INIT, SEL + HOME, then HOME within 3 s: everything added taken off. The pattern
+ * playing cleared as SEQ's clear does it, and the sound back to the bare break: HOME's FILTER, CRUSH, REDUX, VERB and the
+ * drums' filter at 0, the gate full, every black key's latch and LATCH off, the ARP effects off (the OVERLAY page's LATCH
+ * too), the row AFFINE, the FX chain's slots bypassed (their settings kept), the PSX bus clean (CODEC off, SKIP off, SPU
+ * VERB's freeze off, COLOR's AMOUNT 0, CONSOLE 0, MONO off, its SEND 0). Kept: the tempo, the break, BOOM and the drums'
+ * sounds, MIX, the songs, the skin, MIDI, the other patterns. What it changes is kept beside the pattern's undo, so SEL
+ * + SAVE brings all of it back (and again takes it off) */
+typedef struct {
+    brk_fx_t fx;
+    psx_bus_t psx;
+    psx_color_t pxc;
+    uint32_t ovl_lat;                    /* (the OVERLAY page's effects latched on) */
+    uint16_t pad_lat, arp_lat;           /* (REVERSE, FREEZE, GATE, RANDOM latched; ARP keys latched) */
+    uint8_t gate, row, plat, half_mt, ovl_latch, half_lat, kick_q;
+    int8_t kick_dj;
+} init_fx_t;
+static init_fx_t undo_ifx;               /* (the effects before INIT, while the undo is INIT's) */
+static void init_fx_take(init_fx_t *f)
+{
+    f->fx = set.fx;
+    f->psx = set.psx;
+    f->pxc = set.pxc;
+    f->ovl_lat = ovl_latched;
+    f->pad_lat = pad_latched;
+    f->arp_lat = arp_lat;
+    f->gate = set.gate;
+    f->row = set.bkeys.bk[1];
+    f->plat = set.bkeys.bk[BK_PLAT];
+    f->half_mt = set.half_mt_off;
+    f->ovl_latch = set.ovl_latch;
+    f->half_lat = half_lat;
+    f->kick_q = (uint8_t)(kick_hold && !kil_mom);   /* (KIL latched: BOOM quiet) */
+    f->kick_dj = set.kick_dj;
+}
+static void init_fx_put(const init_fx_t *f)   /* those settings in, and the latched keys and effects as they were */
+{
+    uint32_t i;
+    bk_release_all();                    /* (whatever the keys hold lets go first; a key held: silent until let go) */
+    set.fx = f->fx;
+    set.psx = f->psx;
+    set.pxc = f->pxc;
+    set.gate = f->gate;
+    set.bkeys.bk[1] = f->row;
+    set.bkeys.bk[BK_PLAT] = f->plat;
+    set.half_mt_off = f->half_mt;
+    set.ovl_latch = f->ovl_latch;
+    set.kick_dj = f->kick_dj;
+    ovl_latched = set.ovl_latch ? f->ovl_lat : 0u;
+    arp_lat = f->arp_lat;
+    pad_latched = f->pad_lat;
+    for (i = 0; i < BRK_NPADS; i++)
+        if (pad_latched >> i & 1u)
+            brk_pad((int)i, 1);
+    half_lat = f->half_lat;
+    if (half_lat)
+        brk_pad(PAD_HALF, 1);
+    kick_hold = f->kick_q;
+    ovl_push();
+    changed();                           /* (settings_apply: the chain, the PSX bus, the gate) */
+    ui.redraw |= RG_ALL;
+}
+static void init_fx_clean(void)          /* the sound back to the bare break */
+{
+    init_fx_t f;
+    uint32_t k;
+    init_fx_take(&f);
+    for (k = 0; k < BRK_FX_SLOTS; k++)
+        f.fx.slot[k].on = 0u;            /* (bypassed: no effect heard, its settings kept) */
+    f.fx.dj = 0.0f;                      /* HOME's FILTER */
+    f.psx.crush = f.psx.redux = f.psx.send = 0.0f;   /* HOME's CRUSH, REDUX, VERB */
+    f.psx.codec = CODEC_OFF;
+    f.psx.skchance = 0.0f;               /* (SKIP off) */
+    f.psx.vfreeze = 0.0f;
+    f.pxc.amount = 0.0f;                 /* (the colour clean: the codec's mix, CRUNCH, CONSOLE, SEND from neutral) */
+    f.pxc.console = 0.0f;
+    f.pxc.mono = 0u;
+    f.pxc.vsend = 0.0f;
+    f.gate = 100u;                       /* (the gate full) */
+    f.row = BKP_AFFINE;
+    f.plat = 0xA0u;                      /* (REVERSE, FREEZE, GATE, RANDOM: LATCH off) */
+    f.half_mt = (uint8_t)(f.half_mt & ~6u);   /* (HALF SPEED's LATCH, KIL's LATCH off; MASTER TEMPO kept) */
+    f.ovl_latch = 0u;
+    f.ovl_lat = 0u;
+    f.pad_lat = f.arp_lat = 0u;
+    f.half_lat = f.kick_q = 0u;
+    f.kick_dj = 0;                       /* (the drums' filter) */
+    init_fx_put(&f);
+}
+static void undo_fx_swap(void)           /* (SEL + SAVE on INIT's undo: the effects now and those kept, swapped) */
+{
+    init_fx_t now;
+    init_fx_take(&now);
+    init_fx_put(&undo_ifx);
+    undo_ifx = now;
+}
+static void init_do(void)
+{
+    if (undo_mark(UNDO_INIT)) {          /* (a fresh undo: the effects kept with it; INIT again within 1.5 s: the first's) */
+        init_fx_take(&undo_ifx);
+        undo_has_fx = 1u;
+    }
+    pat_clear_now();
+    init_fx_clean();
+    app_say("INIT", "");
 }
 /* a note's name: "C3", "F#4" (0: C3; kick.c's TUNE too) */
 static void note_name(int32_t n, char *t)   /* "C3", "F#4" (0: C3) */

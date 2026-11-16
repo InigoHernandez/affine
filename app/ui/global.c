@@ -19,8 +19,9 @@ static void sfx_toggle(uint32_t e, int on)   /* LOAF BREAKER: GLO EFFECTS: effec
     ui.redraw = RG_ALL;
 }
 /* LOAF BREAKER (0.201, the pages by domain): two parts of this page's code are shown elsewhere: GP_BREAK, the break's
- * PITCH, GRAIN, SNAP and LEVEL, is SOUNDS' BREAK (SEL + EDIT); GP_FILL, SWING and FILL, is PATTERN's GROOVE (SEQ's
- * ALGORITHM past KEYS, SEL + ARP). SYSTEM (GLO) itself: MIDI, SETUP, EFFECTS, FX SET, RESET */
+ * PITCH, GRAIN, SNAP and LEVEL, is SOUNDS' BREAK (SEL + EDIT); GP_FILL, SWING and FILL, is PATTERN's SETTINGS (SEQ's
+ * SELECT past DRUMS; AFFINE, 16 Nov 2026: SEL + ARP to it gone). SYSTEM (GLO) itself: MIDI, SETUP, EFFECTS, FX SET,
+ * RESET */
 #define GP_BREAK 1u
 #define GP_FILL 6u
 #define NGLO 5u
@@ -62,13 +63,13 @@ static void global_value(int i, char *t)
         return;                          /* (K4 EDIT VIEW and PRESETS DRUM VIEW ZOOM until 0.9.28: KICK › KNOBS › TOOLS) */
     }
     if (ui.gpage == 2u) {                /* SETUP (FLEXOR, 0.213: the knobs in the screen's order, top to bottom): K1 SKIN,
-                                          * K2 WAVE ZOOM, K3 MODE, K4 AUTO SAVE */
+                                          * K2 WAVE ZOOM, K3 the TUTORIAL (AFFINE: LOAF's MODE), K4 AUTO SAVE */
         if (i == 0)                      /* (LOAF BREAKER, 0.237: the names nine letters at most, to fit its column) */
             text_cat(t, SKIN_NAME[skin_idx()]);
         else if (i == 1)                 /* (WAVE ZOOM: HOME's SETTINGS since 0.9.2) */
             ;
-        else if (i == 2)                 /* (TUTORIAL, left of BEGINNER) */
-            text_cat(t, tut_on() ? "TUTORIAL" : set.novice ? "BEGINNER" : "EXPERT");
+        else if (i == 2)                 /* (AFFINE, 16 Nov 2026: the TUTORIAL running or not; one mode for everyone) */
+            text_cat(t, tut_on() ? "ON" : "OFF");
         else
             text_cat(t, set.auto_save ? "ON" : "OFF");
         return;
@@ -89,15 +90,16 @@ static void global_value(int i, char *t)
         return;
     }
     text_cat(t, i == 0 ? (set.clk_in ? "FOLLOW" : "OFF") : i == 1 ? (set.clk_out ? "ON" : "OFF")
-                : i == 2 && !set.novice ? (ui.meter_on ? "ON" : "OFF")
+                : i == 2 && !NOVICE ? (ui.meter_on ? "ON" : "OFF")
                 : "");                   /* (LOAF BREAKER: K3 the METER, EXPERT only; K4 BREAK TIME 0.256-0.9.1: HOME's
                                           * SETTINGS now) */
 }
 
-/* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's BREAK its LEVEL alone (K4; the pitch: OCT), GROOVE its SWING alone */
+/* LOAF BREAKER (FLEXOR, 11 Nov 2026): BEGINNER's BREAK its LEVEL alone (K4; the pitch: OCT), GROOVE its SWING alone
+ * (AFFINE: the TUTORIAL's alone) */
 static int glo_knob_ok(int i)
 {
-    return !set.novice || ui.page != PG_GLOBAL || (ui.gpage == GP_FILL ? i < 3 : ui.gpage == GP_BREAK ? i == 3 : 1);
+    return !NOVICE || ui.page != PG_GLOBAL || (ui.gpage == GP_FILL ? i < 3 : ui.gpage == GP_BREAK ? i == 3 : 1);
 }
 static void global_turn(int i, int32_t d)
 {
@@ -157,25 +159,13 @@ static void global_turn(int i, int32_t d)
         } else if (i == 1) {             /* (K2 WAVE ZOOM until 0.9.1: HOME's SETTINGS, FLEXOR) */
             app_say("WAVE ZOOM", "HOME > SETTINGS");
             return;
-        } else if (i == 2) {             /* K3 MODE: right EXPERT, left BEGINNER (left again, the TUTORIAL; right from
-                                          * it, BEGINNER) */
-            if (d < 0 && set.novice && !tut_on())
+        } else if (i == 2) {             /* K3 the TUTORIAL: right starts it (from the step it was left at), left quits
+                                          * it (AFFINE, 16 Nov 2026, the owner: one mode for everyone, LOAF BREAKER's
+                                          * BEGINNER / EXPERT gone; GLO quits it too) */
+            if (d > 0 && !tut_on())
                 tut_start();
-            else if (d > 0 && tut_on()) {
+            else if (d < 0 && tut_on())
                 tut_quit();
-                app_say("MODE", "BEGINNER");
-            } else {
-                set.novice = d > 0 ? 0u : 1u;
-                if (set.novice) {
-                    ui.meter_on = 0u;    /* (the METER: EXPERT's) */
-                    ui.fx_page = 0u;     /* (the FX page: MAIN only) */
-                    if (ui.fx_focus >= FX_EASY_SLOTS)
-                        ui.fx_focus = 0u;   /* (0.229: the chain's two slots) */
-                    novice_lengths();    /* (0.227, FLEXOR: the kick 32 steps, the drums 16; 0.246: all 16) */
-                }
-                changed();
-                app_say("MODE", set.novice ? "BEGINNER" : "EXPERT");
-            }
             ui.redraw |= RG_BLOCKS | RG_FOOT;
         } else {                         /* K4 AUTO SAVE: right on, left off */
             set.auto_save = d > 0 ? 1u : 0u;
@@ -209,7 +199,7 @@ static void global_turn(int i, int32_t d)
         }
     } else if (i == 1)
         set.clk_out = d > 0;
-    else if (i == 2 && !set.novice) {    /* LOAF BREAKER: K3 the METER, EXPERT only (0.213; SETUP's before): right on,
+    else if (i == 2 && !NOVICE) {        /* LOAF BREAKER: K3 the METER, EXPERT only (0.213; SETUP's before): right on,
                                           * left off (not saved): CPU, IMG, FR in the header */
         ui.meter_on = d > 0 ? 1u : 0u;
         app_say("METER", ui.meter_on ? "ON: CPU, IMG, FR" : "OFF");
@@ -323,12 +313,12 @@ static void glo_midi(const brk_status_t *st)
     }
 }
 
-/* SYSTEM › SETUP: the skins as little scenes in their colours, the one on framed (K1); the mode's three choices as
- * K3 turns through them; AUTO SAVE (K4): a memory card, lit when on, and when it saves */
+/* SYSTEM › SETUP: the skins as little scenes in their colours, the one on framed (K1); the TUTORIAL off or running
+ * (K3: AFFINE, LOAF's three modes before); AUTO SAVE (K4): a memory card, lit when on, and when it saves */
 static void glo_setup(const brk_status_t *st)
 {
-    static const char *const MODE[3] = {"TUTORIAL", "BEGINNER", "EXPERT"};
-    uint32_t s, m = tut_on() ? 0u : set.novice ? 1u : 2u;
+    static const char *const TUT_SEG[2] = {"OFF", "TUTORIAL"};
+    uint32_t s, m = tut_on() ? 1u : 0u;
     uint16_t mc = set.auto_save ? C_HI : C_LINE;
     (void)st;
     for (s = 0; s < NSKINS; s++) {       /* (its ground, a floor of its cards' colour under a rule, the hot gem, a
@@ -344,8 +334,8 @@ static void glo_setup(const brk_status_t *st)
         cv_rect(x + 4, y + 25, 14, 2, skin_rgb(c[6], 100u));
         cv_rect(x + 22, y + 25, 14, 2, skin_rgb(c[3], 100u));
     }
-    for (s = 0; s < 3u; s++)             /* (left to right as the knob turns) */
-        g_seg((int32_t)s * 81, 100, 78, 24, MODE[s], s == m);
+    for (s = 0; s < 2u; s++)             /* (left to right as the knob turns) */
+        g_seg((int32_t)s * 121, 100, 118, 24, TUT_SEG[s], s == m);
     cv_rect(10, 148, 28, 38, mc);        /* the memory card: its body, the notch, the label, the contacts */
     cv_rect(32, 148, 6, 6, C_BLACK);
     cv_rect(15, 160, 18, 10, C_BLACK);

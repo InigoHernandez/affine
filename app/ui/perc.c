@@ -15,7 +15,7 @@ static const char *const PERC_KNOB[PERC_VOICES][4][4] = {   /* (AFFINE, 2x: the 
                                           * gone in 0.209; 0.225: SHAPE's K4 DIRT, MORE (DROP, TIME, LIFT, ROOM), and
                                           * BEGINNER's one page: PRESET, FX, LEVEL, TUNE; 0.229 DECAY for TUNE) */
 static const char *const PPAGE_NAME[4] = {"SOUND", "SHAPE", "MORE", "PRESET"};
-static uint32_t perc_pg(void) { return set.novice ? 3u : ui.ppage % 3u; }
+static uint32_t perc_pg(void) { return NOVICE ? 3u : ui.ppage % 3u; }
 static const char *perc_kname(uint32_t v, uint32_t pg, int i) { return PERC_KNOB[v % PERC_VOICES][pg & 3u][i & 3]; }
 
 /* LOAF BREAKER (11 Nov 2026): the drums' presets: the four built-in sounds of each, then FLEXOR's picks (the industrial

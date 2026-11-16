@@ -41,11 +41,6 @@ static void perc_clip(void)
     changed();
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
-static int sel_bt_page(void)             /* (0.9.26, FLEXOR: the pages where SEL + ALGORITHM is BREAK TIME) */
-{
-    return ui.page <= PG_GEN || ui.page == PG_HSET || ui.page == PG_MIX || ui.page == PG_OVL ||
-           (ui.page == PG_TRACK && ui.tpage) || (ui.page == PG_GLOBAL && ui.gpage == GP_BREAK);
-}
 static uint32_t ed_live_t;              /* (LOAF BREAKER 0.9.43: the editor's LIVE view last asked: the scope kept on) */
 static uint8_t lvl_fast;                /* LOAF BREAKER: LFO + K1-K4: the levels by 5 % a detent (the MIXER's own
                                           * page: 2 %) */
@@ -224,14 +219,12 @@ static void home_draw(const brk_status_t *st, uint32_t now)
         float g = -1.0f;
         t[0] = 0;
         h.gl[i] = "";
-        if (ui.shown >= 100) {
-            if (!set.novice) {
-                h.gl[i] = ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i];
-                if (ui.key_layer)
-                    slx_knob_value(ui.shown - 100, (int)i, t);
-                else
-                    key_knob_value(ui.shown - 100, (int)i, t);
-            }
+        if (ui.shown >= 100) {           /* (AFFINE: the slice's knobs always, one mode) */
+            h.gl[i] = ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i];
+            if (ui.key_layer)
+                slx_knob_value(ui.shown - 100, (int)i, t);
+            else
+                key_knob_value(ui.shown - 100, (int)i, t);
         } else if (ui.kil_focus && i == 0) {
             h.gl[i] = "LATCH";
             text_cat(t, set.half_mt_off & 4u ? "ON" : "OFF");
@@ -471,8 +464,8 @@ static uint8_t seq_wait;
 static uint32_t fxl_t;                   /* LOAF BREAKER: FX pressed: when (held 0.7 s: the FX fader) */
 static uint32_t clr_t;                   /* LOAF BREAKER: SEQ held: the clear asked, waiting for SEQ again (3 s) */
 static uint8_t clr_arm;
-static uint32_t rec_t;                   /* LOAF BREAKER: REC pressed on SEQ: when, and waiting for its release */
-static uint8_t rec_wait;
+static uint32_t init_t;                  /* AFFINE: SEL + HOME, INIT asked: when (HOME within 3 s does it) */
+static uint8_t init_arm;
 static void rec_toggle(void)
 {
     ui.rec ^= 1u;
@@ -494,8 +487,6 @@ static uint16_t cmb_act;                 /* combos sounding, bit CB_* (their key
 static int16_t rp_step = -2;             /* (the step it came from) */
 static uint16_t rp_gap;                  /* (a change of code: the functions both have let go a moment: retriggered) */
 static uint32_t rp_gap_t, cmb_t;         /* (since; the combo's settings since) */
-static uint8_t asg_key = 0xFFu;          /* FX + a black key: the key a knob gives a function (bk_assign) */
-static uint32_t asg_say_t;               /* (ROW C said: the key's function said after it) */
 static uint8_t oct_eaten;                /* OCT pressed with FX held (the rows): no pitch until both are let go */
 static int16_t rw_step = -1, rw_seen = -1;   /* REC: the step a hold wrote last; the step seen */
 static uint8_t rw_old, rw_from, rw_code = 0xFFu;   /* (what that step had; the hold's first step; its code) */
@@ -509,24 +500,13 @@ static void bk_scan(uint32_t keys, uint32_t kdn, uint32_t kup, uint32_t btn, uin
                 ul |= kb;
             bk_mute &= (uint16_t)~mb;
         }
-        if (kdn & kb) {
+        if (kdn & kb) {                  /* (AFFINE, 16 Nov 2026: FX + a key no longer gives it a function, CUSTOM
+                                          * gone: it plays) */
             bk_ord[j] = ++bk_ord_n;
-            if (ui.page == PG_OVL && ui.opage == 1u) {   /* (ARP › BLACK KEYS: it picks itself, plays nothing) */
-                bk_mute |= (uint16_t)mb;
-                bk_pick(j);
-            } else if (btn & 1u << B_FX) {   /* FX held: the key to give a function (a knob turned), not played */
-                char t[12] = "KEY ";
-                bk_mute |= (uint16_t)mb;
-                asg_key = (uint8_t)j;
-                asg_say_t = 0u;
-                if (ui.fx_hold)
-                    ui.fx_turned = 1u;   /* (FX let go: no page, no fader) */
-                int_text((int32_t)j + 1, t + 4);
-                app_say(t, bk_long(bk_fn(j)));
-            } else
-                dl |= kb;
+            dl |= kb;
         }
     }
+    (void)btn;
     *kdn_live = dl;
     *kup_live = ul;
 }
@@ -789,48 +769,15 @@ static void bk_record(const brk_status_t *st, uint32_t kdn_live)
     }
     rw_code = (uint8_t)hc;
 }
-static void bk_assign_say(void)
+static void bk_row_set(uint32_t p)       /* FX + OCT-: AFFINE, FX + OCT+: PUNCH (AFFINE, 16 Nov 2026, the owner: two
+                                          * rows, each its own; CUSTOM gone, no round) */
 {
-    char t[12] = "KEY ";
-    int_text((int32_t)asg_key % 11 + 1, t + 4);
-    app_say(t, bk_long(bk_fn(asg_key % 11u)));
-}
-/* FX held, a black key held, any knob: that key's function, every function then the combos (a row other than CUSTOM:
- * copied into CUSTOM first, CUSTOM in use). FX let go: done (no page, no fader) */
-static void bk_assign(int32_t d, uint32_t now)
-{
-    uint32_t j = asg_key % 11u, c = bk_fn(j), k, n = (uint32_t)(d < 0 ? -d : d);
-    int sw = 0;
-    if (bk_preset() != BKP_CUSTOM) {
-        for (k = 0; k < 11u; k++)
-            set.bkeys.bk[2u + k] = (uint8_t)bk_fn(k);
-        set.bkeys.bk[1] = BKP_CUSTOM;
-        sw = 1;
+    if (p != bk_preset()) {
+        bk_release_all();
+        set.bkeys.bk[1] = (uint8_t)p;
+        set_dirty = 1u;
     }
-    for (k = 0; k < (n > 4u ? 4u : n); k++)
-        c = bk_code_step(c, d);
-    bk_release_all();
-    set.bkeys.bk[2u + j] = (uint8_t)c;
-    ui.bk_sel = (uint8_t)j;
-    set_dirty = 1u;
-    if (sw) {                            /* (the row said first, the key's function after it) */
-        app_say("ROW C", BKP_NAME[BKP_CUSTOM]);
-        asg_say_t = now | 1u;
-    } else {
-        asg_say_t = 0u;
-        bk_assign_say();
-    }
-    ui.redraw |= RG_BLOCKS | RG_FOOT;
-}
-static void bk_row_turn(int32_t d)       /* FX + OCT+ / OCT-: the next row, or the one before, round */
-{
-    uint32_t pos = (bk_row_pos(bk_preset()) + (d > 0 ? 1u : 2u)) % 3u;
-    char t[8] = "ROW A";
-    bk_release_all();
-    set.bkeys.bk[1] = BK_ROWS[pos];
-    set_dirty = 1u;
-    t[4] = (char)('A' + pos);
-    app_say(t, BKP_NAME[BK_ROWS[pos]]);
+    app_say(p == BKP_PUNCH ? "ROW B" : "ROW A", BKP_NAME[p]);
     ui.redraw |= RG_BLOCKS | RG_FOOT;
 }
 
@@ -985,16 +932,8 @@ static void input(void)
                     ui.key_since = now;
                 }
     }
-    if (ui.page == PG_OVL && ui.opage == 1u)   /* LOAF BREAKER: ARP › BLACK KEYS: a black key picks itself (bk_scan:
-                                          * what was held lets go as ever; nothing new starts) */
-        for (i = 0; i < 11u; i++)
-            kdn &= ~(1u << BK[i]);
     bk_play(keys, kdn_live, kup_live, btn, now);   /* AFFINE: the black keys, as functions (bk_masks) */
     bk_record(&bst, kdn_live);           /* (and REC: into the pattern) */
-    if (asg_say_t && now - asg_say_t >= 700u) {   /* (FX + a key: ROW C said, then the key's function) */
-        asg_say_t = 0u;
-        bk_assign_say();
-    }
     if (bdn & 1u << B_PLAY) {
         brk_status_t st;
         brk_status(&st);
@@ -1011,6 +950,26 @@ static void input(void)
         else
             transport(!st.playing, 0);
         muted = 0u;
+    }
+    if (init_arm && (now - init_t >= 3000u || (bdn & ~(1u << B_HOME)) || kdn)) {   /* AFFINE: INIT not confirmed */
+        init_arm = 0u;
+        app_say("INIT", "CANCELLED");
+    }
+    if (bdn & 1u << B_HOME && init_arm) {   /* AFFINE: HOME within 3 s of SEL + HOME: INIT (SEL + SAVE takes it back) */
+        init_arm = 0u;
+        init_do();
+        ui.tap_combo = 1u;               /* (SEL still held: no click) */
+        bdn &= ~(1u << B_HOME);          /* (the page stays: HOME's own press used) */
+        ui.cdj_skip = 1u;                /* (held on: not the view's switch either) */
+    } else if (bdn & 1u << B_HOME && btn & 1u << B_SEL) {   /* AFFINE: SEL + HOME: INIT asked, HOME again does it */
+        init_arm = 1u;
+        init_t = now;
+        ui.tap_combo = 1u;               /* (no SEL click) */
+        ui.help = 0u;                    /* (SEL's card shut: the question in the header) */
+        app_say("INIT?", "PRESS HOME");
+        ui.msg_until = now + 3000u;      /* (said as long as it waits) */
+        bdn &= ~(1u << B_HOME);
+        ui.cdj_skip = 1u;
     }
     if (bdn & 1u << B_HOME)
         ui.home_t = now;                 /* (LOAF BREAKER: held 0.35 s on PERFORM / GENERATOR: the CDJ view) */
@@ -1099,7 +1058,7 @@ static void input(void)
         }
     }
     if (ui.edit_hold && !(btn & 1u << B_EDIT)) {
-        if (ui.edit_hold == 1u && !set.novice && ui.einst >= DR_CLAP && ui.page == PG_PERC)
+        if (ui.edit_hold == 1u && !NOVICE && ui.einst >= DR_CLAP && ui.page == PG_PERC)
             kick_open();                 /* (LOAF BREAKER, 0.266, FLEXOR: EXPERT, EDIT goes round the sounds, BOOM
                                           * SNARE HAT CLAP. After the CLAP, BOOM) */
         else if (ui.edit_hold == 1u) {   /* (BOOM: the SNARE; a drum: the next one; BEGINNER, SNARE HAT CLAP round,
@@ -1157,7 +1116,7 @@ static void input(void)
     }
     if (bdn & 1u << B_SEQ && clr_arm) {  /* LOAF BREAKER: SEQ again: the clear confirmed (SEL + SAVE takes it back) */
         clr_arm = 0u;
-        seq_clear(0);
+        seq_clear();
     } else if (bdn & 1u << B_SEQ && btn & 1u << B_SEL)   /* LOAF BREAKER: SEL + SEQ: copy the pattern; on another:
                                           * paste */
         pat_copy_paste();
@@ -1189,38 +1148,20 @@ static void input(void)
             app_say(t, "SEQ AGAIN");
         }
     }
-    if (bdn & 1u << B_REC && btn & 1u << B_SEQ && ui.page == PG_SEQ) {   /* LOAF BREAKER: SEQ held + REC: every drum
-                                          * lane cleared, the break kept */
-        seq_clear_drums();
-        seq_wait = 0u;
-        clr_arm = 0u;
-    } else if (bdn & 1u << B_REC && btn & 1u << B_SEL && ui.page == PG_FX && !FX_PSX())
+    if (bdn & 1u << B_REC && btn & 1u << B_SEL && ui.page == PG_FX && !FX_PSX())
         fx_reset();                      /* LOAF BREAKER: SEL + REC on FX: the slot's effect reset (again: undone; was
                                           * SEL x2) */
-    else if (bdn & 1u << B_REC && btn & 1u << B_SEL) {   /* SEL + REC: clear (on SEQ its lane; else the pattern) */
-        seq_clear(ui.page == PG_SEQ);
-    } else if (bdn & 1u << B_REC) {      /* REC: record the keys and MIDI notes into the pattern while playing */
-        rec_t = now;                     /* (LOAF BREAKER: on SEQ, at its release: held, it clears the break) */
-        rec_wait = ui.page == PG_SEQ;
-        if (!rec_wait)
-            rec_toggle();
-    }
-    if (rec_wait) {                      /* LOAF BREAKER: REC on SEQ: let go, REC on or off; held, the break's steps
-                                          * cleared (both halves; SEL + SAVE takes it back) */
-        if (!(btn & 1u << B_REC)) {
-            rec_wait = 0u;
-            rec_toggle();
-        } else if (now - rec_t >= 700u) {
-            rec_wait = 0u;
-            seq_clear(2);
-        }
-    }
+    else if (bdn & 1u << B_REC)          /* REC: record the keys and MIDI notes into the pattern, on or off as it goes
+                                          * down, the same on every page (AFFINE, 16 Nov 2026, the owner: the clears
+                                          * without a question gone: SEL + REC the pattern or a lane, REC held on
+                                          * PATTERN the break's steps, SEQ held + REC the drums. The one clear: SEQ
+                                          * held, then SEQ again; or INIT, SEL + HOME, then HOME) */
+        rec_toggle();
     if (bdn & 1u << B_ARP && btn & 1u << B_SEL && ui.page == PG_PERC)
         perc_clip();                     /* (the drums: the drum's sound, onto another memory of it) */
-    else if (bdn & 1u << B_ARP && btn & 1u << B_SEL) {   /* LOAF BREAKER: SEL + ARP: PATTERN's GROOVE (its SWING) */
-        global_part(GP_FILL);
-    } else if (bdn & 1u << B_ARP) {      /* ARP: the OVERLAY page (LOAF BREAKER, 0.244, FLEXOR: back, FILL gone); on it
-                                          * again, EXPERT: its next tab (ARP EFFECTS, BLACK KEYS, MORE) */
+    else if (bdn & 1u << B_ARP) {        /* ARP: the OVERLAY page (LOAF BREAKER, 0.244, FLEXOR: back, FILL gone); on it
+                                          * again, HOME (AFFINE: one tab, ARP EFFECTS; SEL + ARP's GROOVE gone, 16 Nov
+                                          * 2026: SEL held, ARP as alone) */
         if (ui.page == PG_OVL)
             home_back();                 /* (0.9.2, FLEXOR: OVERLAY, ARP again: HOME; SELECT its tabs) */
         else {
@@ -1238,8 +1179,8 @@ static void input(void)
         app_say("ARP KEY", ui.pad_more ? "MORE" : "MAIN");
         ui.redraw |= RG_BLOCKS;
         foot_dirty = 1u;
-    } else if (bdn & 1u << B_FX && key_tuned() >= 0 && !set.novice) {   /* FX with a key held: its knobs, loop <->
-                                          * slice effect (LOAF BREAKER: EXPERT's) */
+    } else if (bdn & 1u << B_FX && key_tuned() >= 0) {   /* FX with a key held: its knobs, loop <-> slice effect
+                                          * (LOAF BREAKER: EXPERT's; AFFINE: one mode, always) */
         ui.key_layer ^= 1u;
         ui.key_turned = 1u;
         app_say("KEY", ui.key_layer ? "SLICE FX" : "LOOP");
@@ -1262,9 +1203,9 @@ static void input(void)
         ui.fx_open = (uint8_t)(ui.page != PG_FX);
         fxl_t = now;
     }
-    if (btn & 1u << B_FX && bdn & (1u << B_OCTDN | 1u << B_OCTUP)) {   /* AFFINE: FX + OCT+ / OCT-: the black keys'
-                                          * next row, or the one before (AFFINE, PUNCH, CUSTOM, round); no pitch */
-        bk_row_turn(bdn & 1u << B_OCTUP ? 1 : -1);
+    if (btn & 1u << B_FX && bdn & (1u << B_OCTDN | 1u << B_OCTUP)) {   /* AFFINE: FX + OCT-: the black keys' row
+                                          * AFFINE, FX + OCT+: PUNCH; no pitch */
+        bk_row_set(bdn & 1u << B_OCTUP ? BKP_PUNCH : BKP_AFFINE);
         oct_eaten = 1u;
         if (ui.fx_hold)
             ui.fx_turned = 1u;           /* (FX let go: no page, no fader) */
@@ -1384,17 +1325,14 @@ static void input(void)
             ui.tap_combo = 1u;           /* (SEL + a knob is no tap) */
         if (ui.fx_hold)
             ui.fx_turned = 1u;           /* (FX + a knob: not the next part) */
-        if (btn & 1u << B_FX && asg_key < 11u && (keys >> BK[asg_key] & 1u) && (bk_mute >> asg_key & 1u)) {
-            bk_assign(d, now);           /* AFFINE: FX + a black key held + any knob: that key's function (CUSTOM) */
-            continue;
-        }
         if (!(btn & 1u << B_SEL))
             ui.help = 0u;                /* (a knob closes the card) */
-        if (k == EN_SELECT && btn & 1u << B_SEL) {   /* LOAF BREAKER: SEL + SELECT, on any page: the drums' filter
-                                          * (DRUM FLT, HOME's K3) */
-            kick_flt_turn(d);
-            continue;
+        if (init_arm) {                  /* (AFFINE: INIT asked, a knob turned: not confirmed) */
+            init_arm = 0u;
+            app_say("INIT", "CANCELLED");
         }
+        /* (AFFINE, 16 Nov 2026, the owner: SEL + SELECT (the drums' filter: a roll key's K3 still turns it) and SEL +
+         * ALGORITHM (BREAK TIME, the next break) gone: with SEL held they do what they do alone) */
         if (k >= EN_K1 && k <= EN_K4 && btn & 1u << B_LFO) {   /* LOAF BREAKER: LFO + K1 the break's level, K2
                                           * BOOM's, K3 the drums', on any page (the MIXER's LEVELS: the page
                                           * stays), 5 % a detent */
@@ -1419,7 +1357,7 @@ static void input(void)
         }
         if (k >= EN_K1 && k <= EN_K4 && btn & 1u << B_SEL)
             continue;                    /* (AFFINE: SEL + K1-K4 free, LOAF BREAKER's kick functions gone: to be given) */
-        if (k == EN_SELECT && (ui.page == PG_KICK || (ui.page == PG_PERC && (set.novice || ui.pbig)))) {
+        if (k == EN_SELECT && (ui.page == PG_KICK || (ui.page == PG_PERC && (NOVICE || ui.pbig)))) {
             ui.einst = (uint8_t)((ui.einst + (d > 0 ? 1u : NDRUMS - 1u)) % NDRUMS);   /* LOAF BREAKER: SELECT goes from
                                           * sound to sound (BOOM, SNARE, HAT, CLAP: the tabs at the top), each in its
                                           * view (not the tempo here; EXPERT's classic view of a drum: the tempo) */
@@ -1457,7 +1395,7 @@ static void input(void)
         }
         if (k == EN_SELECT && ui.page == PG_MIX) {   /* (0.9.2, FLEXOR: MIX, SELECT its tabs: LEVELS, SENDS, MASTER,
                                           * DYNAMICS; BEGINNER the first two) */
-            uint32_t n = set.novice ? 2u : 4u;
+            uint32_t n = NOVICE ? 2u : 4u;
             ui.mpage = (uint8_t)((ui.mpage % n + (d > 0 ? 1u : n - 1u)) % n);
             ui.redraw |= RG_HEAD | RG_FOOT | RG_BLOCKS;
             page_say();
@@ -1468,15 +1406,10 @@ static void input(void)
             global_part(glo_next(d));
             continue;
         }
-        if (k == EN_SELECT && ui.page == PG_OVL && !set.novice) {   /* (0.9.2, FLEXOR: OVERLAY, SELECT its tabs) */
-            ui.opage = (uint8_t)((ui.opage + 1u) % 2u);
-            page_say();
-            ui.redraw |= RG_HEAD | RG_BLOCKS | RG_FOOT;
-            continue;
-        }
+        /* (OVERLAY: one tab since 16 Nov 2026, ARP EFFECTS; SELECT the tempo there, as on HOME) */
         if (k == EN_SELECT && ext_active()) {
             app_say("TEMPO", "EXT CLOCK");   /* the outside clock has the tempo */
-        } else if (k == EN_SELECT) {     /* tempo: 1 BPM a detent (SEL held: the drums' filter, above) */
+        } else if (k == EN_SELECT) {     /* tempo: 1 BPM a detent */
             set.tempo_x10 = (uint16_t)clamp((int32_t)set.tempo_x10 + d * 10, 400, 3000);
             changed();
             {
@@ -1484,18 +1417,11 @@ static void input(void)
                 tenths_text(set.tempo_x10, t);
                 app_say("BPM", t);
             }
-        } else if (k == EN_ALGO) {       /* what the page edits; on HOME, ARP, MIXER (and SEL held: anywhere) the break */
+        } else if (k == EN_ALGO) {       /* what the page edits; on HOME, ARP, MIXER the break */
             if (ui.page == PG_FX && btn & 1u << B_FX)
                 fx_algo(d, 1u);          /* FX held: the slot moves along the chain */
-            else if (btn & 1u << B_SEL && sel_bt_page())
-                hset_turn(3, d);         /* (0.9.26, FLEXOR: where ALGORITHM alone is the break, SEL + ALGORITHM
-                                          * BREAK TIME, right HALF, left NORMAL) */
-            else if (btn & 1u << B_SEL)
-                break_ask((set.brk + (d > 0 ? 1u : n_breaks - 1u)) % n_breaks);
-            else if (ui.page == PG_OVL && ui.opage == 1u)
-                bk_turn(1, d);           /* (0.9.26, FLEXOR: ARP › BLACK KEYS, ALGORITHM the key, as K2) */
             else if (ui.page == PG_TRACK && ui.tpage == 0u)
-                track_turn(-1, d);       /* LOAF BREAKER: ENV's TRACKS: the item (the break: SEL + ALGORITHM) */
+                track_turn(-1, d);       /* LOAF BREAKER: ENV's TRACKS: the item */
             else if (ui.page == PG_GLOBAL && ui.gpage == GP_BREAK)   /* LOAF BREAKER: SOUNDS' BREAK: the break */
                 break_ask((set.brk + (d > 0 ? 1u : n_breaks - 1u)) % n_breaks);
             else if (ui.page == PG_GLOBAL && ui.gpage == GP_FILL) {   /* PATTERN's GROOVE: back to SEQ's lanes (left:
@@ -1572,12 +1498,10 @@ static void input(void)
             set_dirty = 1u;
             app_say("KIL LATCH", d > 0 ? "ON" : "OFF");
             ui.redraw |= RG_FOOT;
-        } else if (key_tuned() >= 0) {   /* a white key held: K1-K4 tune its loop (LOAF BREAKER: BEGINNER, not) */
-            if (!set.novice)
-                key_knob_turn(key_tuned(), k - EN_K1, d);
-            else
-                easy_no();               /* (0.229: said) */
-        } else if (ui.pad_focus >= 0)    /* a pad held: K1-K4 tune it (LOAF BREAKER, 0.232: BEGINNER too) */
+        } else if (key_tuned() >= 0)     /* a white key held: K1-K4 tune its loop (AFFINE: always, one mode; LOAF
+                                          * BREAKER's BEGINNER said EXPERT MODE) */
+            key_knob_turn(key_tuned(), k - EN_K1, d);
+        else if (ui.pad_focus >= 0)    /* a pad held: K1-K4 tune it (LOAF BREAKER, 0.232: BEGINNER too) */
             pad_knob_turn(ui.pad_focus, k - EN_K1, d);
         else
             knob_turn(k, d);
@@ -1723,7 +1647,6 @@ static void knob_value(int i, char *t)  /* the page's knob i (0..3), as shown un
 
 /* the tab bar under the header: the button's name, then the page's parts as tabs (the one you are on lit: the
  * button again, or ALGORITHM, goes to the next); EDIT and FX also name the part edited, "< SUB FX >" */
-static const char *const OPAGE_NAME[3] = {"ARP EFFECTS", "BLACK KEYS", "MORE"};   /* (LOAF BREAKER: ARP's tabs) */
 /* AFFINE (the owner's FM-1, 0.1: "everything in the UI looks very small"): the tabs at 2x, as every text now. They
  * are collected while draw_tabs goes through the page's, then laid out: all of them when they fit beside the part
  * ("< PART >"), else the one open alone, after a square for each (the open one lit) */
@@ -1801,11 +1724,9 @@ static void draw_tabs(void)
         x = tab(x, "GENERATOR", ui.page == PG_GEN);
         tab(x, "SETTINGS", ui.page == PG_HSET);
     }
-    else if (ui.page == PG_OVL) {        /* (LOAF BREAKER: EXPERT, its three tabs; BEGINNER, ARP EFFECTS alone: no tab) */
-        if (!set.novice)
-            for (i = 0; i < 2u; i++)     /* (0.259, FLEXOR: MORE gone for now) */
-                x = tab(x, OPAGE_NAME[i], i == ui.opage);
-    }
+    else if (ui.page == PG_OVL)          /* (AFFINE, 16 Nov 2026: one tab, ARP EFFECTS; LOAF BREAKER's BLACK KEYS gone
+                                          * with CUSTOM) */
+        tab(x, "ARP EFFECTS", 1);
     else if (ui.page == PG_TRACK)        /* LOAF BREAKER: ENV: TRACKS, PLAY, DROP */
         for (i = 0; i < NTORD; i++)   /* (TRACKS, PLAY, DROP, BUILD: no "ENV" before them, for the room) */
             x = tab(x, TPART[TORDER[i]], TORDER[i] == ui.tpage);
@@ -1843,7 +1764,7 @@ static void draw_tabs(void)
                                           * and its part */
         for (i = 0; i < NDRUMS; i++)
             x = tab(x, DRUM_TAG[i], i == (ui.page == PG_KICK ? 0u : ui.einst));
-        if (set.novice)
+        if (NOVICE)
             sel_hint = 1;
         else
             text_cat(part, ui.page == PG_KICK ? BOOM_PART[boom_part()] : PPAGE_NAME[perc_pg()]);
@@ -1874,7 +1795,7 @@ static void page_say(void)
     case PG_MIX: text_cat(t, ui.mpage == 3u ? "DYNAMICS" : ui.mpage == 2u ? "MASTER" : ui.mpage ? "SENDS" : "LEVELS"); break;
     case PG_SEQ: text_cat(t, SEQ_BRK ? "BREAK" : SEQ_LANE_NAME[ui.seq_lane % NSEQL]); break;
     case PG_TRACK: text_cat(t, TPART[ui.tpage % NTPART]); break;
-    case PG_OVL: text_cat(t, OPAGE_NAME[ui.opage % 3u]); break;   /* (LOAF BREAKER: its tabs) */
+    case PG_OVL: text_cat(t, "ARP EFFECTS"); break;
     case PG_FX:
         if (FX_PSX()) {                  /* (AFFINE) */
             text_cat(t, "PSX ");
@@ -1911,25 +1832,26 @@ static void draw_help(void)
 {
     /* LOAF BREAKER TEST: above, SEL's combinations on any page; below, this page's own ("+": with SEL; on HOME and the
      * pages with no shortcuts of their own: what PRESETS, ALGORITHM and SELECT do there). AFFINE: all at 2x, rows of 13:
-     * SEL's eight in two columns, a word each; the page's three under a rule, its buttons in a column, what beside */
-    static const char *const G[8][2] = {{"+EDIT", "SOURCE"}, {"+SEQ", "COPY"}, {"+ARP", "GROOVE"}, {"+ENV", "DROP"},
-                                        {"+REC", "CLEAR"}, {"+SAVE", "UNDO"}, {"+ALGO", "BREAK"},
-                                        {"+SELECT", "FILTER"}};   /* (LOAF BREAKER 0.201: SEL + a button, one table: its
+     * SEL's in two columns, a word each; the page's three under a rule, its buttons in a column, what beside */
+    static const char *const G[5][2] = {{"+EDIT", "SOURCE"}, {"+SEQ", "COPY"}, {"+ENV", "DROP"}, {"+SAVE", "UNDO"},
+                                        {"+HOME", "INIT"}};   /* (LOAF BREAKER 0.201: SEL + a button, one table: its
                                           * domain's second function; AFFINE: LOAF's "NEXT SOURCE", "COPY / PASTE",
-                                          * "BUILD / DROP", "DRUM FILTER" in a word) */
+                                          * "BUILD / DROP" in a word. 16 Nov 2026, the owner: SEL + ARP's GROOVE, SEL +
+                                          * REC's CLEAR, SEL + ALGORITHM's BREAK, SEL + SELECT's FILTER gone; SEL + HOME
+                                          * INIT, HOME again) */
     static const char *const P[11][3][2] = {   /* (AFFINE: three a page; LOAF's fourth lines gone: a knob the foot names,
                                           * SEL + SAVE's UNDO again, MIXER's "LFO + K: LEVELS ANYWHERE", ...) */
         {{"ALGO", "BOOM / SHAPE"}, {"PRESETS", "808 JUNGLE DUB.."}, {"SELECT", "NEXT SOUND"}},   /* (AFFINE: BOOM) */
         {{"EDIT HELD", "BIG / CLASSIC"}, {"PRESETS", "ITS MEMORIES"}, {"+ARP", "COPY DRUM"}},   /* (AFFINE: SEL + ARP's
                                           * here, too long for a cell above) */
-        {{"SEQ+KEY 1-4", "COPY BAR"}, {"SEQ+K1", "SHIFT LANE"}, {"SEQ+REC", "CLEAR DRUMS"}},
+        {{"SEQ+KEY 1-4", "COPY BAR"}, {"SEQ+K1", "SHIFT LANE"}, {"SEQ HELD", "CLEAR? SEQ"}},
         {{"+FX", "BYPASS SLOT"}, {"FX+ALGO", "MOVE SLOT"}, {"+REC", "RESET EFFECT"}},
         {{"+PLAY", "START ITEM"}, {"PRESETS", "THE TRACK"}, {"WHITE KEYS", "PATTERN, TRACK"}},
         {{"LFO+K1", "BREAK LEVEL"}, {"LFO+K2", "BOOM LEVEL"}, {"LFO+K3", "DRUMS LEVEL"}},
-        {{"SETUP K3", "BEGINNER/EXPERT"}, {"RESET", "PART BY PART"}, {"SEL X2", "SEL LOCKED, LIT"}},
+        {{"SETUP K3", "TUTORIAL"}, {"RESET", "PART BY PART"}, {"SEL X2", "SEL LOCKED, LIT"}},
         {{"PRESETS", "THE PATTERN"}, {"ALGO", "THE BREAK"}, {"SELECT", "THE TEMPO"}},
         {{"ALGO", "THE BREAK"}, {"K1-K3", "PITCH GRAIN SNAP"}, {"+EDIT", "BOOM"}},
-        {{"ARP", "FILL (LATCH)"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}},
+        {{"SELECT", "THE VIEWS"}, {"ALGO", "SEQ'S LANES"}, {"K1", "SWING"}},   /* (AFFINE: LOAF's "ARP FILL", gone) */
         {{"PRESETS", "PSX PRESETS"}, {"ALGO", "ITS PARTS"}, {"SELECT", "THE SLOTS"}}};   /* (AFFINE: the PSX page) */
     uint32_t i, row[2] = {0u, 0u}, w = ui.page == PG_KICK ? 0u : ui.page == PG_PERC ? 1u : ui.page == PG_SEQ ? 2u
                     : FX_PSX() ? 10u : ui.page == PG_FX ? 3u : ui.page == PG_TRACK ? 4u : ui.page == PG_MIX ? 5u : ui.page == PG_GLOBAL &&
@@ -1937,14 +1859,10 @@ static void draw_help(void)
                     ? 6u : 7u;
     int32_t kw = 0;
     cv_begin(240, 52, C_BLACK);
-    for (i = 0; i < 8u; i++) {           /* (SEL + a button: two columns, the capitals in rows 3, 16, 29, 42) */
-        uint32_t c = i >= 4u;
+    for (i = 0; i < 5u; i++) {           /* (SEL + a button: two columns, the capitals in rows 3, 16, 29) */
+        uint32_t c = i >= 3u;
         int32_t x = c ? 114 : 4, y = (int32_t)row[c] * 13 + 1;
         const char *what = G[i][1];
-        if (i == 2u && ui.page == PG_PERC)
-            continue;                    /* (the drums' page: SEL + ARP copies the drum, in the page's list) */
-        if (i == 6u && sel_bt_page())
-            what = "HALF";               /* (BREAK TIME: right HALF, left NORMAL) */
         row[c]++;
         x = cv_text(x, y, &FONT_XS, G[i][0], C_HI);
         cv_text(x + 4, y, &FONT_XS, what, C_WHITE);
@@ -2004,23 +1922,18 @@ static const char *knob_name(int i)
     static const char *const KN_PITCH[4] = {"PITCH", "GRAIN", "SNAP", "LEVEL"};   /* (SOUNDS' BREAK) */
     static const char *const KN_GROOVE[3][4] = {{"FX", "DRUMS", "ARP", "ROLL"}, {"COMP", "RATIO", "DUCK", "MAX OUT"},
                                                 {"C ATTACK", "C RELEASE", "D RELEASE", "DUCKS"}};
-    static const char *const KN_MORE[3][4] = {{"SKIN", "", "MODE", "AUTO SAVE"},   /* SETUP (K2 WAVE ZOOM: HOME's
+    static const char *const KN_MORE[3][4] = {{"SKIN", "", "TUTORIAL", "AUTO SAVE"},   /* SETUP (K2 WAVE ZOOM: HOME's
                                       * SETTINGS, 0.9.2) */
                                               {"EFFECT", "ON / OFF", "", ""},   /* (LOAF BREAKER: EFFECTS, */
                                               {"AMOUNT", "BOOM", "DROP", "LENGTH"}};   /* FX SET) */
     static const char *const KN_TRK[4][4] = {{"TRACK", "FROM", "END", ""}, {"BUILD", "AFTER", "BREAK", "CRASH"},
                                              {"STYLE", "SWEEP", "RISER", "GAP"}, {"", "RESET", "", "WHAT"}};
     static const char *const KN_FILL[4] = {"SWING", "BREAK ROWS", "FOLLOW", ""};   /* (LOAF BREAKER: GROOVE; 0.244 FILL gone) */
-    static const char *const KN_BK[2][4] = {{"PRESET", "KEY", "EFFECT", ""}, {"", "", "", ""}};   /* (ARP's
-                                      * BLACK KEYS, MORE) */
-    const char *name = ui.page == PG_OVL && ui.opage ? KN_BK[(ui.opage - 1u) & 1u][i] :
-                       ui.page == PG_GLOBAL && ui.gpage == GP_FILL ? KN_FILL[i] : RST_ON ? KN_TRK[3][i] : ui.page == PG_TRACK &&
+    const char *name = ui.page == PG_GLOBAL && ui.gpage == GP_FILL ? KN_FILL[i] : RST_ON ? KN_TRK[3][i] : ui.page == PG_TRACK &&
                        ui.tpage ? KN_TRK[ui.tpage == 4u ? 2u : (ui.tpage - 1u) & 1u][i] : ui.page == PG_GLOBAL &&
                        ui.gpage >= 2u ? KN_MORE[(ui.gpage - 2u) % 3u][i] : ui.page == PG_GLOBAL && ui.gpage
                        ? KN_PITCH[i] : ui.page == PG_MIX && ui.mpage
                        ? KN_GROOVE[ui.mpage >= 3u ? 2u : ui.mpage == 2u][i] : KN[ui.page][i];
-    if (ui.page == PG_OVL && ui.opage == 1u && i == 3 && bk_fn(ui.bk_sel) == BKF_ARP)
-        name = "ARP FX";                 /* (0.9.45: BLACK KEYS, an ARP key's own effect) */
     if (ui.page == PG_TRACK && !ui.tpage && !RST_ON && i >= 2 && trk_now()->it[ui.trk_cur % TRK_ITEMS] == TI_DROP)
         name = i == 2 ? "STUTTER" : "GAP KEEPS";   /* (0.9.26: a DROP item's K3, K4) */
     if (ui.page == PG_FX)            /* the focused slot's effect: its settings, then MIX (AFFINE: the PSX page's) */
@@ -2038,12 +1951,12 @@ static const char *knob_name(int i)
         name = KN_LANE[ui.note_key != 0u][i];
         if (!ui.note_key && i == 1)
             name = sl_kick(ui.seq_lane) ? "PRESET" : "SOUND";
-        if (set.novice)              /* (LOAF BREAKER: BEGINNER, no step menu) */
+        if (NOVICE)              /* (LOAF BREAKER: BEGINNER, no step menu) */
             name = KN_LANE[0][i];
-        if (set.novice && i == 1)
+        if (NOVICE && i == 1)
             name = sl_kick(ui.seq_lane) ? "PRESET" : "SOUND";
     }
-    if (ui.page == PG_GLOBAL && !ui.gpage && i == 2 && !set.novice)
+    if (ui.page == PG_GLOBAL && !ui.gpage && i == 2 && !NOVICE)
         name = "METER";              /* (LOAF BREAKER, 0.213: SYSTEM › MIDI K3, EXPERT only) */
     return name ? name : "";
 }
@@ -2069,9 +1982,7 @@ static void draw_foot(const brk_status_t *st)
         float nv = -1.0f;
         uint16_t nc = C_GRAY;
         t[0] = 0;
-        if (ui.shown >= 100) {           /* a white key held: its loop, or its slice's effect (BEGINNER: none) */
-            if (set.novice)
-                continue;
+        if (ui.shown >= 100) {           /* a white key held: its loop, or its slice's effect (AFFINE: always) */
             name = ui.key_layer ? SLX_KNOB[i] : KEY_KNOB[i];
             if (ui.key_layer)
                 slx_knob_value(ui.shown - 100, (int)i, t);
@@ -2840,7 +2751,7 @@ static void ed_seq(uint32_t code)
     o[k++] = (uint8_t)(set.kpre % BOOM_PRESETS);
     for (d = 0; d < 3u; d++)
         o[k++] = (uint8_t)*perc_slot(d);
-    o[k++] = (uint8_t)set.novice;
+    o[k++] = (uint8_t)NOVICE;
     o[k++] = (uint8_t)grp_changed();
     o[k++] = (uint8_t)(pat_next >= 0 ? pat_next : 0xFF);
     for (d = 0; d < NDRUMS; d++)
@@ -2955,7 +2866,7 @@ static uint32_t edx_status(uint8_t *o, const uint8_t *u, uint32_t len)
     o[k++] = (uint8_t)(total >> 8);
     o[k++] = (uint8_t)(int8_t)(din > 127 ? 127 : din);
     o[k++] = (uint8_t)(set.kpre % BOOM_PRESETS);
-    o[k++] = set.novice;
+    o[k++] = (uint8_t)NOVICE;
     o[k++] = (uint8_t)((set_dirty ? 1u : 0u) | (grp_changed() ? 2u : 0u));
     o[k++] = (uint8_t)(set.bkeys.bk[BK_BHALF] & 1u);
     o[k++] = set.wstyle;
@@ -2999,8 +2910,8 @@ static int edx_page(const uint8_t *u, uint32_t len, uint8_t *o, uint32_t *n)
         ui.trk_cur = (uint8_t)(b % TRK_ITEMS);
     } else if (pg == PG_GLOBAL)
         ok = a < 7u && a != 5u ? (ui.gpage = (uint8_t)a, 1) : 0;   /* (never RESET) */
-    else if (pg == PG_OVL) {
-        ui.opage = (uint8_t)(a % 2u);
+    else if (pg == PG_OVL) {            /* (AFFINE: one tab, ARP EFFECTS; BLACK KEYS gone) */
+        ui.opage = 0u;
         ui.bk_sel = (uint8_t)(b % 11u);
     } else if (pg == PG_FX) {
         if (a < BRK_FX_ALL) {
@@ -3570,8 +3481,24 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
         bta_sim_on = 1u;
         return 1;
     }
+    if (!strcmp(cmd, "novice_old")) {    /* novice_old: set.novice 1, as a save from LOAF BREAKER's BEGINNER holds it (AFFINE,
+                                          * 16 Nov 2026: the full AFFINE all the same, the TUTORIAL not running) */
+        set.novice = 1u;
+        settings_apply();
+        return 1;
+    }
+    if (!strcmp(cmd, "fxr_put")) {       /* fxr_put STEP CODE: the pattern playing's recorded black key on step STEP
+                                          * (1..32): CODE a function (BKF_*) or a combo (32..42), -1 none; as a save from
+                                          * before 16 Nov 2026 may hold (GATE, RANDOM, DUB, ARP, KIL alone: CUSTOM's) */
+        int st = atoi(a), c = atoi(b);
+        if (st >= 1 && st <= (int)PAT_STEPS) {
+            fxr_pat(set.pattern)[st - 1] = (uint8_t)(c < 0 ? 0 : c + 1);
+            fxr_dirty = 1u;
+        }
+        return 1;
+    }
     if (!strcmp(cmd, "bk_row")) {        /* bk_row N: the black keys' row as a save holds it (1: CHOPPAH's, out of the
-                                          * rows' round since 16 Nov 2026 but played as saved) */
+                                          * rows since 16 Nov 2026 but played as saved; 2: CUSTOM's, gone: AFFINE's) */
         bk_release_all();
         set.bkeys.bk[1] = (uint8_t)atoi(a);
         return 1;
@@ -3621,7 +3548,8 @@ int app_expect(const char *what, int *got)
                                     "pitch", "fxr_lo", "fxr_hi", "fxr_c", "rplay", "dj_now", "roll_div", "rec",
                                     "bk_mute", "cmb_lit", "pp_part", "px_rate", "px_crunch", "px_smooth", "px_amount",
                                     "px_console", "px_mono", "px_send", "px_input", "px_preset", "cmix", "vsize",
-                                    "vtone", "vdepth", "cbits"};   /* (AFFINE: the gate, the PSX bus, x100; the black keys'
+                                    "vtone", "vdepth", "cbits", "fx_ons", "vfreeze", "hlat", "plat", "stepb_n", "dx_n",
+                                    "tb_n", "init", "novice", "undo_fx", "half_mt"};   /* (AFFINE: the gate, the PSX bus, x100; the black keys'
                                           * row, the functions held (bit BKF_*), VRB SKP CRS held (bits 0-2), BOOM
                                           * quiet, the combo's settings in, the FX fader, the pitch, the steps recorded
                                           * (1-16, 17-32), the first one's code (-1 none), the code playing (-1 none),
@@ -3717,7 +3645,7 @@ int app_expect(const char *what, int *got)
     v[n++] = (int)(16u * sl_bars(&pats.p[set.pattern % NPAT], ui.seq_lane));
     v[n++] = SEQ_BRK ? 1 : 0;
     v[n++] = (int)brk_view();
-    v[n++] = (int)bk_preset();           /* (LOAF BREAKER: the black keys: the preset, the key BLACK KEYS edits and */
+    v[n++] = (int)bk_preset();           /* (LOAF BREAKER: the black keys: the row, the key BLACK KEYS edited (gone) and */
     v[n++] = (int)bk_fn(ui.bk_sel);      /* its function, FREEZE's LENGTH, ARP's tab) */
     v[n++] = ui.bk_sel;
     v[n++] = set.pads.frz_len;
@@ -3809,6 +3737,37 @@ int app_expect(const char *what, int *got)
     v[n++] = (int)(set.psx.vtone * 100.0f + 0.5f);
     v[n++] = (int)(set.psx.vdepth * 100.0f + 0.5f);
     v[n++] = set.psx.cbits;
+    {                                    /* (AFFINE, 16 Nov 2026: INIT, RESET ALL's fix: the FX slots on (a bit each),
+                                          * SPU VERB's freeze x100, HALF latched, the LATCH bits, the group in RAM's drum
+                                          * steps' own settings set, every group's drum bars 3-4 set, the track items'
+                                          * breaks set, INIT asked, BEGINNER in force, the undo holding INIT's effects,
+                                          * HALF's and KIL's LATCH and MASTER TEMPO bits) */
+        int c = 0;
+        uint32_t g, q;
+        for (i = 0; i < BRK_FX_SLOTS; i++)
+            c |= (int)(set.fx.slot[i].on != 0u) << i;
+        v[n++] = c;
+        v[n++] = (int)(set.psx.vfreeze * 100.0f + 0.5f);
+        v[n++] = half_lat;
+        v[n++] = (int)bk_lat();
+        for (c = 0, i = 0; i < NPAT; i++)
+            for (q = 0; q < STEPB_N; q++)
+                c += steps.b[i][q] != 0u;
+        v[n++] = c;
+        for (c = 0, g = 0; g < NGRP; g++)
+            for (i = 0; i < NPAT; i++)
+                for (q = 0; q < 6u; q++)
+                    c += dx.b[g][i][q] != 0u;
+        v[n++] = c;
+        for (c = 0, i = 0; i < 8u; i++)
+            for (q = 0; q < 32u; q++)
+                c += steps.tb[i][q] != 0u;
+        v[n++] = c;
+        v[n++] = init_arm;
+        v[n++] = NOVICE ? 1 : 0;
+        v[n++] = undo_has_fx;
+        v[n++] = set.half_mt_off & 7u;
+    }
     for (i = 0; i < n; i++)
         if (!strcmp(what, W[i])) {
             *got = v[i];

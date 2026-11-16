@@ -164,7 +164,7 @@ static void roll_key(uint32_t pad, int down, int sel)   /* a roll pad down or up
 static int roll_lit(uint32_t pad) { return roll_held == pad && kroll; }   /* (its light, rolling the kick alone) */
 static uint8_t half_lat;                 /* LOAF BREAKER: HALF SPEED latched on (its LATCH: K3) */
 static uint16_t bk_mute;                 /* AFFINE: black keys (bit j) silent until let go: held through a change of the
-                                          * row, or pressed with FX held (to give them a function, main.c bk_assign) */
+                                          * row (or INIT, or its undo) */
 static uint8_t arp_rec;                  /* AFFINE: the pattern plays an ARP key recorded: the ARP key touched last's
                                           * effect (ovl.c ovl_pad_bits) */
 static uint8_t rp_code;                  /* AFFINE: the pattern's recorded black key playing, its code + 1 (0 none) */

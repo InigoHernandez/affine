@@ -632,7 +632,7 @@ static const char *const AFF_SHORT_N[][2] = {
     {"ON / OFF", "ON"}, {"SWEEP", "SWP"}, {"TONE", "TN"}, {"BREAK", "BRK"},
     {"STYLE", "STY"}};
 static const char *const AFF_SHORT_V[][2] = {
-    {"WAVEFORM", "WAVE"}, {"KEEP LEN", "KEEP"}, {"BEGINNER", "BEGIN"}, {"TUTORIAL", "TUTOR"}};
+    {"WAVEFORM", "WAVE"}, {"KEEP LEN", "KEEP"}, {"TUTORIAL", "TUTOR"}};
 static int aff_streq(const char *a, const char *b)
 {
     while (*a && *a == *b) { a++; b++; }

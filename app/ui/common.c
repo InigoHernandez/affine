@@ -259,25 +259,8 @@ static const char *const BKF_LONG[BKF_N] = {"ROLL 1/8", "ROLL 1/16", "ROLL 1/32"
                                             "VINYL BREAK", "GATE", "RANDOM", "FILTER", "DUB", "ARP (OVERLAY)",
                                             "BOOM OFF", "VERB THROW", "SKIP", "CRUSH"};
 static const char *const BKP_NAME[BKP_N] = {"AFFINE", "CHOPPAH", "CUSTOM", "PUNCH"};
-/* AFFINE (16 Nov 2026): the black keys' rows, FX + OCT- / OCT+ round them (and K1 PRESET on ARP › BLACK KEYS): AFFINE,
- * PUNCH, CUSTOM (CHOPPAH out of the round, its saves still played: as AFFINE's place) */
-static const uint8_t BK_ROWS[3] = {BKP_AFFINE, BKP_PUNCH, BKP_CUSTOM};
-static uint32_t bk_row_pos(uint32_t p) { return p == BKP_PUNCH ? 1u : p == BKP_CUSTOM ? 2u : 0u; }
-static const char *bk_long(uint32_t c)   /* a function's or a combo's name, as the header and the page say it */
-{
-    return c < BKF_N ? BKF_LONG[c] : BKC(c) ? BKC_T[c - BKC_0].name : "";
-}
-static const char *bk_tag(uint32_t c)    /* (its three letters: the foot's EFFECT) */
-{
-    return c < BKF_N ? BKF_NAME[c] : BKC(c) ? BKC_T[c - BKC_0].tag : "";
-}
-static uint32_t bk_code_step(uint32_t c, int32_t d)   /* the next code a key takes (CUSTOM): every function, then the
-                                          * eleven combos, round */
-{
-    uint32_t i = c < BKF_N ? c : BKC(c) ? BKF_N + (c - BKC_0) : 0u, n = BKF_N + BKC_N;
-    i = (i + (uint32_t)(d > 0 ? 1 : (int32_t)n - 1)) % n;
-    return i < BKF_N ? i : BKC_0 + (i - BKF_N);
-}
+/* AFFINE (16 Nov 2026, the owner): the black keys' two rows, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM gone: a save
+ * holding it plays AFFINE's; CHOPPAH out of them, its saves still played) */
 static const uint8_t WK[16] = PLAT_WHITE_KEYS, BK[11] = PLAT_BLACK_KEYS;
 /* LOAF BREAKER: what the TUTORIAL (tutor.c) watches, counted where it happens: white keys pressed, black keys pressed
  * (a bit each), drum steps set on SEQ, SAVEs, HOME, the OVERLAY page's effects */
@@ -311,8 +294,8 @@ static struct {
     uint32_t aud_t;                      /* LOAF BREAKER: a drum played on its key (the classic view, the drums' pages):
                                           * when, which */
     uint8_t aud_d;
-    uint8_t opage, bk_sel;               /* LOAF BREAKER: the ARP page's tab (0 ARP EFFECTS, 1 BLACK KEYS, 2 MORE;
-                                          * BEGINNER: the first only), the key BLACK KEYS edits (0..10) */
+    uint8_t opage, bk_sel;               /* LOAF BREAKER: the ARP page's tab (AFFINE, 16 Nov 2026: 0 ARP EFFECTS, its
+                                          * one; BLACK KEYS gone), the key BLACK KEYS edited (the scenarios' bk_key) */
     uint8_t pad_more;                    /* LOAF BREAKER: the ARP key's knobs: 0 MAIN, 1 MORE (FX while it is held) */
     uint8_t pbig;                        /* LOAF BREAKER: the drums' page in its big view; 0: the classic one (EDIT held,
                                           * after the WAVE view) */
@@ -398,7 +381,7 @@ static struct {
 } ui;
 /* the white keys play slices (or, on the SEQ, KICK and SNARE / HAT pages, steps) */
 static void page_say(void);              /* the header: the page's button and part, as its tabs (main.c) */
-#define SEQ_BRK (ui.seq_brk && !set.novice)
+#define SEQ_BRK (ui.seq_brk && !NOVICE)
 static int slices_page(void) { return (ui.page != PG_SEQ || SEQ_BRK) && ui.page != PG_TRACK && ui.page != PG_OVL &&
                                          !(ui.page == PG_GLOBAL && ui.gpage == 3u); }   /* (GLO EFFECTS: keys 1-7) */   /* (ARP: overlays) */
 enum { RG_HEAD = 1, RG_WAVE = 2, RG_BLOCKS = 4, RG_FOOT = 8, RG_ALL = 15, RG_FX = 16 };
@@ -539,4 +522,5 @@ static int32_t cv_textn(int32_t x, int32_t y, const felucca_font_t *f, const cha
 }
 
 /* LOAF BREAKER (FLEXOR, 11 Nov 2026, 0.229): a knob BEGINNER leaves out (drawn blank), turned: said where it is */
-static void easy_no(void) { app_say("EXPERT MODE", "SETUP K3: EXPERT"); }
+static void easy_no(void) { app_say("TUTORIAL", "FOLLOW THE STEP"); }   /* (LOAF BREAKER's BEGINNER said EXPERT
+                                          * MODE; AFFINE: only the TUTORIAL leaves knobs out) */

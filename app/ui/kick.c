@@ -14,7 +14,7 @@ static const char *const BOOM_KNOB[BOOM_PARTS][4] = {{"PRE", "TUNE", "DEC", "LEV
                                                      {"PUNCH", "CLICK", "DRIVE", "TONE"}};
 #define BOOM_NOTE_LO 23                  /* (TUNE: B0 .. F2 as MIDI notes, the SUB's 30..90 Hz) */
 #define BOOM_NOTE_HI 41
-static uint32_t boom_part(void) { return set.novice ? 0u : ui.kpage % BOOM_PARTS; }   /* (BEGINNER: BOOM alone) */
+static uint32_t boom_part(void) { return NOVICE ? 0u : ui.kpage % BOOM_PARTS; }   /* (BEGINNER: BOOM alone) */
 static const char *boom_pre_name(void) { return KICK_PRESET_NAME[BOOM_PRE[set.kpre % BOOM_PRESETS]]; }
 static float boom_hz(void) { return kick_pitch_hz(KL_SUB, set.kick.l[KL_SUB].pitch); }
 static int32_t boom_note(void)           /* the SUB's nearest note, MIDI */
@@ -49,7 +49,7 @@ static void kick_open(void)              /* EDIT: BOOM's page */
 }
 static void boom_part_turn(int32_t d)    /* ALGORITHM on BOOM: its parts, BOOM and SHAPE (EXPERT) */
 {
-    if (set.novice) {
+    if (NOVICE) {
         easy_no();
         return;
     }
