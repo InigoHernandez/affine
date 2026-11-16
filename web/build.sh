@@ -3,13 +3,18 @@
 # AFFINE's site (web/): what it takes from the build, gathered beside the pages.
 #   sh web/build.sh          the browser emulator (./build.sh --web, then emu/), the screens, the sounds
 #   sh web/build.sh --copy   the same without building the emulator again (app/build/emu as it is)
+#   RELEASE=X.Y [UNTESTED=1] sh web/build.sh [--copy]
+#                            also the installer: install/ (fm1-base's tools/make_site.py, then tools/install_theme.py) and
+#                            firmware/ (app/build/affine-X.Y.fwsc from ./build.sh --release X.Y, m-bootloader and the
+#                            licences beside it), the emulator built as X.Y; UNTESTED=1 says on the installer that the
+#                            package has not run on an FM-1
 # The screens are the host simulator's (sh tests/scenarios.sh first); the sounds are tests/engine/psx_demo.c's renders
 # (build/review/sounds), cut down for the page with macOS's afconvert. Serve web/ (.claude/launch.json: affine-web).
 set -e
 cd "$(dirname "$0")/.."
 WEB=web
 if [ "$1" != "--copy" ]; then
-    ./build.sh --web
+    if [ -n "$RELEASE" ]; then ./build.sh --web --release "$RELEASE"; else ./build.sh --web; fi
 fi
 [ -f app/build/emu/app.wasm ] || { echo "web/build.sh: no app/build/emu/app.wasm (./build.sh --web)"; exit 1; }
 rm -rf "$WEB/emu"
@@ -62,10 +67,25 @@ EOF
 # the sounds: AAC at 96 kb/s (the demo's renders are 250)
 R=build/review/sounds
 for n in verbs grit xa crush redux skip; do
-    if [ -f "$R/affine-$n.m4a" ]; then
+    if [ -f "$WEB/sounds/$n.m4a" ] && [ ! "$R/affine-$n.m4a" -nt "$WEB/sounds/$n.m4a" ]; then
+        :                                 # (as it is: encoding again makes other bytes for the same sound)
+    elif [ -f "$R/affine-$n.m4a" ]; then
         afconvert -f m4af -d aac -b 96000 "$R/affine-$n.m4a" "$WEB/sounds/$n.m4a"
     else
         echo "web/build.sh: no $R/affine-$n.m4a (tests/engine/psx_demo.c renders them)"
     fi
 done
+# the installer, for a release
+if [ -n "$RELEASE" ]; then
+    PKG="app/build/affine-$RELEASE.fwsc"
+    [ -f "$PKG" ] || { echo "web/build.sh: no $PKG (./build.sh --release $RELEASE)"; exit 1; }
+    TMP=$(mktemp -d)
+    "${PYTHON:-python3}" base/tools/make_site.py app "$PKG" "$RELEASE" "$TMP/site" >/dev/null
+    rm -rf "$WEB/install" "$WEB/firmware"
+    mkdir -p "$WEB/install"
+    cp -R "$TMP/site/firmware" "$WEB/firmware"
+    "${PYTHON:-python3}" tools/install_theme.py "$TMP/site/install/index.html" "$WEB/install/index.html" ${UNTESTED:+--untested}
+    rm -rf "$TMP"
+    shasum -a 256 "$PKG" "$WEB/firmware/affine-$RELEASE.fwsc"
+fi
 du -sh "$WEB/emu" "$WEB/screens" "$WEB/sounds"

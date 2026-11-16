@@ -4,6 +4,9 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Release 0.1:** the first public build, a beta not yet run on an FM-1: the installer on the site
+  (<https://inigohernandez.github.io/affine/install/>) and the GitHub release v0.1 carry the same file. The site's
+  FM-1 runs 0.1 too.
 - **Site:** AFFINE's page, <https://inigohernandez.github.io/affine/>: the firmware running in the browser, the
   chip's five stages to hear, the black keys to hold, the five skins.
 - **Screen:** AFFINE's logo (speed stripes into chrome letters) and a 3D splash at power-on.
@@ -11,7 +14,6 @@ What changed for whoever plays AFFINE, newest first.
   effect drawn on the scene.
 - **Safety:** a store from another firmware is left alone; under heavy load the chip's stages step back (CODEC,
   then SKIP, then VERB) instead of glitching; three memory bugs fixed.
-- **Test build 0.1** for the first FM-1 run (`docs/DEVICE.md`).
 
 ## 2026-11-15
 

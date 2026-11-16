@@ -85,6 +85,14 @@ the hero (aff.c's title screen in JS); `panel.js` and `play.js` the FM-1 (from f
 `chip.js` the PSX bus heard; `perform.js` the black keys (held on the emulator too). Bump `?v=` in index.html with
 every changed file. Little text: a title and one line a section.
 
+Releases: `./build.sh --release X.Y` (identity `FM-1_2815` + XXYYZZ), then `RELEASE=X.Y sh web/build.sh` puts the same
+file in `web/firmware/` and the installer in `web/install/` (fm1-base's, themed by `tools/install_theme.py`;
+`UNTESTED=1` says on it that the package has not run on an FM-1); tag `vX.Y` on the commit, a GitHub release with the
+`.fwsc` whose digest matches the site's. The Hub (`../FIRMWARE-HUB-HANDBOOK.md`): `fmhub.json` and `docs/hub/` are
+ready, the mail waits for the tests on a real FM-1; its resume of an interrupted update wants `FM-1_9NN`, which
+AFFINE's identity is not (the owner's call). 0.1: 2026-11-16 at the owner's word ("publish"), before any FM-1 had
+run it (sha 98eb4c10).
+
 ## Layout
 
 `app/app.c` is the core (settings, patterns, MIDI, the render); it ends by including `app/ui/*.c` in order: one

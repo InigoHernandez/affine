@@ -7,8 +7,11 @@ sound chip: its reverbs, its sample grit, its CD audio.
 
 **Play it in your browser:** <https://inigohernandez.github.io/affine/>. The page runs the firmware itself.
 
-**Status:** test build 0.1, not yet released: its first run on an FM-1 comes next. The plan:
-[docs/plan.md](docs/plan.md). What changed: [CHANGELOG.md](CHANGELOG.md).
+**Install:** <https://inigohernandez.github.io/affine/install/> (Chrome or Edge, over USB), or the `.fwsc` from the
+[latest release](https://github.com/InigoHernandez/affine/releases/latest).
+
+**Status:** 0.1, the first release, a beta: it has not run on an FM-1 yet. The plan: [docs/plan.md](docs/plan.md).
+What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -19,13 +22,28 @@ sound chip: its reverbs, its sample grit, its CD audio.
   VERB (nine reverbs at 22.05 kHz), CRUSH, REDUX and SKIP.
 - **The look:** POLYGON, a floor of sixteen lanes in perspective and a low-poly gem; five skins.
 
+## On the FM-1
+
+- **Its identity:** `FM-1_2815000100` for 0.1 (`FM-1_2815` and the version), USB port "AFFINE FM-1".
+- **What it keeps:** its settings, patterns and imported breaks in the FM-1's data area (`0x97000`–`0xDFFFF`, its settings at
+  `0xFC000`: the places LOAF BREAKER and CHOPPAH use). It does not read what another firmware saved, but for the
+  panel's calibration every fm1-base firmware shares: a store without AFFINE's mark is left unread and AFFINE starts
+  fresh. Its first SAVE writes over that area, so back up what another firmware
+  keeps, with that firmware, before installing AFFINE.
+- **How to leave it:** install another firmware as usual, from its installer or the Firmware Hub; AFFINE answers the
+  update and starts the new package's loader (Felucca's). The installer also puts M-VAVE's firmware back.
+- **If it fails to start:** after two failed starts it comes up in SAFE MODE, silent, with USB on: reinstall from
+  the installer (PLAY tries again).
+
 ## Build
 
 ```
 ./build.sh               # the firmware package: app/build/affine.fwsc
+./build.sh --release X.Y # a release: app/build/affine-X.Y.fwsc
 ./build.sh --host        # the host simulator
 ./build.sh test          # the engine's and the chip's checks
 sh web/build.sh          # the site: the firmware in WebAssembly, the screens, the sounds (web/)
+RELEASE=X.Y sh web/build.sh   # and the installer with that release's package
 ```
 
 `scripts/bootstrap.sh` sets up fm1-base and the toolchain once. Notes for working on it: [CLAUDE.md](CLAUDE.md).

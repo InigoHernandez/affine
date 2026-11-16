@@ -11,3 +11,4 @@ app/bank_data.h
 /app/loaf_version.h
 .claude/worktrees/
 .claude/launch.json
+!web/firmware/*.fwsc

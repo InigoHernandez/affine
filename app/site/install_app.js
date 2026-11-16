@@ -3,7 +3,7 @@
    the page, in the firmware's colours, for about five seconds (with reduced motion asked for: a still scatter that
    fades). Nothing here talks to the FM-1. */
 (() => {
-  const COLOURS = ["#FFB846", "#E8881E", "#FFFFFF", "#96DCFF", "#78E6A0", "#FF8470"];
+  const COLOURS = ["#FF5C28", "#46D6C8", "#ECE6D6", "#F6A382", "#787696", "#8A3A22"];   /* AFFINE: POLYGON's */
   function confetti() {
     const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const c = document.createElement("canvas");
