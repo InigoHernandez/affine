@@ -191,7 +191,8 @@ static int lobo_in(int32_t x, int32_t y)  /* inside the brain: the cerebrum (fla
 }
 static void draw_lobotomy(void)          /* AFFINE: RESET ALL done: the title, everything cleared */
 {
-    aff_title(plat_ms(), 5000u, "", "ALL CLEARED", "AS A NEW FM-1", "");
+    aff_title(plat_ms(), 5000u, "", "ALL CLEARED", "", "");   /* (AFFINE: its 2x line alone; "AS A NEW FM-1" was
+                                          * aff_title's 1x line) */
 }
 
 /* the start screen's lights: a comet runs through the buttons as the break drops in (OCT- and OCT+, the top row left
@@ -278,49 +279,115 @@ static void draw_batt(int32_t x, int b)
         cv_rect(x + 2, 15 - i * 4, BATT_W - 4, 3, b <= 1 ? BATT_LOW : C_HI);
 }
 
+/* AFFINE: the header's text at 2x (FONT_B): one line with its capitals in rows 9-18 (y 6), or two, rows 2-11 (HEAD_Y1)
+ * and 14-23 (HEAD_Y2); from HEAD_X to HEAD_R, the battery right of it */
+#define HEAD_X 8
+#define HEAD_R 224
+#define HEAD_Y1 (-1)
+#define HEAD_Y2 11
+/* how many characters of s fit in w pixels: cut after a word (words) when one fits, else after a character */
+static int32_t head_fit(const char *s, int32_t w, int words)
+{
+    char t[24];
+    int32_t i, fit = 0, wfit = 0;
+    for (i = 0; i < 23 && s[i]; i++) {
+        t[i] = s[i];
+        t[i + 1] = 0;
+        if (text_w(&FONT_B, t) > w)
+            break;
+        fit = i + 1;
+        if (s[i] != ' ' && (s[i + 1] == ' ' || !s[i + 1]))
+            wfit = i + 1;
+    }
+    return words && wfit ? wfit : fit;
+}
+static int32_t head_put(int32_t x, int32_t y, const char *s, int32_t n, uint16_t c)   /* s's first n characters */
+{
+    char t[24];
+    int32_t i;
+    for (i = 0; i < n && i < 23 && s[i]; i++)
+        t[i] = s[i];
+    t[i] = 0;
+    return t[0] ? cv_text(x, y, &FONT_B, t, c) : x;
+}
+/* app_say's two parts: on one line when they fit, else a on the first, b on the second (b too long for a line: its
+ * first words beside a); never past the battery */
+static void head_msg(const char *a, const char *b)
+{
+    int32_t w = HEAD_R - HEAD_X, x = HEAD_X, n = 0;
+    if (text_w(&FONT_B, a) + 10 + text_w(&FONT_B, b) <= w || !b[0]) {
+        x = a[0] ? head_put(HEAD_X, 6, a, head_fit(a, w, 1), C_WHITE) + 8 : HEAD_X;
+        if (b[0] && x < HEAD_R)
+            head_put(x, 6, b, head_fit(b, HEAD_R - x, 1), C_HI);
+        return;
+    }
+    if (a[0])
+        x = head_put(HEAD_X, HEAD_Y1, a, head_fit(a, w, 1), C_WHITE) + 8;
+    if (!a[0] || text_w(&FONT_B, b) > w) {
+        n = x < HEAD_R ? head_fit(b, HEAD_R - x, 1) : 0;
+        if (n && b[n] && b[n] != ' ' && x > HEAD_X)
+            n = 0;                       /* (no whole word beside a: all of b below) */
+        head_put(x, HEAD_Y1, b, n, C_HI);
+        while (b[n] == ' ')
+            n++;
+    }
+    head_put(HEAD_X, HEAD_Y2, b + n, head_fit(b + n, w, 1), C_HI);
+}
+
 static void draw_head(const brk_status_t *st, const brk_break_t *b, uint32_t now)
 {
     char t[24];
     cv_begin(240, 28, C_BLACK);
     ui.meter_x = 0;
-    if (now < ui.msg_until) {
-        int32_t x = cv_text(8, 6, &FONT_B, ui.msg[0], C_WHITE);
-        cv_text(x + 8, 6, &FONT_B, ui.msg[1], C_HI);
-    } else if (tut_on()) {               /* LOAF BREAKER: the TUTORIAL: its step, what to do */
-        char a[40], w[40];
-        tut_head(a, w);
-        cv_text(8, 2, &FONT_T, a, C_AMB);
-        cv_text(8, 14, &FONT_T, w, tut_ok ? C_HI : C_WHITE);   /* (done: "OK!  NEXT IN 4 S") */
+    if (now < ui.msg_until)
+        head_msg(ui.msg[0], ui.msg[1]);
+    else if (tut_on()) {                 /* LOAF BREAKER: the TUTORIAL: its lesson and step, what to do (AFFINE: 2x) */
+        char a[24], n[8], w[40];
+        tut_head(a, n, w);
+        cv_text(HEAD_R - text_w(&FONT_B, n), HEAD_Y1, &FONT_B, n, C_GRAY);   /* "3/26" */
+        head_put(HEAD_X, HEAD_Y1, a, head_fit(a, HEAD_R - HEAD_X - text_w(&FONT_B, n) - 10, 1), C_AMB);
+        head_put(HEAD_X, HEAD_Y2, w, head_fit(w, HEAD_R - HEAD_X, 1), tut_ok ? C_HI : C_WHITE);   /* (done: "OK! NEXT IN 4 S") */
     } else {
-        if (st->playing) {               /* a play triangle, or a stop square */
-            int32_t r;
-            for (r = 0; r < 6; r++)
-                cv_rect(8 + r, 8 + r, 1, 13 - 2 * r, C_HI);
+        int32_t x, r, room;
+        char p[8], tr[8];
+        if (ui.rec) {                    /* REC: a dot (AFFINE: in place of the mark, the word gone at 2x) */
+            cv_rect(10, 9, 6, 10, C_HI);
+            cv_rect(9, 10, 8, 8, C_HI);
+            cv_rect(8, 11, 10, 6, C_HI);
+        } else if (st->playing) {        /* a play triangle, or a stop square */
+            int32_t k;
+            for (k = 0; k < 6; k++)
+                cv_rect(8 + k, 8 + k, 1, 13 - 2 * k, C_HI);
         } else
             cv_rect(8, 9, 10, 10, C_DIM);
-        {                                /* the break, the pattern (> one queued), REC */
-            int32_t x = cv_text(24, 6, &FONT_B, b ? break_name(set.brk) : "NO BREAK",   /* (amber: still to come) */
-                                brk_next >= 0 ? C_AMB : C_WHITE);
-            t[0] = 'P';
-            int_text((int32_t)pat_cur() + 1, t + 1);
-            if (pat_next >= 0)
-                text_cat(t, ">");
-            x = cv_text(x + 6, 10, &FONT_T, t, pat_next >= 0 ? C_AMB : C_GRAY);
-            if (ui.trk_on) {             /* LOAF BREAKER: a track playing: "T1" */
-                t[0] = 'T';
-                int_text((int32_t)set.trk + 1, t + 1);
-                x = cv_text(x + 5, 10, &FONT_T, t, C_HI);
-            }
-            if (ui.rec)
-                cv_text(x + 5, 10, &FONT_T, "REC", C_AMB);
+        tenths_text(set.tempo_x10, t);   /* the tempo at the right (AFFINE: "BPM" gone, no room at 2x; TEST: white on
+                                          * each beat) */
+        r = HEAD_R - text_w(&FONT_B, t);
+        cv_text(r, 6, &FONT_B, t, st->playing && st->bar16 >= 0 && !(st->bar16 & 3) ? C_WHITE : C_HI);
+        if (ext_active()) {              /* (the clock from outside: EXT before it) */
+            r -= 8 + text_w(&FONT_B, "EXT");
+            cv_text(r, 6, &FONT_B, "EXT", C_AMB);
         }
-        tenths_text(set.tempo_x10, t);
-        cv_text(222 - text_w(&FONT_B, t), 6, &FONT_B, t,   /* (LOAF BREAKER: 10 left, the battery's room; TEST: white
-                                          * on each beat) */
-                st->playing && st->bar16 >= 0 && !(st->bar16 & 3) ? C_WHITE : C_HI);
-        ui.meter_x = (int16_t)(218 - text_w(&FONT_B, t) - text_w(&FONT_T, "BPM") - 12);   /* left of BPM */
-        cv_text(218 - text_w(&FONT_B, t) - text_w(&FONT_T, ext_active() ? "EXT" : "BPM"), 10, &FONT_T,
-                ext_active() ? "EXT" : "BPM", ext_active() ? C_AMB : C_GRAY);
+        p[0] = 'P';                      /* the pattern (> one queued), a track playing ("T1"): as far as room */
+        int_text((int32_t)pat_cur() + 1, p + 1);
+        if (pat_next >= 0)
+            text_cat(p, ">");
+        tr[0] = 0;
+        if (ui.trk_on) {
+            tr[0] = 'T';
+            int_text((int32_t)set.trk + 1, tr + 1);
+        }
+        room = r - 10 - 24 - 10 - text_w(&FONT_B, p);   /* (the break's name: cut to leave its pattern room) */
+        {
+            const char *nm = b ? break_name(set.brk) : "NO BREAK";
+            x = head_put(24, 6, nm, head_fit(nm, room, 1), brk_next >= 0 ? C_AMB : C_WHITE);   /* (amber: to come;
+                                          * cut after a word: "OLDSKOO", never "OLDSKOO 16") */
+        }
+        x = cv_text(x + 8, 6, &FONT_B, p, pat_next >= 0 ? C_AMB : C_GRAY);
+        if (tr[0] && x + 6 + text_w(&FONT_B, tr) <= r - 10)
+            x = cv_text(x + 6, 6, &FONT_B, tr, C_HI);
+        if (x + 6 <= r - 16)             /* the level meter, left of the tempo, when there is room */
+            ui.meter_x = (int16_t)(r - 14);
     }
     draw_batt(229, plat_battery());      /* LOAF BREAKER: the battery (CHOPPAH 1.0's), always at the right end */
     cv_rect(0, 27, 240, 1, now - ui.kick_t < 90u ? C_HI : C_LINE);   /* (TEST: lit on each kick) */
@@ -372,17 +439,18 @@ static void draw_blocks(const brk_status_t *st, uint32_t keys)
             if (held)
                 cv_rect(x + 2, 2, 24, 46, ground);
             if (have)
-                for (c = 0; c < BLK_W - 4u; c++) {   /* the slice's shape, 22 columns of its 26 */
+                for (c = 0; c < BLK_W - 4u; c++) {   /* the slice's shape, 22 columns of its 26 (AFFINE: centred
+                                          * lower, the tag's row above it) */
                     int32_t h = blk_px[k][c * BLK_W / (BLK_W - 4u)];
-                    cv_rect(x + 3 + (int32_t)c, 19 - h / 2, 1, h + 1, ink);
+                    cv_rect(x + 3 + (int32_t)c, 22 - h / 2, 1, h + 1, ink);
                 }
             int_text((int32_t)k + 1, t);
-            cv_text(x + 3, 35, &FONT_T, t, on ? C_BLACK : have ? C_AMB : C_LINE);
+            cv_text(x + 3, 34, &FONT_T, t, on ? C_BLACK : have ? C_AMB : C_LINE);   /* (AFFINE: 2x, the bottom row) */
             if (have && key_custom((int)k))  /* a loop of its own: a dot */
-                cv_rect(x + 21, 39, 4, 4, on ? C_BLACK : C_HI);
-            if (have && (set.slx[k].type || set.slx[k].level < 100u))   /* an effect of its own: its tag */
-                cv_text(x + 13, 35, &FONT_XS, set.slx[k].type ? SLX_TAG[set.slx[k].type] : "LV",
-                        on ? C_BLACK : C_HI);
+                cv_rect(x + 21, 38, 4, 4, on ? C_BLACK : C_HI);
+            if (have && (set.slx[k].type || set.slx[k].level < 100u))   /* an effect of its own: its tag (AFFINE: on
+                                          * the top row, no room beside a 2x number) */
+                cv_text(x + 3, 0, &FONT_XS, set.slx[k].type ? SLX_TAG[set.slx[k].type] : "LV", on ? C_BLACK : C_HI);
         }
         cv_blit(0, 88u + row * 52u);
     }
