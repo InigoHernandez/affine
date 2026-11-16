@@ -66,17 +66,19 @@ The owner's ask: super performative. What it means on the FM-1:
    burst into SPU VERB: the old DUB pad on the PS1's echoes), CRUSH THROW, FILTER THROW.
 3. **White keys + ARP: the overlays.** LOAF's sixteen, with PSX ones in for the weakest: SPU, XA, SKIP, FREEZE.
 4. **Motion record.** With REC on, pad presses and the four gestures are written into the pattern's steps, and play
-   back every loop. REC held clears them. Room: the kick's four freed store objects hold one group of 16 patterns each.
+   back every loop. SEQ's clear (SEQ held, then SEQ) and INIT clear them with the pattern. Room: the kick's four freed store objects hold one group of 16 patterns each.
 5. **Scenes A/B and MORPH.** Two snapshots of the gestures and the FX chain. HOME's second page: K4 MORPH glides
    between them, PRESETS + a white key stores one.
 
-### The black keys' rows, PUNCH, CUSTOM, REC (built 2026-11-16, branch `punch`)
+### The black keys' rows, PUNCH, REC (built 2026-11-16, branch `punch`; CUSTOM gone, branch `controls1`)
 
-The owner's decisions (2026-11-16): **rows** of black-key effects, three for now: AFFINE (row A, the layout above),
-PUNCH (row B), CUSTOM (row C). FX held + OCT+ the next row, OCT- the one before, round; the header says "ROW B /
-PUNCH" (no page, no FX fader, no pitch). The FX fader's toggle moved to FX's release (held 0.7 s alone). The rows
-are `bk[1]`'s saved values: AFFINE 0, CHOPPAH 1 (out of the round, a save holding it still plays it), CUSTOM 2,
-PUNCH 3 (`BK_ROWS`, common.c). ARP › BLACK KEYS' K1 goes AFFINE, PUNCH, CUSTOM.
+The owner's decisions (2026-11-16): **rows** of black-key effects, two: AFFINE (row A, the layout above) and PUNCH
+(row B). FX held + OCT- AFFINE, FX held + OCT+ PUNCH, each directly; the header says "ROW B / PUNCH" (no page, no FX
+fader, no pitch). The FX fader's toggle moved to FX's release (held 0.7 s alone). The rows are `bk[1]`'s saved
+values: AFFINE 0, CHOPPAH 1 (out of the rows, a save holding it still plays it), CUSTOM 2 (gone: a save holding it
+plays AFFINE's; `bk[2..12]`, its layout, unused), PUNCH 3. A third row, CUSTOM (FX + a black key + a knob gave the key
+any function; ARP › BLACK KEYS edited the layout), was built and taken out the same day (the owner's controls
+cleanup): GATE, RANDOM, DUB, ARP and KIL alone are on no row now, but a pattern that recorded them still plays them.
 
 - **PUNCH**: eleven fixed combos (an EP-133 punch-in's way: a signature, not editable), each several of the functions
   held together with its own settings while it sounds, never saved (copies to the engine: `pads_push`, `fx_send` in
@@ -85,12 +87,36 @@ PUNCH 3 (`BK_ROWS`, common.c). ARP › BLACK KEYS' K1 goes AFFINE, PUNCH, CUSTOM
   (vinyl break + verb throw), GLITCH (skip + random), WASH (freeze + verb throw + low-pass), CHOP (gate 1/16 + crush),
   DUB ECHO (roll 1/8 + dub), SHATTER (random + crush + skip), DROP OUT (BOOM quiet + high-pass). Heard:
   `build/review/sounds/affine-punch-tour.wav` (its times beside it).
-- **CUSTOM, made easy**: FX held, a black key held, any knob: that key steps through every function, then the
-  combos (CUSTOM may hold both). On another row the first turn copies it into CUSTOM (ROW C). FX let go: done.
 - **REC records the black keys** (the motion record's first part, 4. above): playing, each step reached while one is
   held takes its code (the last pressed), quantised as the slices; played back as held over those steps, merged with
   what is held. 64 x 32 bytes in OBJ_FREE0 ("FXR1", 2052 B), written with the patterns, read from AFFINE's own store
   only. SEQ's grid marks the steps recorded (a bar under the step). The other three free objects stay for the gestures.
+
+### Controls cleanup, phase 1 (2026-11-16, branch `controls1`)
+
+The owner's decisions: fewer, safer gestures, one mode for everyone.
+
+- **Two rows**, AFFINE and PUNCH (above); OVERLAY (ARP) keeps one tab, ARP EFFECTS.
+- **No clear without a question.** Gone: SEL + REC (the pattern, or a lane on PATTERN), REC held 0.7 s on PATTERN (the
+  break's steps and recordings), SEQ held + REC (the drums). REC toggles recording as it goes down, on every page.
+  Kept: SEQ held 0.7 s, "CLEAR Pn?", SEQ within 3 s; a lane's CLR knob; SEL + REC on an EFFECTS slot (its effect
+  reset).
+- **No two-layer shortcuts**: SEL + SELECT (the drums' filter: a roll key's K3 still turns it), SEL + ALGORITHM (BREAK
+  TIME, the next break), SEL + ARP to PATTERN › SETTINGS: gone; with SEL held those do what they do alone. SEL + ARP on
+  a drum's page (copy, paste its sound) and SEL + PRESETS (the pattern) stay.
+- **One mode.** LOAF BREAKER's BEGINNER / EXPERT gone: the full AFFINE always (a save holding BEGINNER too). The
+  TUTORIAL still runs in BEGINNER inside it (its steps were written for it: `set.novice` while it runs, app.c
+  `NOVICE`). SYSTEM › SETUP K3 is the TUTORIAL (right: start, left: quit); the first start asks TUTORIAL or PLAY. A
+  white key held: its knobs, always.
+- **INIT**, SEL + HOME, then HOME within 3 s ("INIT? PRESS HOME"; anything else, or 3 s: nothing): the pattern
+  cleared as SEQ's clear does, and the sound back to the bare break: HOME's FILTER, CRUSH, REDUX, VERB and the drums'
+  filter 0, the gate full, every black key's latch and LATCH off, the OVERLAY's latched effects and LATCH off, the
+  row AFFINE, the FX chain's slots bypassed (their effects kept), the PSX bus clean (CODEC off, SKIP off, SPU VERB's
+  freeze off, COLOR's AMOUNT 0, CONSOLE 0, MONO off, its SEND 0). Kept: the tempo, the break, BOOM and the drums'
+  sounds, MIX, songs, the skin, MIDI, the other patterns. SEL + SAVE brings all of it back (seq.c `undo_ifx`, kept
+  with the pattern's undo), and again takes it off.
+- **RESET EVERYTHING** clears the drum steps' own settings, the track items' breaks and every group's drum bars 3-4
+  (they survived it, written into all four groups).
 
 ### The PSX bus (built, 6a2a425)
 
@@ -157,7 +183,7 @@ SKIP's capture 24 KB of RAM (mu-law), the delay line mu-law (61 -> 31 KB of pool
 | CPU | the kick's render and its FX slots | SPU VERB ~2 %, the rest small |
 
 The second core (fm1-base can build it in) stays in reserve: SPU VERB moves there if the meter says so.
-**Measure the device's CPU on day one** (handbook, short path 5): LOAF's METER (SYSTEM > MIDI K3, EXPERT) on the
+**Measure the device's CPU on day one** (handbook, short path 5): LOAF's METER (SYSTEM > MIDI K3) on the
 first AFFINE build, read while playing.
 
 ## 6. Steps

@@ -4,6 +4,14 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-16
 
+- **Controls:** two rows of black keys, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM and ARP's BLACK KEYS tab gone; a
+  saved CUSTOM row plays AFFINE's, and what REC recorded still plays). No clear without a question: REC just records
+  (SEL + REC, REC held, SEQ + REC clears gone); SEQ held, then SEQ, clears the pattern. SEL + SELECT, SEL +
+  ALGORITHM and SEL + ARP's GROOVE gone. One mode for everyone: the full AFFINE (the first start asks TUTORIAL or
+  PLAY; SETUP K3 starts the tutorial). **INIT:** SEL + HOME, then HOME: the pattern cleared and every effect off,
+  the bare break; SEL + SAVE brings it all back.
+- **Fix:** RESET EVERYTHING left the drum steps' own settings, the song items' breaks and the other groups' drum
+  bars 3-4 behind (written into all four groups).
 - **Release 0.2:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,
   a beta not yet run on an FM-1: PSX COLOR and its presets, the black-key rows; the site's FM-1 runs 0.2 and shows
   today's screens; the GitHub release v0.2 carries the same file.
