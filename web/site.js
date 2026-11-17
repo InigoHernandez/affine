@@ -105,16 +105,18 @@
     if (!imgs.has(src)) imgs.set(src, new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }));
     return imgs.get(src);
   }
-  async function draw(cv, src) {
+  async function draw(cv, src, anim) {
+    anim = anim || (src && src !== cv.dataset.src && cv.dataset.shown);   // (a new picture on a screen in view)
     if (src) cv.dataset.src = src;
     src = cv.dataset.src;
     if (!src) return;
+    mos.delete(cv);                                    // (a mosaic under way gives up: this drawing wins)
     let im;
     try { im = await load(src); } catch (e) { return; }
     if (cv.dataset.src !== src) return;               // (another picture asked for meanwhile)
     const g = cv.getContext("2d", { willReadFrequently: true });
     g.drawImage(im, 0, 0, cv.width, cv.height);
-    if (cur === 0) return;
+    if (cur === 0) { if (anim) mosaic(cv); return; }   // (POLYGON: the pictures' own colours)
     const DST = places(SKINS[cur].c), d = g.getImageData(0, 0, cv.width, cv.height), p = d.data, memo = new Map();
     for (let o = 0; o < p.length; o += 4) {
       const key = (p[o] << 16) | (p[o + 1] << 8) | p[o + 2];
@@ -131,6 +133,30 @@
       p[o] = m[0]; p[o + 1] = m[1]; p[o + 2] = m[2];
     }
     g.putImageData(d, 0, 0);
+    if (anim) mosaic(cv);
+  }
+  // a screen resolves out of a mosaic, big blocks down to its pixels, in four steps (~250 ms; after Libraries.dev's
+  // image reveal, in 2D): as a screen arrives, and as it changes to another picture
+  const mos = new WeakMap();
+  function mosaic(cv) {
+    if (!motion || !cv.closest(".scr")) return;
+    const w = cv.width, h = cv.height, src = document.createElement("canvas"), tmp = document.createElement("canvas");
+    src.width = w; src.height = h; src.getContext("2d").drawImage(cv, 0, 0);
+    const g = cv.getContext("2d"), token = {};
+    mos.set(cv, token);
+    const blocks = [24, 12, 6, 3];
+    let i = 0;
+    const frame = () => {
+      if (mos.get(cv) !== token) return;
+      g.imageSmoothingEnabled = false;
+      if (i === blocks.length) { g.drawImage(src, 0, 0); mos.delete(cv); return; }
+      const b = blocks[i++], sw = Math.ceil(w / b), sh = Math.ceil(h / b);
+      tmp.width = sw; tmp.height = sh;
+      tmp.getContext("2d").drawImage(src, 0, 0, sw, sh);
+      g.drawImage(tmp, 0, 0, sw, sh, 0, 0, sw * b, sh * b);
+      setTimeout(frame, 62);
+    };
+    frame();
   }
   function recolorAll() { document.querySelectorAll("canvas[data-src]").forEach((cv) => draw(cv)); }
 
@@ -144,7 +170,8 @@
         const el = e.target;
         el.classList.add("in");
         io.unobserve(el);
-        if (el.matches(".wipe, .scan")) setTimeout(() => el.classList.add("done"), 1400);
+        if (el.matches(".wipe")) setTimeout(() => el.classList.add("done"), 1400);
+        if (el.matches(".scan")) el.querySelectorAll("canvas[data-src]").forEach((cv) => { cv.dataset.shown = "1"; draw(cv, undefined, true); });
         el.querySelectorAll?.("[data-count]").forEach(count);
         if (el.matches("[data-count]")) count(el);
       }
@@ -163,16 +190,23 @@
     };
     requestAnimationFrame(step);
   }
+  // the section in view: its link lit, and the subnav's one bar slides under it (style.css .subnav__ink)
   function navSpy() {
-    const links = [...document.querySelectorAll(".subnav a[href^='#']")];
+    const links = [...document.querySelectorAll(".subnav a[href^='#']")], ink = document.querySelector(".subnav__ink");
     const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+    let on = null;
+    const place = () => { if (!ink || !on) return; ink.style.setProperty("--x", `${on.offsetLeft}px`); ink.style.setProperty("--w", `${on.offsetWidth}px`); };
     const io = new IntersectionObserver((es) => {
-      for (const e of es) if (e.isIntersecting) {
+      for (const e of es) if (e.isIntersecting && map.has(e.target.id)) {
         links.forEach((a) => a.classList.remove("on"));
-        map.get(e.target.id)?.classList.add("on");
+        on = map.get(e.target.id);
+        on.classList.add("on");
+        place();
       }
     }, { rootMargin: "-40% 0px -55% 0px" });
     map.forEach((a, id) => { const s = document.getElementById(id); if (s) io.observe(s); });
+    addEventListener("resize", place);
+    document.fonts?.ready.then(place);
   }
 
   window.affine = { SKINS, ramps, dith, mix, hex, rgba, apply, draw, motion, get skin() { return cur; }, get R() { return R; } };

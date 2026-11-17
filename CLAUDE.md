@@ -97,6 +97,14 @@ skins (they recolour the page, the panel and the FM-1's screenshots), the dither
 the hero (aff.c's title screen in JS); `panel.js` and `play.js` the FM-1 (from fm1-base's emulator page, MPL-2.0);
 `chip.js` the PSX bus heard; `perform.js` the black keys (held on the emulator too). Bump `?v=` in index.html with
 every changed file. Little text: a title and one line a section.
+Components (since 2026-11-17, after shadcn/ui, transitions.dev and Libraries.dev; style.css's head lists them): one
+`.btn` (`--primary` / `--outline` / `--solid`, `--sm` / `--lg`), `.card` with `.card__head` / `.card__foot`, `.badge`,
+`kbd` a keycap; tokens `--s05`..`--s16`, `--h-sm/md/lg`, `--pad` (content at most `--max` 1440 px) and transitions.dev's
+motion tokens. The pixel reveals stay stepped; layout motion takes the tokens (the drawers' accordion in play.js, the
+subnav's sliding bar in site.js, the chain's block from chip.js's `--on`). `[hidden]` always wins over a display.
+The installer's look is `tools/install_theme.py` (regenerate only `install/index.html` with make_site.py and it, the
+firmware untouched). Checks: `node tools/site_shot.mjs URL OUT 1440,1024,768,390,360 [--js=...]` (headless Chrome over
+the DevTools protocol: true phone widths, errors, overflow) and `tools/site_motion.mjs` (GIFs of the motion).
 
 Releases: `./build.sh --release X.Y` (identity `FM-1_2815` + XXYYZZ), then `RELEASE=X.Y sh web/build.sh` puts the same
 file in `web/firmware/` and the installer in `web/install/` (fm1-base's, themed by `tools/install_theme.py`;

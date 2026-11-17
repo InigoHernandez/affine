@@ -17,14 +17,14 @@
   // ---------------------------------------------------------------- what each control does (the status line)
   const BK_NAMES = ["ROLL 1/8", "ROLL 1/16", "ROLL 1/32", "REVERSE", "HALF SPEED", "VINYL BREAK", "FREEZE", "SKIP", "VERB THROW", "CRUSH", "FILTER"];
   const HELP = {
-    MASTER: "Volume.", SELECT: "The tempo, on HOME.", ALGORITHM: "The break: the next one, or the one before.",
-    PRESETS: "The pattern, P1 to P64.", "KNOB 1": "On HOME: FILTER, low-pass left, high-pass right.", "KNOB 2": "On HOME: CRUSH, the bits down.",
+    MASTER: "Volume.", SELECT: "The tempo, on every page.", ALGORITHM: "The break: the next one, or the one before.",
+    PRESETS: "The pattern, P1 to P64; while playing, it comes in at the loop's end.", "KNOB 1": "On HOME: FILTER, low-pass left, high-pass right.", "KNOB 2": "On HOME: CRUSH, the bits down.",
     "KNOB 3": "On HOME: REDUX, the rate down.", "KNOB 4": "On HOME: VERB, the chip's reverb.",
-    FX: "EFFECTS: four slots; past the fourth, the PSX page.", SEL: "Held with another control: its second job.",
-    EDIT: "BOOM: the drums under the break.", GLO: "SYSTEM: MIDI, the skin, the settings.", HOME: "HOME: the floor and the four knobs.",
-    SAVE: "Save the pattern and the settings.", ARP: "OVERLAY: an effect on each white key.", SEQ: "The pattern's steps.",
-    PLAY: "Play and stop the break.", REC: "Record what the keys play.", "OCT minus": "OCT−.", "OCT plus": "OCT+.",
-    ENV: "ENV.", LFO: "LFO.",
+    FX: "FX: PLAY, CHAIN, SLOT, PSX, SENDS; pressed again, the next.", SEL: "Tapped: the page's help. Held with another control: its second job.",
+    EDIT: "EDIT: the BREAK, then BOOM, SNARE, HAT, CLAP.", GLO: "GLO: MIDI, SETUP, SCREEN, RESET.", HOME: "HOME: PERFORM, then SETTINGS. SEL + HOME, then HOME: INIT.",
+    SAVE: "Save the pattern and the settings. SEL + SAVE: undo.", ARP: "ARP: the GENERATOR.", SEQ: "SEQ: STEPS, DRUMS, SETTINGS. Held, then SEQ: clear the pattern.",
+    PLAY: "Play and stop the break.", REC: "Record what the keys play.", "OCT minus": "OCT−: the item before, or the pitch down.", "OCT plus": "OCT+: the next item, or the pitch up.",
+    ENV: "ENV: TRACKS, PLAY, DROP, BUILD.", LFO: "LFO: LEVELS, MASTER, DYN.",
   };
   const helpOf = (c) => c.n !== undefined && c.name.startsWith("Black") ? [`Key ${c.n + 1}`, `${BK_NAMES[c.n]}, while held.`]
     : c.n !== undefined ? [`Key ${c.n + 1}`, `Slice ${c.n + 1} of the break.`] : [c.label || c.name, HELP[c.name] || ""];
@@ -356,15 +356,24 @@
     $("snd").textContent = on ? "Muted" : "Mute";
     if (gain) gain.gain.value = level();
   });
+  // a drawer opens as an accordion (style.css .drawer): shown, then .open; closed, it hides once its row has closed
+  const setDrawer = (d, open) => {
+    if (open) { d.hidden = false; void d.offsetHeight; d.classList.add("open"); return; }
+    if (d.hidden) return;
+    d.classList.remove("open");
+    const end = () => { if (!d.classList.contains("open")) d.hidden = true; };
+    d.addEventListener("transitionend", end, { once: true });
+    setTimeout(end, 400);                             // (no transition with reduced motion: hide all the same)
+  };
   const drawer = (btn, id) => $(btn).addEventListener("click", () => {
     const open = $(btn).getAttribute("aria-expanded") !== "true";
-    for (const [b, d] of [["keys-tog", "keymap"], ["reset", "reset-ask"]]) { $(b).setAttribute("aria-expanded", "false"); $(d).hidden = true; }
+    for (const [b, d] of [["keys-tog", "keymap"], ["reset", "reset-ask"]]) if (d !== id) { $(b).setAttribute("aria-expanded", "false"); setDrawer($(d), false); }
     $(btn).setAttribute("aria-expanded", open ? "true" : "false");
-    $(id).hidden = !open;
+    setDrawer($(id), open);
   });
   drawer("keys-tog", "keymap");
   drawer("reset", "reset-ask");
-  $("reset-no").addEventListener("click", () => { $("reset").setAttribute("aria-expanded", "false"); $("reset-ask").hidden = true; });
+  $("reset-no").addEventListener("click", () => { $("reset").setAttribute("aria-expanded", "false"); setDrawer($("reset-ask"), false); });
   $("reset-yes").addEventListener("click", () => { try { localStorage.removeItem(STORE_KEY); } catch {} location.reload(); });
 
   // the page's other parts: a black key held from outside the panel (perform.js), the panel's state

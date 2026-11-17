@@ -14,7 +14,7 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <!-- AFFINE's hover (style.css dg-tear): rows slipping as a disc skips -->
@@ -26,8 +26,8 @@
 
 <header class="bar">
   <a class="brand" href="./" aria-label="AFFINE"><canvas width="28" height="28" aria-hidden="true"></canvas><b>AFFINE</b></a>
-  <p class="dev label"><span>Runs on</span><b>FM-1</b></p>
-  <span class="acts"><button id="skin" class="skinbtn" type="button" aria-label="The skin: POLYGON. Next skin"><i aria-hidden="true"></i><span id="skin-n">POLYGON</span></button><a class="cta" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a></span>
+  <p class="dev label"><span>Runs on</span><b class="badge">FM-1</b></p>
+  <span class="acts"><button id="skin" class="btn btn--outline btn--sm skinbtn" type="button" aria-label="The skin: POLYGON. Next skin"><i aria-hidden="true"></i><span id="skin-n">POLYGON</span></button><a class="btn btn--primary btn--sm cta" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a></span>
 </header>
 <nav class="subnav" aria-label="Sections">
   <a href="#play">Play</a>
@@ -36,6 +36,7 @@
   <a href="#made">Making</a>
   <span class="sp"></span>
   <a href="install/" class="tag">Install 0.3</a>
+  <i class="subnav__ink" aria-hidden="true"></i>
 </nav>
 
 <section class="hero">
@@ -45,7 +46,7 @@
   </div>
   <div class="hero__sub">
     <p class="hero__line">Jungle breaks on the FM-1's keys, through a PS1-era sound chip.</p>
-    <p class="hero__acts"><a class="btn" href="#play">Play</a><a class="btn ghost" href="#chip">Hear the chip</a><a class="btn ghost" href="install/">Install</a></p>
+    <p class="hero__acts"><a class="btn btn--primary" href="#play">Play</a><a class="btn btn--outline" href="#chip">Hear the chip</a><a class="btn btn--outline" href="install/">Install</a></p>
   </div>
 </section>
 
@@ -58,18 +59,18 @@
         <div id="controls" role="group" aria-label="The FM-1's panel" inert></div>
       </div>
     </div>
-    <button id="start" class="start" type="button"><span>Start</span><small>Sound on · the real firmware</small></button>
+    <button id="start" class="start beam" type="button"><span>Start</span><small>Sound on · the real firmware</small></button>
   </div>
   <div class="playbar">
     <p class="status" id="status" role="status" aria-live="polite">Press Start, then point at a control.</p>
     <span class="cpu" id="cpu"></span>
     <div class="playbar__acts">
-      <button class="pbtn" id="snd" type="button" aria-pressed="false">Mute</button>
-      <button class="pbtn" id="keys-tog" type="button" aria-expanded="false" aria-controls="keymap">Keys</button>
-      <button class="pbtn" id="reset" type="button" aria-expanded="false" aria-controls="reset-ask">Reset</button>
+      <button class="btn btn--outline btn--sm" id="snd" type="button" aria-pressed="false">Mute</button>
+      <button class="btn btn--outline btn--sm" id="keys-tog" type="button" aria-expanded="false" aria-controls="keymap">Keys</button>
+      <button class="btn btn--outline btn--sm" id="reset" type="button" aria-expanded="false" aria-controls="reset-ask">Reset</button>
     </div>
   </div>
-  <div class="drawer" id="keymap" hidden>
+  <div class="drawer" id="keymap" hidden><div class="drawer__clip">
     <div class="drawer__in keymap">
       <div class="keys">
         <h3>Keys</h3>
@@ -95,13 +96,13 @@
         </dl>
       </div>
     </div>
-  </div>
-  <div class="drawer" id="reset-ask" hidden>
+  </div></div>
+  <div class="drawer" id="reset-ask" hidden><div class="drawer__clip">
     <div class="drawer__in ask" role="group" aria-labelledby="reset-q">
       <p id="reset-q">Erase what this browser's AFFINE saved and start from the factory?</p>
-      <p class="ask__acts"><button class="pbtn solid" id="reset-yes" type="button">Erase and restart</button><button class="pbtn" id="reset-no" type="button">Keep it</button></p>
+      <p class="ask__acts"><button class="btn btn--solid btn--sm" id="reset-yes" type="button">Erase and restart</button><button class="btn btn--outline btn--sm" id="reset-no" type="button">Keep it</button></p>
     </div>
-  </div>
+  </div></div>
 </section>
 
 <section class="sec" id="howto">
@@ -129,14 +130,14 @@
     <div class="chip__screen">
       <figure class="scr scan"><div class="scr__box"><canvas id="chip-scr" width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="The FM-1's PSX page"></canvas></div><figcaption id="chip-cap">EFFECTS › PSX</figcaption></figure>
     </div>
-    <div class="chip__plate wipe">
-      <div class="chip__head"><h3 id="chip-name">VERB</h3><span class="label cool" id="chip-tag">9 presets</span></div>
+    <div class="chip__plate card wipe">
+      <div class="card__head"><h3 class="card__title" id="chip-name">VERB</h3><span class="badge badge--cool" id="chip-tag">9 presets</span></div>
       <p class="chip__line" id="chip-line"></p>
       <div class="scope"><canvas id="scope" aria-hidden="true"></canvas><span class="scope__t" id="scope-t">Silent</span><span class="scope__p" id="scope-p"></span></div>
       <div class="chips" id="chip-opts" role="group" aria-label="Its settings, heard"></div>
-      <div class="chip__acts">
+      <div class="card__foot">
         <span class="label" id="chip-hint">A break, dry, then the stage</span>
-        <button class="pbtn solid" id="chip-play" type="button">Play</button>
+        <button class="btn btn--solid btn--sm" id="chip-play" type="button">Play</button>
       </div>
     </div>
     <ul class="chip__facts">
@@ -158,8 +159,8 @@
     <div class="perf__screen">
       <figure class="scr scan"><div class="scr__box"><canvas id="perf-scr" width="240" height="240" data-src="screens/home.png" role="img" aria-label="HOME on the FM-1"></canvas></div><figcaption id="perf-cap">HOME</figcaption></figure>
     </div>
-    <div class="perf__plate">
-      <div class="perf__name"><h3 id="perf-name">HOME</h3><span class="label cool" id="perf-key">Hold a key</span></div>
+    <div class="perf__plate card">
+      <div class="card__head"><h3 class="card__title" id="perf-name">HOME</h3><span class="badge badge--cool" id="perf-key">Hold a key</span></div>
       <p class="perf__line" id="perf-line">The break's sixteen slices as a floor; the one playing lit.</p>
       <div class="bks wipe" id="bks" role="group" aria-label="The black keys"></div>
       <ul class="knobs4" aria-label="HOME's four knobs">
@@ -203,7 +204,7 @@
   <div class="sec__body">
     <h2 class="display stripes">Status</h2>
     <p class="lede">0.3: one way to play every page, every effect under FX. A beta not yet run on an FM-1.</p>
-    <p class="hero__acts status__acts"><a class="btn" href="install/">Install 0.3</a><a class="btn ghost" href="https://github.com/InigoHernandez/affine/releases" target="_blank" rel="noopener">Release</a><a class="btn ghost" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">Source</a><a class="btn ghost" href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></p>
+    <p class="hero__acts status__acts"><a class="btn btn--primary" href="install/">Install 0.3</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/releases" target="_blank" rel="noopener">Release</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">Source</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></p>
     <p class="credits">Built on LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich, on fm1-base by Charles Vestal and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments). Breaks by Cyberworm, royalty free. Pixel font: Elektron Pixel Font by savingaurora, adapted (CC BY-SA 4.0).</p>
   </div>
 </section>
@@ -220,12 +221,12 @@
   <a class="label kofi" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">AFFINE on GitHub</a><span class="label">Not affiliated with M-VAVE</span><a class="label kofi" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Support on Ko-fi</a><span class="label r">2026</span>
 </footer>
 
-<script src="site.js?v=2"></script>
+<script src="site.js?v=3"></script>
 <script src="scene.js?v=1"></script>
 <script src="brand.js?v=1"></script>
 <script src="panel.js?v=1"></script>
-<script src="play.js?v=3"></script>
-<script src="chip.js?v=2"></script>
+<script src="play.js?v=4"></script>
+<script src="chip.js?v=3"></script>
 <script src="perform.js?v=2"></script>
 </body>
 </html>

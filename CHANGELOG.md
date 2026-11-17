@@ -2,6 +2,18 @@
 
 What changed for whoever plays AFFINE, newest first.
 
+## 2026-11-17
+
+- **Site:** one system for the page and the installer, after shadcn/ui, transitions.dev and Libraries.dev (the owner's
+  references, in AFFINE's look): content no wider than 1440 px, every gap on one scale, one button (hot, outline,
+  ink; three heights), cards for the chip and Perform, badges, keycaps, the reverb presets in an even grid. Motion:
+  the Keys and Reset drawers open as an accordion, one bar slides under the section in view and one block under the
+  chip's stage, the tooltips wait 80 ms, a pixel light runs round Start and Install, the FM-1's screens resolve out
+  of a mosaic.
+- **Site:** the chip's captions say FX › PSX, and the FM-1's help line describes 0.3's controls.
+- **Installer:** the site's buttons, grid and cards; "Beta." in place of "First release."; the hidden Copy button
+  hidden again; the credits once, with the fonts AFFINE uses. The package is the same file (sha 5337d76b).
+
 ## 2026-11-16
 
 - **Release 0.3:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,

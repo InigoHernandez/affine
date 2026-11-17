@@ -11,17 +11,17 @@
   const VERB_LEN = 16 * 60 / 175 + 1.5;            // (each preset: four bars at 175 and 1.5 s of tail)
   const VERBS = ["ROOM", "STUDIO S", "STUDIO M", "STUDIO L", "HALL", "HALF ECHO", "SPACE ECHO", "CHAOS", "DELAY"];
   const STAGES = [
-    { id: "codec", name: "CODEC", tag: "GRIT · XA", screen: "psx-codec", cap: "EFFECTS › PSX › CODEC",
+    { id: "codec", name: "CODEC", tag: "GRIT · XA", screen: "psx-codec", cap: "FX › PSX › CODEC",
       line: "The sample grit of the era: GRIT, the sound chip's own ADPCM; XA, the CD's.",
       opts: [{ n: "GRIT", clip: "grit" }, { n: "XA", clip: "xa" }] },
-    { id: "verb", name: "VERB", tag: "9 presets", screen: "psx-verb", cap: "EFFECTS › PSX › VERB",
+    { id: "verb", name: "VERB", tag: "9 presets", screen: "psx-verb", cap: "FX › PSX › VERB",
       line: "The sound chip's reverbs: nine rooms from its documented registers, run at 22.05 kHz.",
       opts: VERBS.map((n, i) => ({ n, clip: "verbs", at: i * VERB_LEN, len: VERB_LEN })) },
-    { id: "crush", name: "CRUSH", tag: "16 › 1 bit", screen: "psx-lofi", cap: "EFFECTS › PSX › LOFI",
+    { id: "crush", name: "CRUSH", tag: "16 › 1 bit", screen: "psx-lofi", cap: "FX › PSX › LOFI",
       line: "The bits taken away, down to one. HOME's K2 and black key 10.", opts: [{ n: "CRUSH", clip: "crush" }] },
-    { id: "redux", name: "REDUX", tag: "The rate", screen: "psx-lofi", cap: "EFFECTS › PSX › LOFI",
+    { id: "redux", name: "REDUX", tag: "The rate", screen: "psx-lofi", cap: "FX › PSX › LOFI",
       line: "The sample rate taken down, each sample held. HOME's K3.", opts: [{ n: "REDUX", clip: "redux" }] },
-    { id: "skip", name: "SKIP", tag: "A scratched disc", screen: "psx-skip", cap: "EFFECTS › PSX › SKIP",
+    { id: "skip", name: "SKIP", tag: "A scratched disc", screen: "psx-skip", cap: "FX › PSX › SKIP",
       line: "The last moment again, as a disc that skips. Black key 8.", opts: [{ n: "SKIP", clip: "skip" }] },
   ];
   const $ = (id) => document.getElementById(id);
@@ -36,6 +36,7 @@
   function pick(i, o) {
     open = i; opt = o;
     const s = STAGES[i];
+    chain.style.setProperty("--on", i);               // (the hot block slides there: style.css .chain::before)
     [...chain.children].forEach((li, k) => { li.classList.toggle("on", k === i); li.querySelector("button").setAttribute("aria-pressed", k === i ? "true" : "false"); });
     $("chip-name").textContent = s.name;
     $("chip-tag").textContent = s.tag;
