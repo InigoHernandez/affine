@@ -4,6 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-18
 
+- **Docs:** the Firmware Hub's tests for 0.3 (`docs/hub-test-0.3.md`): from V15, USB, leaving it from the Hub, from
+  another firmware, what it keeps, an install cut short.
 - **Hub:** `fmhub.json` for 0.3: the card's line names both black-key rows, the breaks' source in its `sounds`
   line (Cyberworm's royalty-free Amens), AFFINE's orange as the card's colour.
 - **Release 0.3:** tested on an FM-1, every step good ([the test](docs/hardware-test-0.3.md)); the site and the
