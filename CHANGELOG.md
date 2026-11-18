@@ -2,8 +2,11 @@
 
 What changed for whoever plays AFFINE, newest first.
 
-## 2026-11-18
+## 2026-11-18: 0.3 tested on an FM-1, a manual
 
+- **Site:** a manual (<https://inigohernandez.github.io/affine/manual.html>): install, play the break, perform, the
+  effects, the chip, patterns, drums, songs, the mix, saving, every control, GLO, credits, each with the FM-1's
+  screens; and this change log, its kinds as filters. The page links to it from its bar and Status.
 - **Docs:** the Firmware Hub's tests for 0.3 (`docs/hub-test-0.3.md`): from V15, USB, leaving it from the Hub, from
   another firmware, what it keeps, an install cut short.
 - **Hub:** `fmhub.json` for 0.3: the card's line names both black-key rows, the breaks' source in its `sounds`
@@ -18,10 +21,10 @@ What changed for whoever plays AFFINE, newest first.
 - **Docs:** the FM-1 test for 0.3 (`docs/hardware-test-0.3.md`): the meter, the controls, both black-key rows, the
   four presets' CPU, SIZE, INIT, saving, and three choices to keep or change.
 
-## 2026-11-17
+## 2026-11-17: the site and the installer on one system
 
-- **Site:** one system for the page and the installer, after shadcn/ui, transitions.dev and Libraries.dev (the owner's
-  references, in AFFINE's look): content no wider than 1440 px, every gap on one scale, one button (hot, outline,
+- **Site:** one system for the page and the installer, after shadcn/ui, transitions.dev and Libraries.dev (in AFFINE's
+  look): content no wider than 1440 px, every gap on one scale, one button (hot, outline,
   ink; three heights), cards for the chip and Perform, badges, keycaps, the reverb presets in an even grid. Motion:
   the Keys and Reset drawers open as an accordion, one bar slides under the section in view and one block under the
   chip's stage, the tooltips wait 80 ms, a pixel light runs round Start and Install, the FM-1's screens resolve out
@@ -30,10 +33,10 @@ What changed for whoever plays AFFINE, newest first.
 - **Installer:** the site's buttons, grid and cards; "Beta." in place of "First release."; the hidden Copy button
   hidden again; the credits once, with the fonts AFFINE uses. The package is the same file (sha 5337d76b).
 
-## 2026-11-16
+## 2026-11-16: 0.1, 0.2 and 0.3, the first releases
 
-- **Release 0.3:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,
-  a beta not yet run on an FM-1: the new controls (both phases) and the lower gem; the site's FM-1 runs 0.3, its
+- **Release 0.3:** on the site's installer (<https://inigohernandez.github.io/affine/install/>), a beta
+  not yet run on an FM-1 then: the new controls (both phases) and the lower gem; the site's FM-1 runs 0.3, its
   screens and keys today's; the GitHub release v0.3 (2026-11-17) carries the same file.
 - **Controls:** the same encoders on every page: SELECT the tempo, ALGORITHM the break, PRESETS the pattern (playing:
   NEXT Pn until it comes in). A page button opens its first part, pressed again the next, as you let it go; OCT- /
@@ -43,7 +46,7 @@ What changed for whoever plays AFFINE, newest first.
   SNARE, HAT, CLAP; a drum's MEMORY item picks, copies and pastes its sounds. ARP is the GENERATOR. ENV's DROP: a
   white key drops into its pattern; BUILD's TEMPO RISE an item. The drum views on GLO › SCREEN › VIEWS. The
   tutorial walks the new way (28 steps).
-- **Screen:** HOME's gem a little lower (the owner), clear of the header's second line even on the beat.
+- **Screen:** HOME's gem a little lower, clear of the header's second line even on the beat.
 - **Controls:** two rows of black keys, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM and ARP's BLACK KEYS tab gone; a
   saved CUSTOM row plays AFFINE's, and what REC recorded still plays). No clear without a question: REC just records
   (SEL + REC, REC held, SEQ + REC clears gone); SEQ held, then SEQ, clears the pattern. SEL + SELECT, SEL +
@@ -52,8 +55,8 @@ What changed for whoever plays AFFINE, newest first.
   the bare break; SEL + SAVE brings it all back.
 - **Fix:** RESET EVERYTHING left the drum steps' own settings, the song items' breaks and the other groups' drum
   bars 3-4 behind (written into all four groups).
-- **Release 0.2:** on the site's installer (<https://inigohernandez.github.io/affine/install/>) at the owner's word,
-  a beta not yet run on an FM-1: PSX COLOR and its presets, the black-key rows; the site's FM-1 runs 0.2 and shows
+- **Release 0.2:** on the site's installer (<https://inigohernandez.github.io/affine/install/>), a beta
+  not yet run on an FM-1 then: PSX COLOR and its presets, the black-key rows; the site's FM-1 runs 0.2 and shows
   today's screens; the GitHub release v0.2 carries the same file.
 - **Sound:** PSX COLOR on the PSX page: COLOR (AMOUNT, RATE 44K..8K with RAW steps, CRUNCH, SMOOTH) and OUT
   (CONSOLE, MONO, SEND, INPUT); the SPU's ADPCM round trip with an encoder you can spoil, its gaussian playback, a
@@ -63,7 +66,7 @@ What changed for whoever plays AFFINE, newest first.
   (hold FX and a key, turn a knob); REC records the black keys into the pattern.
 - **Site:** AFFINE's hover on what you can act on (buttons, links, the keys): the rows tear as a disc skips, then
   rest washed out over a faint dither and scanlines, the words readable; cards and tiles stay still.
-- **Screen:** every text on the FM-1 at 2x at least (the owner: "everything in the UI looks very small"), every
+- **Screen:** every text on the FM-1 at 2x at least, every
   page laid out again for it: pictures in place of help prose (EFFECTS, MIX, SYSTEM, LIVE SETTINGS, BOOM and the
   drums, OVERLAY, SONG, PATTERN, RESET, the tutorial, the SEL card), the tabs as the open one and a square for each,
   the foot's knob names in short forms, the header in one or two lines; no text cut or on another in any of the
@@ -89,7 +92,7 @@ What changed for whoever plays AFFINE, newest first.
 - **Safety:** a store from another firmware is left alone; under heavy load the chip's stages step back (CODEC,
   then SKIP, then VERB) instead of glitching; three memory bugs fixed.
 
-## 2026-11-15
+## 2026-11-15: AFFINE begins
 
 - **Fork:** AFFINE begins from LOAF BREAKER: the hardcore kick out, BOOM in (808, JUNGLE, DUB, TIGHT).
 - **Sound:** the PS1-era chip after the break: CODEC (GRIT, XA), VERB (nine presets), CRUSH, REDUX, SKIP.

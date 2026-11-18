@@ -9,7 +9,8 @@
 #                            licences beside it), the emulator built as X.Y; UNTESTED=1 says on the installer that the
 #                            package has not run on an FM-1
 # The screens are the host simulator's (sh tests/scenarios.sh first); the sounds are tests/engine/psx_demo.c's renders
-# (build/review/sounds), cut down for the page with macOS's afconvert. Serve web/ (.claude/launch.json: affine-web).
+# (build/review/sounds), cut down for the page with macOS's afconvert. changelog.js is CHANGELOG.md's
+# (tools/changelog_js.py: run it alone after a changelog line, as no build is needed). Serve web/ (.claude/launch.json: affine-web).
 set -e
 cd "$(dirname "$0")/.."
 WEB=web
@@ -124,6 +125,8 @@ for n in verbs grit xa crush redux skip; do
         echo "web/build.sh: no $R/affine-$n.m4a (tests/engine/psx_demo.c renders them)"
     fi
 done
+# the manual's change log, from CHANGELOG.md
+"${PYTHON:-python3}" tools/changelog_js.py CHANGELOG.md "$WEB/changelog.js"
 # the installer, for a release
 if [ -n "$RELEASE" ]; then
     PKG="app/build/affine-$RELEASE.fwsc"

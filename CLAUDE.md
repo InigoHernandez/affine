@@ -99,7 +99,11 @@ the hero (aff.c's title screen in JS); `panel.js` and `play.js` the FM-1 (from f
 `chip.js` the PSX bus heard; `perform.js` the black keys in both rows, AFFINE and PUNCH (held on the emulator too;
 its row kept in step both ways: the switch presses FX + OCT on the emulator through `affineEmu.row`, and play.js
 sends `affine:row` when the emulator's own FX + OCT is pressed); `controls.js` 04 Controls, the map: the FM-1 drawn
-with panel.js, every control pressable, a page button's parts stepped as on the FM-1, the real screen for each. Bump `?v=` in index.html with
+with panel.js, every control pressable, a page button's parts stepped as on the FM-1, the real screen for each.
+`manual.html` + `manual.js` the manual (after MONO2K's: contents on the left, one page at a time by `#id`, the
+simulator's screens, the knob names from main.c's KN_* tables); its change log is `changelog.js`, GENERATED from
+CHANGELOG.md by `tools/changelog_js.py` (web/build.sh runs it; run it alone after a changelog line). CHANGELOG.md's
+day headings take a title (`## 2026-11-18: a title`), every line a kind the tool knows (GROUP in it). Bump `?v=` in index.html with
 every changed file. Little text: a title and one line a section.
 Components (since 2026-11-17, after shadcn/ui, transitions.dev and Libraries.dev; style.css's head lists them): one
 `.btn` (`--primary` / `--outline` / `--solid`, `--sm` / `--lg`), `.card` with `.card__head` / `.card__foot`, `.badge`,

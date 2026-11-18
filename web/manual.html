@@ -1,0 +1,466 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- AFFINE's manual, after MONO2K's: the contents on the left, one page at a time on the right (manual.js shows the one
+     the address names, #the-chip and so on; without scripts every page shows, one after the other). Its screens are
+     the simulator's (web/screens), its knob names the firmware's own (app/ui/main.c KN_*); the change log is
+     CHANGELOG.md's (tools/changelog_js.py writes changelog.js). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AFFINE Manual</title>
+<meta name="description" content="The AFFINE manual: install it, play the break, the black keys, the effects, the PS1-era chip, patterns, drums, songs, every control, and the change log.">
+<meta name="theme-color" content="#060814">
+<script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
+<link rel="icon" href="gem.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
+<link rel="stylesheet" href="style.css?v=23">
+</head>
+<body class="noscript-all">
+<div class="rules" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<header class="bar">
+  <a class="brand" href="./" aria-label="AFFINE, the emulator"><canvas width="28" height="28" aria-hidden="true"></canvas><b>AFFINE</b></a>
+  <p class="dev label"><span>Runs on</span><b class="badge">FM-1</b></p>
+  <span class="acts"><button id="skin" class="btn btn--outline btn--sm skinbtn" type="button" aria-label="The skin: POLYGON. Next skin"><i aria-hidden="true"></i><span id="skin-n">POLYGON</span></button><a class="btn btn--primary btn--sm cta" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a></span>
+</header>
+<nav class="subnav" aria-label="Pages">
+  <a href="./">Play</a>
+  <a href="manual.html" aria-current="page">Manual</a>
+  <a href="manual.html#changelog" data-page="changelog">Change log</a>
+  <span class="sp"></span>
+  <a href="install/" class="tag">Install 0.3</a>
+</nav>
+
+<div class="docs">
+<details class="docs__side" id="side" open>
+  <summary class="label">Contents</summary>
+  <h4 class="label">Start here</h4>
+  <ol>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#browser">In the browser</a></li>
+    <li><a href="#find-your-way">Find your way</a></li>
+  </ol>
+  <h4 class="label">Play</h4>
+  <ol class="path">
+    <li><a href="#the-break"><i>01</i>Play the break</a></li>
+    <li><a href="#perform"><i>02</i>Perform</a></li>
+    <li><a href="#effects"><i>03</i>Effects</a></li>
+    <li><a href="#the-chip"><i>04</i>The chip</a></li>
+  </ol>
+  <h4 class="label">Make a track</h4>
+  <ol class="path">
+    <li><a href="#patterns"><i>05</i>Patterns</a></li>
+    <li><a href="#drums"><i>06</i>BOOM and the drums</a></li>
+    <li><a href="#songs"><i>07</i>Songs</a></li>
+    <li><a href="#mix"><i>08</i>The mix</a></li>
+    <li><a href="#save"><i>09</i>Save, undo, INIT</a></li>
+  </ol>
+  <h4 class="label">Reference</h4>
+  <ol>
+    <li><a href="#commands">Commands</a></li>
+    <li><a href="#glo">GLO: the FM-1 itself</a></li>
+    <li><a href="#credits">Credits and licence</a></li>
+  </ol>
+  <h4 class="label">Updates</h4>
+  <ol>
+    <li><a href="#changelog">Change log</a></li>
+  </ol>
+</details>
+
+<main class="doc" id="doc">
+
+<!-- ============================================================================================= start here -->
+<article id="introduction" data-group="Start here">
+  <h1 class="display">Start here</h1>
+  <p class="sub">AFFINE turns the M-VAVE FM-1 into a jungle break chopper: Amens on the keys, an effect under every key, and a PS1-era sound chip after it all.</p>
+  <figure class="panelfig"><div class="map__dev"><svg id="intro-svg" viewBox="0 0 1000 640" role="img" aria-label="The FM-1's panel"></svg><canvas class="map__lcd" width="240" height="240" data-src="screens/home.png" aria-hidden="true"></canvas></div></figure>
+  <h2 class="title">Play it, page by page</h2>
+  <div class="cards">
+    <a class="card" href="#the-break"><i>01</i><b>Play the break</b><span>Slices, the break, the tempo, the pitch</span></a>
+    <a class="card" href="#perform"><i>02</i><b>Perform</b><span>HOME's four knobs, the black keys' two rows</span></a>
+    <a class="card" href="#effects"><i>03</i><b>Effects</b><span>Sixteen on the white keys, a chain of four</span></a>
+    <a class="card" href="#the-chip"><i>04</i><b>The chip</b><span>Reverbs, codec grit, crush, skips</span></a>
+    <a class="card" href="#patterns"><i>05</i><b>Patterns</b><span>Record, steps, clear, copy</span></a>
+    <a class="card" href="#drums"><i>06</i><b>BOOM and the drums</b><span>Sounds, memories, the generator</span></a>
+    <a class="card" href="#songs"><i>07</i><b>Songs</b><span>Tracks, drops, builds</span></a>
+    <a class="card" href="#mix"><i>08</i><b>The mix</b><span>Levels, the master, ducking</span></a>
+    <a class="card" href="#save"><i>09</i><b>Save, undo, INIT</b><span>Keep it, take it back, start bare</span></a>
+  </div>
+  <h2 class="title">Look it up</h2>
+  <div class="cards">
+    <a class="card" href="#commands"><b>Commands</b><span>Every control and combination</span></a>
+    <a class="card" href="#glo"><b>GLO</b><span>MIDI, skins, the screen, reset</span></a>
+    <a class="card" href="#changelog"><b>Change log</b><span>What each update brought</span></a>
+  </div>
+  <div class="callout"><b class="badge badge--hot">On the FM-1</b><p>Tap SEL: the screen lists what SEL does with the other buttons. The first start offers a tutorial of 28 steps; GLO › SETUP's K3 starts it again.</p></div>
+</article>
+
+<article id="install" data-group="Start here">
+  <h1 class="display">Install</h1>
+  <p class="sub">From the installer, over USB, in Chrome or Edge. Or try it in the browser first.</p>
+  <ol class="steps">
+    <li>Back up what your FM-1 holds, with the firmware it runs now. Installing another firmware is at your own risk.</li>
+    <li>Open the <a href="install/">installer</a> in Chrome or Edge and connect the FM-1 by USB, straight to the computer.</li>
+    <li>Press Install. The FM-1 restarts into AFFINE. Coming from another firmware, leave it running as it is.</li>
+  </ol>
+  <p class="actions"><a class="btn btn--primary" href="install/">Open the installer</a><a class="btn btn--outline" href="./#play">Try it in the browser</a></p>
+  <table class="tbl">
+    <tbody>
+      <tr><th>Version</th><td>0.3, tested on an FM-1</td></tr>
+      <tr><th>Identity</th><td><code>FM-1_2815000300</code> (<code>FM-1_2815</code> and the version)</td></tr>
+      <tr><th>On USB</th><td>AFFINE FM-1, a MIDI device</td></tr>
+      <tr><th>Every FM-1</th><td>The first units' flash (0x856014) and the newer units' (0xB36014)</td></tr>
+    </tbody>
+  </table>
+  <h2 class="title">What it keeps</h2>
+  <p>Its settings and 64 patterns, in the FM-1's data area: the places LOAF BREAKER and CHOPPAH use. It doesn't read what another firmware saved there: it starts fresh. Its first SAVE writes over that area, so back up first.</p>
+  <h2 class="title">Leave it</h2>
+  <p>Install another firmware as usual, from its installer or <a href="https://thefirmwarehub.com" target="_blank" rel="noopener">The Firmware Hub</a>: AFFINE hands over to it. The installer's <b>Back to the stock firmware</b> puts M-VAVE's back.</p>
+  <h2 class="title">If it won't start</h2>
+  <p>After two failed starts it comes up in SAFE MODE, silent, with USB on: install it again from the installer. Or hold <kbd>OCT−</kbd> while switching the FM-1 on, then install.</p>
+</article>
+
+<article id="browser" data-group="Start here">
+  <h1 class="display">In the browser</h1>
+  <p class="sub">The same firmware runs on the <a href="./#play">site's FM-1</a>. Press Start, then play it with the mouse or the keys.</p>
+  <table class="tbl">
+    <thead><tr><th>Keys</th><th>On the FM-1</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>Q</kbd>–<kbd>I</kbd> <kbd>A</kbd>–<kbd>K</kbd></td><td>The white keys: the break's 16 slices</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>0</kbd> <kbd>-</kbd></td><td>The black keys: eleven effects, while held</td></tr>
+      <tr><td><kbd>Space</kbd> <kbd>O</kbd> <kbd>Esc</kbd></td><td>PLAY, REC, HOME</td></tr>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>SELECT: the tempo</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>ALGORITHM: the break</td></tr>
+      <tr><td><kbd>;</kbd> <kbd>'</kbd></td><td>PRESETS: the pattern</td></tr>
+      <tr><td><kbd>Z</kbd> <kbd>X</kbd></td><td>OCT− and OCT+</td></tr>
+      <tr><td>Drag, scroll</td><td>A knob</td></tr>
+      <tr><td>Shift-click</td><td>Holds a key or button until clicked again</td></tr>
+    </tbody>
+  </table>
+  <p>It saves as you go, in this browser only. Reset, under the FM-1, erases it and starts from the factory.</p>
+</article>
+
+<article id="find-your-way" data-group="Start here">
+  <h1 class="display">Find your way</h1>
+  <p class="sub">Four rules, the same on every page.</p>
+  <ol class="steps">
+    <li><b>The encoders never change.</b> SELECT the tempo, ALGORITHM the break, PRESETS the pattern.</li>
+    <li><b>A page button opens its first part.</b> Pressed again, the next part, round. It acts as you let go.</li>
+    <li><b>OCT− and OCT+ step through the part's items.</b> Where a part has none, they change the pitch.</li>
+    <li><b>K1–K4 are the item's.</b> Their names are at the screen's foot.</li>
+  </ol>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-oct.png" role="img" aria-label="FX › PSX with VERB as its item"></canvas><figcaption>FX › PSX, OCT+: VERB</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-tempo.png" role="img" aria-label="The tempo changed from FX › CHAIN"></canvas><figcaption>SELECT on FX › CHAIN</figcaption></figure>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Button</th><th>Parts, pressed again</th></tr></thead>
+    <tbody>
+      <tr><td>HOME</td><td>PERFORM, SETTINGS</td></tr>
+      <tr><td>FX</td><td>PLAY, CHAIN, SLOT, PSX, SENDS</td></tr>
+      <tr><td>EDIT</td><td>BREAK, BOOM, SNARE, HAT, CLAP</td></tr>
+      <tr><td>SEQ</td><td>STEPS, DRUMS, SETTINGS</td></tr>
+      <tr><td>ARP</td><td>GENERATOR</td></tr>
+      <tr><td>ENV</td><td>TRACKS, PLAY, DROP, BUILD</td></tr>
+      <tr><td>LFO</td><td>LEVELS, MASTER, DYN</td></tr>
+      <tr><td>GLO</td><td>MIDI, SETUP, SCREEN, RESET</td></tr>
+    </tbody>
+  </table>
+  <p>The header names the page, its part and the item. The site's <a href="./#map">controls map</a> lets you press each one.</p>
+</article>
+
+<!-- ================================================================================================== play -->
+<article id="the-break" data-group="Play">
+  <h1 class="display">Play the break</h1>
+  <p class="sub">Ten of Cyberworm's royalty-free Amens, sixteen slices each on the white keys.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-home-perform.png" role="img" aria-label="HOME, playing"></canvas><figcaption>HOME, playing</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-white.png" role="img" aria-label="HOME with a slice held"></canvas><figcaption>A slice held</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-break.png" role="img" aria-label="The next break, named in the header"></canvas><figcaption>ALGORITHM turned</figcaption></figure>
+  </div>
+  <table class="tbl">
+    <tbody>
+      <tr><th>PLAY</th><td>Plays and stops the break</td></tr>
+      <tr><th>White keys</th><td>The slices. Held, K1–K4 set that slice: LEN, PITCH, START, MODE. With SEL, back to its defaults</td></tr>
+      <tr><th>ALGORITHM</th><td>The next break, or the one before</td></tr>
+      <tr><th>SELECT</th><td>The tempo</td></tr>
+      <tr><th>OCT− OCT+</th><td>The pitch, on HOME and EDIT › BREAK</td></tr>
+    </tbody>
+  </table>
+  <h2 class="title">HOME › SETTINGS</h2>
+  <p>HOME again. K1 VIEW, K2 GATE, K3 WAVE ZOOM, K4 BREAK TIME.</p>
+  <h2 class="title">EDIT › BREAK</h2>
+  <p>K1 PITCH (KEEP LEN: each slice keeps its length; SPEED: as a tape), K2 GRAIN, K3 SNAP, K4 LEVEL.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-home-settings.png" role="img" aria-label="HOME › SETTINGS"></canvas><figcaption>HOME › SETTINGS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-break.png" role="img" aria-label="EDIT › BREAK"></canvas><figcaption>EDIT › BREAK</figcaption></figure>
+  </div>
+</article>
+
+<article id="perform" data-group="Play">
+  <h1 class="display">Perform</h1>
+  <p class="sub">HOME's four knobs, and eleven black keys in two rows.</p>
+  <h2 class="title">HOME's knobs</h2>
+  <table class="tbl">
+    <tbody>
+      <tr><th>K1 FILTER</th><td>Left a low-pass, right a high-pass</td></tr>
+      <tr><th>K2 CRUSH</th><td>The bits, down</td></tr>
+      <tr><th>K3 REDUX</th><td>The sample rate, down</td></tr>
+      <tr><th>K4 VERB</th><td>Into the chip's reverb</td></tr>
+    </tbody>
+  </table>
+  <h2 class="title">The black keys</h2>
+  <p>An effect while you hold one. Held, K1–K4 set it; one with LATCH stays on from one press to the next. <kbd>FX</kbd> + <kbd>OCT−</kbd> row AFFINE, <kbd>FX</kbd> + <kbd>OCT+</kbd> row PUNCH, from any page. REC records them into the pattern.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/k-freeze.png" role="img" aria-label="FREEZE held: its knobs at the foot"></canvas><figcaption>FREEZE held</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/row-b.png" role="img" aria-label="Row B, PUNCH"></canvas><figcaption>FX + OCT+: PUNCH</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/pk-wash.png" role="img" aria-label="WASH held"></canvas><figcaption>WASH held</figcaption></figure>
+  </div>
+  <table class="tbl keys">
+    <thead><tr><th>Key</th><th>AFFINE</th><th>PUNCH</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>ROLL 1/8</td><td>STUTTER <small>R16 + FLT</small></td></tr>
+      <tr><td>2</td><td>ROLL 1/16</td><td>BUZZ <small>R32 + CRS</small></td></tr>
+      <tr><td>3</td><td>ROLL 1/32</td><td>REV VERB <small>REV + VRB</small></td></tr>
+      <tr><td>4</td><td>REVERSE</td><td>SLOW MO <small>HLF + FLT</small></td></tr>
+      <tr><td>5</td><td>HALF SPEED</td><td>TAPE STOP <small>VNL + VRB</small></td></tr>
+      <tr><td>6</td><td>VINYL BREAK</td><td>GLITCH <small>SKP + RND</small></td></tr>
+      <tr><td>7</td><td>FREEZE</td><td>WASH <small>FRZ + VRB + FLT</small></td></tr>
+      <tr><td>8</td><td>SKIP</td><td>CHOP <small>GAT + CRS</small></td></tr>
+      <tr><td>9</td><td>VERB THROW</td><td>DUB ECHO <small>R8 + DUB</small></td></tr>
+      <tr><td>10</td><td>CRUSH</td><td>SHATTER <small>RND + CRS + SKP</small></td></tr>
+      <tr><td>11</td><td>FILTER</td><td>DROP OUT <small>KIL + FLT</small></td></tr>
+    </tbody>
+  </table>
+  <p>Hear and see each one on the site's <a href="./#perform">Perform</a>.</p>
+</article>
+
+<article id="effects" data-group="Play">
+  <h1 class="display">Effects</h1>
+  <p class="sub">Every effect is under FX: sixteen on the white keys, a chain of four slots, the chip, the sends.</p>
+  <h2 class="title">FX › PLAY</h2>
+  <p>The white keys are sixteen effects. K1 AMOUNT, K2 RATE, K3 SWEEP, K4 LATCH (on: a press turns one on, the next off). OCT picks the black keys' row.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-play.png" role="img" aria-label="FX › PLAY: the sixteen effects"></canvas><figcaption>FX › PLAY</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-chain.png" role="img" aria-label="FX › CHAIN: four slots"></canvas><figcaption>FX › CHAIN</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-slot.png" role="img" aria-label="FX › SLOT: one effect's knobs"></canvas><figcaption>FX › SLOT</figcaption></figure>
+  </div>
+  <p class="tags"><span class="badge">1 DIVE</span><span class="badge">2 RISE</span><span class="badge">3 RADIO</span><span class="badge">4 WAH</span><span class="badge">5 CRUSH</span><span class="badge">6 LO-FI</span><span class="badge">7 DIST</span><span class="badge">8 RING</span><span class="badge">9 CHOP</span><span class="badge">10 GATE</span><span class="badge">11 DUCK</span><span class="badge">12 PAN</span><span class="badge">13 BOOM</span><span class="badge">14 WOBBLE</span><span class="badge">15 JET</span><span class="badge">16 REESE</span></p>
+  <table class="tbl">
+    <thead><tr><th>Part</th><th>OCT</th><th>Knobs</th></tr></thead>
+    <tbody>
+      <tr><td>CHAIN</td><td>SLOT 1–4</td><td>TYPE, MIX, ON/OFF, POSITION</td></tr>
+      <tr><td>SLOT</td><td>MAIN, MORE, MOD</td><td>The slot's effect</td></tr>
+      <tr><td>PSX</td><td>Seven items</td><td><a href="#the-chip">The chip</a></td></tr>
+      <tr><td>SENDS</td><td>—</td><td>FX the fader, DRUMS through the chain or around it, ARP what the white-key effects take, ROLL what the rolls repeat</td></tr>
+    </tbody>
+  </table>
+  <p>FX held alone for a moment: the FX fader, 0 or 100 %.</p>
+</article>
+
+<article id="the-chip" data-group="Play">
+  <h1 class="display">The chip</h1>
+  <p class="sub">After the chain, the sound of a 1990s console's chip: CODEC, VERB, CRUSH, REDUX, SKIP, then OUT. FX four times: PSX.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-psx.png" role="img" aria-label="PSX's four presets"></canvas><figcaption>PRESET</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="PSX's VERB"></canvas><figcaption>VERB</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-codec.png" role="img" aria-label="PSX's CODEC"></canvas><figcaption>CODEC</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-skip.png" role="img" aria-label="PSX's SKIP"></canvas><figcaption>SKIP</figcaption></figure>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Item (OCT)</th><th>K1–K4</th></tr></thead>
+    <tbody>
+      <tr><td>PRESET</td><td>K1: SUBTLE GLUE, POLY PAD, CRUNCHY TAIL, DUB SPACE (every stage at once)</td></tr>
+      <tr><td>VERB</td><td>TYPE, SIZE, TONE, DEPTH. Nine types, from ROOM to DELAY; on CHAOS and DELAY, SIZE steps in note values</td></tr>
+      <tr><td>CODEC</td><td>MODE (GRIT, the console's sample sound; XA, its CD audio), RATE, BITS, MIX</td></tr>
+      <tr><td>COLOR</td><td>AMOUNT, RATE, CRUNCH, SMOOTH</td></tr>
+      <tr><td>LOFI</td><td>How CRUSH and REDUX break the sound: CRUSH, MASK, REDUX, JITTER (their amounts are HOME's K2 and K3)</td></tr>
+      <tr><td>SKIP</td><td>LENGTH, CHANCE, SEEK, MIX: a disc that skips, on the tempo</td></tr>
+      <tr><td>OUT</td><td>CONSOLE, MONO, SEND, INPUT</td></tr>
+    </tbody>
+  </table>
+  <p>Hear each stage on the site's <a href="./#chip">The chip</a>.</p>
+</article>
+
+<!-- ============================================================================================ make a track -->
+<article id="patterns" data-group="Make a track">
+  <h1 class="display">Patterns</h1>
+  <p class="sub">64 patterns. PRESETS picks one; playing, it comes in at the loop's end.</p>
+  <table class="tbl">
+    <tbody>
+      <tr><th>REC</th><td>Records the slices and the black keys as they play. It clears nothing</td></tr>
+      <tr><th>SEQ › STEPS</th><td>The break's lanes and the drums', step by step. OCT the lane; K1 FILL, K2 PRESET, K3 CLR / 4X4, K4 LENGTH</td></tr>
+      <tr><th>SEQ › DRUMS</th><td>The drums' lanes on their own</td></tr>
+      <tr><th>SEQ › SETTINGS</th><td>K1 SWING, K2 BREAK ROWS, K3 FOLLOW</td></tr>
+      <tr><th>SEQ held</th><td>CLEAR Pn?: SEQ again clears the pattern; anything else keeps it</td></tr>
+      <tr><th>SEL + SEQ</th><td>Copy the pattern, then paste it</td></tr>
+      <tr><th>SEQ + white key 1–4</th><td>A bar copied</td></tr>
+    </tbody>
+  </table>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-rec.png" role="img" aria-label="REC on"></canvas><figcaption>REC on</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-seq-steps.png" role="img" aria-label="SEQ › STEPS"></canvas><figcaption>SEQ › STEPS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-pattern.png" role="img" aria-label="The next pattern, named in the header"></canvas><figcaption>PRESETS turned</figcaption></figure>
+  </div>
+</article>
+
+<article id="drums" data-group="Make a track">
+  <h1 class="display">BOOM and the drums</h1>
+  <p class="sub">A kick, BOOM, under the break; a snare, a hat and a clap. EDIT, then EDIT again.</p>
+  <table class="tbl">
+    <thead><tr><th>Part</th><th>OCT</th><th>Knobs</th></tr></thead>
+    <tbody>
+      <tr><td>BOOM</td><td>BOOM, SHAPE</td><td>PRE (808, JUNGLE, DUB, TIGHT), TUNE, DEC, LEVEL</td></tr>
+      <tr><td>SNARE, HAT, CLAP</td><td>SOUND, SHAPE, MORE, MEMORY</td><td>SOUND: LEVEL, TUNE, DEC, TONE (the hat: NOISE)</td></tr>
+    </tbody>
+  </table>
+  <p>MEMORY keeps ten sounds a drum: K1 picks one, K2 COPY, K3 PASTE.</p>
+  <h2 class="title">ARP › GENERATOR</h2>
+  <p>The drums written for you: K1 COMPLEXITY, K2 ANCHOR, K3 ROLL, K4 FILL.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-boom.png" role="img" aria-label="EDIT › BOOM"></canvas><figcaption>EDIT › BOOM</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-snare.png" role="img" aria-label="EDIT › SNARE"></canvas><figcaption>EDIT › SNARE</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-arp-generator.png" role="img" aria-label="ARP › GENERATOR"></canvas><figcaption>ARP › GENERATOR</figcaption></figure>
+  </div>
+</article>
+
+<article id="songs" data-group="Make a track">
+  <h1 class="display">Songs</h1>
+  <p class="sub">Patterns in a row, with drops and builds. ENV.</p>
+  <table class="tbl">
+    <thead><tr><th>Part</th><th>Knobs</th></tr></thead>
+    <tbody>
+      <tr><td>TRACKS</td><td>OCT the item. K1 TRACK, K2 PUT (a pattern, a drop, the end), K3 LOOPS, K4 BREAK</td></tr>
+      <tr><td>PLAY</td><td>K1 TRACK, K2 FROM, K3 END</td></tr>
+      <tr><td>DROP</td><td>A white key drops into its pattern. K1 BUILD, K2 AFTER, K3 BREAK, K4 CRASH</td></tr>
+      <tr><td>BUILD</td><td>OCT: BUILD, TEMPO RISE. K1 STYLE, K2 SWEEP, K3 RISER, K4 GAP</td></tr>
+    </tbody>
+  </table>
+  <p>SEL + PLAY on TRACKS: the item it starts from.</p>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-tracks.png" role="img" aria-label="ENV › TRACKS"></canvas><figcaption>ENV › TRACKS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-drop.png" role="img" aria-label="ENV › DROP"></canvas><figcaption>ENV › DROP</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-build.png" role="img" aria-label="ENV › BUILD"></canvas><figcaption>ENV › BUILD</figcaption></figure>
+  </div>
+</article>
+
+<article id="mix" data-group="Make a track">
+  <h1 class="display">The mix</h1>
+  <p class="sub">Levels, the master bus and its ducking. LFO. MASTER, the pot, is the volume.</p>
+  <table class="tbl">
+    <thead><tr><th>Part</th><th>Knobs</th></tr></thead>
+    <tbody>
+      <tr><td>LEVELS</td><td>K1 BREAK, K2 BOOM, K3 PERC</td></tr>
+      <tr><td>MASTER</td><td>K1 COMP, K2 RATIO, K3 DUCK, K4 MAX OUT</td></tr>
+      <tr><td>DYN</td><td>K1 C ATTACK, K2 C RELEASE, K3 D RELEASE, K4 DUCKS</td></tr>
+    </tbody>
+  </table>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-levels.png" role="img" aria-label="LFO › LEVELS"></canvas><figcaption>LFO › LEVELS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-master.png" role="img" aria-label="LFO › MASTER"></canvas><figcaption>LFO › MASTER</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-dyn.png" role="img" aria-label="LFO › DYN"></canvas><figcaption>LFO › DYN</figcaption></figure>
+  </div>
+</article>
+
+<article id="save" data-group="Make a track">
+  <h1 class="display">Save, undo, INIT</h1>
+  <p class="sub">Keep it, take it back, or start from the bare break.</p>
+  <table class="tbl">
+    <tbody>
+      <tr><th>SAVE</th><td>Writes it all to the FM-1. Best while stopped</td></tr>
+      <tr><th>AUTO SAVE</th><td>GLO › SETUP's K4: a minute after a change, once stopped</td></tr>
+      <tr><th>SEL + SAVE</th><td>Undo; again, redo</td></tr>
+      <tr><th>INIT</th><td>SEL + HOME, then HOME within 3 s: the pattern cleared and every effect off. The tempo, the break and the sounds stay. SEL + SAVE brings it all back</td></tr>
+      <tr><th>RESET</th><td>GLO › RESET: K4 picks what (a drop, the drums, the mix… EVERYTHING), K2 turned five times, then GLO</td></tr>
+    </tbody>
+  </table>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-save.png" role="img" aria-label="SAVE done"></canvas><figcaption>SAVE</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-sel.png" role="img" aria-label="SEL's card: its combinations"></canvas><figcaption>SEL tapped</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-reset.png" role="img" aria-label="GLO › RESET"></canvas><figcaption>GLO › RESET</figcaption></figure>
+  </div>
+</article>
+
+<!-- ============================================================================================= reference -->
+<article id="commands" data-group="Reference">
+  <h1 class="display">Commands</h1>
+  <p class="sub">Every control, alone and with another.</p>
+  <table class="tbl cmd">
+    <thead><tr><th>Control</th><th>Alone</th><th>Held, or with</th></tr></thead>
+    <tbody>
+      <tr><td>SELECT</td><td>The tempo</td><td>—</td></tr>
+      <tr><td>ALGORITHM</td><td>The break</td><td>—</td></tr>
+      <tr><td>PRESETS</td><td>The pattern, at the loop's end</td><td>—</td></tr>
+      <tr><td>MASTER</td><td>The volume</td><td>—</td></tr>
+      <tr><td>K1–K4</td><td>The item's knobs</td><td>A key held: that key's</td></tr>
+      <tr><td>OCT− OCT+</td><td>The item, or the pitch</td><td>FX +: the black keys' row</td></tr>
+      <tr><td>HOME</td><td>PERFORM, SETTINGS</td><td>SEL + HOME, then HOME: INIT</td></tr>
+      <tr><td>FX</td><td>PLAY, CHAIN, SLOT, PSX, SENDS</td><td>Held alone: the FX fader</td></tr>
+      <tr><td>EDIT</td><td>BREAK, BOOM, SNARE, HAT, CLAP</td><td>—</td></tr>
+      <tr><td>SEQ</td><td>STEPS, DRUMS, SETTINGS</td><td>Held: CLEAR Pn?, SEQ clears. SEL +: copy. + white key 1–4: a bar copied</td></tr>
+      <tr><td>ARP</td><td>GENERATOR</td><td>—</td></tr>
+      <tr><td>ENV</td><td>TRACKS, PLAY, DROP, BUILD</td><td>SEL + PLAY on TRACKS: the start item</td></tr>
+      <tr><td>LFO</td><td>LEVELS, MASTER, DYN</td><td>—</td></tr>
+      <tr><td>GLO</td><td>MIDI, SETUP, SCREEN, RESET</td><td>—</td></tr>
+      <tr><td>SEL</td><td>Its card: the combinations</td><td>+ SAVE undo, + HOME INIT, + SEQ copy, a white key + SEL its defaults</td></tr>
+      <tr><td>SAVE</td><td>Writes it all</td><td>SEL +: undo</td></tr>
+      <tr><td>PLAY</td><td>Plays, stops</td><td>—</td></tr>
+      <tr><td>REC</td><td>Records the keys</td><td>—</td></tr>
+      <tr><td>White keys</td><td>The slices; on FX › PLAY the effects; on ENV › DROP the drops</td><td>Held: its knobs</td></tr>
+      <tr><td>Black keys</td><td>Effects while held</td><td>Held: its knobs</td></tr>
+    </tbody>
+  </table>
+</article>
+
+<article id="glo" data-group="Reference">
+  <h1 class="display">GLO</h1>
+  <p class="sub">The FM-1 itself: MIDI, the setup, the screen, reset.</p>
+  <table class="tbl">
+    <thead><tr><th>Part</th><th>Knobs</th></tr></thead>
+    <tbody>
+      <tr><td>MIDI</td><td>Over USB and the TRS jack. K1 CLOCK IN, K2 CLOCK OUT, K3 METER: the header shows the CPU, its average and peak</td></tr>
+      <tr><td>SETUP</td><td>K1 SKIN (five), K3 TUTORIAL (right starts it, left stops it), K4 AUTO SAVE</td></tr>
+      <tr><td>SCREEN</td><td>OCT: EFFECTS (K1 EFFECT: CRT, VHS, GRAIN, RGB, SHAKE, STROBE, 8-BIT; K2 ON / OFF), FX SET (AMOUNT, BOOM, DROP, LENGTH), VIEWS (the drums' view)</td></tr>
+      <tr><td>RESET</td><td><a href="#save">Save, undo, INIT</a></td></tr>
+    </tbody>
+  </table>
+  <div class="shots">
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-midi.png" role="img" aria-label="GLO › MIDI"></canvas><figcaption>GLO › MIDI</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-setup.png" role="img" aria-label="GLO › SETUP"></canvas><figcaption>GLO › SETUP</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-screen.png" role="img" aria-label="GLO › SCREEN"></canvas><figcaption>GLO › SCREEN</figcaption></figure>
+  </div>
+</article>
+
+<article id="credits" data-group="Reference">
+  <h1 class="display">Credits</h1>
+  <p class="sub">AFFINE is open source, MPL-2.0: <a href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">github.com/InigoHernandez/affine</a>.</p>
+  <p>Built on LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich, on fm1-base by Charles Vestal and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments).</p>
+  <p>Breaks by Dmitriy "Cyberworm" Vasilyev, royalty free. The chip's effects are AFFINE's own code, written from the public PS1 hardware reference psx-spx; only its documented numbers are used (the reverb presets, the resampler's taps).</p>
+  <p>Pixel font: Elektron Pixel Font by savingaurora, adapted (CC BY-SA 4.0). Inter Tight (SIL OFL 1.1). The site's components after shadcn/ui, its motion after transitions.dev and Libraries.dev.</p>
+  <p>Not affiliated with M-VAVE or Sony. FM-1 is M-VAVE's.</p>
+</article>
+
+<!-- =============================================================================================== updates -->
+<article id="changelog" data-group="Updates">
+  <h1 class="display">Change log</h1>
+  <p class="sub">What each update brought, newest first. Pick a kind to see only those.</p>
+  <div data-changelog><p>The change log is on <a href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md">GitHub</a>.</p></div>
+</article>
+
+<nav class="pager" id="pager" aria-label="Previous and next"></nav>
+</main>
+</div>
+
+<footer class="bar foot">
+  <a class="label kofi" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">AFFINE on GitHub</a><span class="label">Manual</span><a class="label kofi" href="https://ko-fi.com/sequencist" target="_blank" rel="noopener">Ko-fi</a>
+</footer>
+
+<script src="site.js?v=3"></script>
+<script src="brand.js?v=1"></script>
+<script src="panel.js?v=1"></script>
+<script src="changelog.js?v=1"></script>
+<script src="manual.js?v=1"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <!-- AFFINE's site: the firmware itself in the browser (emu/app.wasm, fm1-base's emulator), on MONO2K's grid (one
      12-column grid, the dotted rules; numbered sections) in AFFINE's POLYGON look. style.css, site.js (the skins of the header's switch, dither,
      screens, motion), scene.js (the hero: the floor, the gem, the wordmark), panel.js and play.js (the FM-1),
-     chip.js (the PSX bus, heard), perform.js (the black keys, both rows), controls.js (the controls map). web/build.sh gathers emu/, screens/ and sounds/. -->
+     chip.js (the PSX bus, heard), perform.js (the black keys, both rows), controls.js (the controls map); manual.html and manual.js the manual, changelog.js its change log (CHANGELOG.md's). web/build.sh gathers emu/, screens/ and sounds/. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -14,7 +14,7 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 <!-- AFFINE's hover (style.css dg-tear): rows slipping as a disc skips -->
@@ -36,6 +36,7 @@
   <a href="#map">Controls</a>
   <a href="#made">Making</a>
   <span class="sp"></span>
+  <a href="manual.html">Manual</a>
   <a href="install/" class="tag">Install 0.3</a>
   <i class="subnav__ink" aria-hidden="true"></i>
 </nav>
@@ -47,7 +48,7 @@
   </div>
   <div class="hero__sub">
     <p class="hero__line">Jungle breaks on the FM-1's keys, through a PS1-era sound chip.</p>
-    <p class="hero__acts"><a class="btn btn--primary" href="#play">Play</a><a class="btn btn--outline" href="#chip">Hear the chip</a><a class="btn btn--outline" href="install/">Install</a></p>
+    <p class="hero__acts"><a class="btn btn--primary" href="#play">Play</a><a class="btn btn--outline" href="#chip">Hear the chip</a><a class="btn btn--outline" href="manual.html">Manual</a><a class="btn btn--outline" href="install/">Install</a></p>
   </div>
 </section>
 
@@ -237,7 +238,7 @@
   <div class="sec__body">
     <h2 class="display stripes">Status</h2>
     <p class="lede">0.3: one way to play every page, every effect under FX. Tested on an FM-1.</p>
-    <p class="hero__acts status__acts"><a class="btn btn--primary" href="install/">Install 0.3</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/releases" target="_blank" rel="noopener">Release</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">Source</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></p>
+    <p class="hero__acts status__acts"><a class="btn btn--primary" href="install/">Install 0.3</a><a class="btn btn--outline" href="manual.html">Manual</a><a class="btn btn--outline" href="manual.html#changelog">Change log</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/releases" target="_blank" rel="noopener">Release</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine" target="_blank" rel="noopener">Source</a><a class="btn btn--outline" href="https://github.com/InigoHernandez/affine/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></p>
     <p class="credits">Built on LOAF BREAKER by FLEXOR and CHOPPAH by Laurens Profittlich, on fm1-base by Charles Vestal and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments). Breaks by Cyberworm, royalty free. Pixel font: Elektron Pixel Font by savingaurora, adapted (CC BY-SA 4.0).</p>
   </div>
 </section>

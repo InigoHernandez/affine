@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: MPL-2.0
+// GENERATED from CHANGELOG.md by tools/changelog_js.py (web/build.sh runs it): edit CHANGELOG.md, not this.
+window.AFF_KINDS = {"release": "Releases", "play": "Playing", "sound": "Sound", "screen": "Screen", "fixes": "Fixes", "web": "Website", "docs": "Docs"};
+window.AFF_CHANGES = [
+ {
+  "date": "2026-11-18",
+  "title": "0.3 tested on an FM-1, a manual",
+  "items": [
+   [
+    "web",
+    "A manual (<https://inigohernandez.github.io/affine/manual.html>): install, play the break, perform, the effects, the chip, patterns, drums, songs, the mix, saving, every control, GLO, credits, each with the FM-1's screens; and this change log, its kinds as filters. The page links to it from its bar and Status."
+   ],
+   [
+    "docs",
+    "The Firmware Hub's tests for 0.3 (`docs/hub-test-0.3.md`): from V15, USB, leaving it from the Hub, from another firmware, what it keeps, an install cut short."
+   ],
+   [
+    "docs",
+    "`fmhub.json` for 0.3: the card's line names both black-key rows, the breaks' source in its `sounds` line (Cyberworm's royalty-free Amens), AFFINE's orange as the card's colour."
+   ],
+   [
+    "release",
+    "0.3: tested on an FM-1, every step good ([the test](https://github.com/InigoHernandez/affine/blob/main/docs/hardware-test-0.3.md)); the site and the installer no longer say it has not run on one. The three choices (ENV › DROP, SEL + REC, a drum's MEMORY) stay."
+   ],
+   [
+    "web",
+    "Perform has both rows of black keys: a switch for AFFINE and PUNCH, each PUNCH key with its FM-1 screen and what it holds (WASH: FRZ + VRB + FLT). With the FM-1 on, the switch sets its row and its FX + OCT sets the switch."
+   ],
+   [
+    "web",
+    "A new section, Controls: the FM-1 drawn with every control pressable, its job in a line and its real screen; a page button pressed again steps its parts as on the FM-1, with the items OCT reaches."
+   ],
+   [
+    "docs",
+    "The FM-1 test for 0.3 (`docs/hardware-test-0.3.md`): the meter, the controls, both black-key rows, the four presets' CPU, SIZE, INIT, saving, and three choices to keep or change."
+   ]
+  ]
+ },
+ {
+  "date": "2026-11-17",
+  "title": "the site and the installer on one system",
+  "items": [
+   [
+    "web",
+    "One system for the page and the installer, after shadcn/ui, transitions.dev and Libraries.dev (in AFFINE's look): content no wider than 1440 px, every gap on one scale, one button (hot, outline, ink; three heights), cards for the chip and Perform, badges, keycaps, the reverb presets in an even grid. Motion: the Keys and Reset drawers open as an accordion, one bar slides under the section in view and one block under the chip's stage, the tooltips wait 80 ms, a pixel light runs round Start and Install, the FM-1's screens resolve out of a mosaic."
+   ],
+   [
+    "web",
+    "The chip's captions say FX › PSX, and the FM-1's help line describes 0.3's controls."
+   ],
+   [
+    "web",
+    "The site's buttons, grid and cards; \"Beta.\" in place of \"First release.\"; the hidden Copy button hidden again; the credits once, with the fonts AFFINE uses. The package is the same file (sha 5337d76b)."
+   ]
+  ]
+ },
+ {
+  "date": "2026-11-16",
+  "title": "0.1, 0.2 and 0.3, the first releases",
+  "items": [
+   [
+    "release",
+    "0.3: on the site's installer (<https://inigohernandez.github.io/affine/install/>), a beta not yet run on an FM-1 then: the new controls (both phases) and the lower gem; the site's FM-1 runs 0.3, its screens and keys today's; the GitHub release v0.3 (2026-11-17) carries the same file."
+   ],
+   [
+    "play",
+    "The same encoders on every page: SELECT the tempo, ALGORITHM the break, PRESETS the pattern (playing: NEXT Pn until it comes in). A page button opens its first part, pressed again the next, as you let it go; OCT- / OCT+ step through the part's items (the header names them), or change the pitch where there are none. FX holds every effect: PLAY (the white-key effects, ARP's before; OCT the black-key row), CHAIN (K1 the effect, K2 its mix, K3 on / off, K4 its place), SLOT, PSX (PRESET first), SENDS (MIX's before). EDIT opens the BREAK, then BOOM, SNARE, HAT, CLAP; a drum's MEMORY item picks, copies and pastes its sounds. ARP is the GENERATOR. ENV's DROP: a white key drops into its pattern; BUILD's TEMPO RISE an item. The drum views on GLO › SCREEN › VIEWS. The tutorial walks the new way (28 steps)."
+   ],
+   [
+    "screen",
+    "HOME's gem a little lower, clear of the header's second line even on the beat."
+   ],
+   [
+    "play",
+    "Two rows of black keys, FX + OCT- AFFINE, FX + OCT+ PUNCH (CUSTOM and ARP's BLACK KEYS tab gone; a saved CUSTOM row plays AFFINE's, and what REC recorded still plays). No clear without a question: REC just records (SEL + REC, REC held, SEQ + REC clears gone); SEQ held, then SEQ, clears the pattern. SEL + SELECT, SEL + ALGORITHM and SEL + ARP's GROOVE gone. One mode for everyone: the full AFFINE (the first start asks TUTORIAL or PLAY; SETUP K3 starts the tutorial). INIT: SEL + HOME, then HOME: the pattern cleared and every effect off, the bare break; SEL + SAVE brings it all back."
+   ],
+   [
+    "fixes",
+    "RESET EVERYTHING left the drum steps' own settings, the song items' breaks and the other groups' drum bars 3-4 behind (written into all four groups)."
+   ],
+   [
+    "release",
+    "0.2: on the site's installer (<https://inigohernandez.github.io/affine/install/>), a beta not yet run on an FM-1 then: PSX COLOR and its presets, the black-key rows; the site's FM-1 runs 0.2 and shows today's screens; the GitHub release v0.2 carries the same file."
+   ],
+   [
+    "sound",
+    "PSX COLOR on the PSX page: COLOR (AMOUNT, RATE 44K..8K with RAW steps, CRUNCH, SMOOTH) and OUT (CONSOLE, MONO, SEND, INPUT); the SPU's ADPCM round trip with an encoder you can spoil, its gaussian playback, a console-out colour; PRESETS steps SUBTLE GLUE, POLY PAD, CRUNCHY TAIL, DUB SPACE. The reverb's INPUT can drive it; CHAOS and DELAY's SIZE in note values; XA's clock steady."
+   ],
+   [
+    "play",
+    "Three rows of black keys (hold FX + OCT- / OCT+): AFFINE, PUNCH (eleven signature combos), CUSTOM (hold FX and a key, turn a knob); REC records the black keys into the pattern."
+   ],
+   [
+    "web",
+    "AFFINE's hover on what you can act on (buttons, links, the keys): the rows tear as a disc skips, then rest washed out over a faint dither and scanlines, the words readable; cards and tiles stay still."
+   ],
+   [
+    "screen",
+    "Every text on the FM-1 at 2x at least, every page laid out again for it: pictures in place of help prose (EFFECTS, MIX, SYSTEM, LIVE SETTINGS, BOOM and the drums, OVERLAY, SONG, PATTERN, RESET, the tutorial, the SEL card), the tabs as the open one and a square for each, the foot's knob names in short forms, the header in one or two lines; no text cut or on another in any of the simulator's 100 sessions."
+   ],
+   [
+    "web",
+    "The FM-1's screen and the panel beside it one height in The chip and Perform; the waveform takes the room left."
+   ],
+   [
+    "web",
+    "The header's gem is HOME's, in 3D: a pointer on it throws it into a spin."
+   ],
+   [
+    "web",
+    "No Skins section (the header's switch does it); the black keys' names fit their pills, in one row or two; no text past its box or the screen at any width (the numbers a size down in narrow tiles, shorter titles); the knobs' gauges level; the installer's title on one line."
+   ],
+   [
+    "screen",
+    "HOME draws in a quarter of the time (the same picture, pixel for pixel), and comes later while the sound is busy, so the FM-1 shows the performance effects instead of falling behind; LOAF's header no longer flashes over HOME on every beat."
+   ],
+   [
+    "web",
+    "The background grid closed on the right, its last column ruled like the others."
+   ],
+   [
+    "release",
+    "0.1: the first public build, a beta not yet run on an FM-1: the installer on the site (<https://inigohernandez.github.io/affine/install/>) and the GitHub release v0.1 carry the same file. The site's FM-1 runs 0.1 too."
+   ],
+   [
+    "web",
+    "AFFINE's page, <https://inigohernandez.github.io/affine/>: the firmware running in the browser, the chip's five stages to hear, the black keys to hold, the five skins."
+   ],
+   [
+    "screen",
+    "AFFINE's logo (speed stripes into chrome letters) and a 3D splash at power-on."
+   ],
+   [
+    "screen",
+    "HOME in one-point perspective: sixteen even lanes, the gem turning with the break, every performance effect drawn on the scene."
+   ],
+   [
+    "fixes",
+    "A store from another firmware is left alone; under heavy load the chip's stages step back (CODEC, then SKIP, then VERB) instead of glitching; three memory bugs fixed."
+   ]
+  ]
+ },
+ {
+  "date": "2026-11-15",
+  "title": "AFFINE begins",
+  "items": [
+   [
+    "sound",
+    "AFFINE begins from LOAF BREAKER: the hardcore kick out, BOOM in (808, JUNGLE, DUB, TIGHT)."
+   ],
+   [
+    "sound",
+    "The PS1-era chip after the break: CODEC (GRIT, XA), VERB (nine presets), CRUSH, REDUX, SKIP."
+   ],
+   [
+    "play",
+    "HOME's knobs FILTER, CRUSH, REDUX, VERB; the black keys SKIP, VERB THROW and CRUSH; the PSX page."
+   ],
+   [
+    "screen",
+    "Every page in POLYGON and the pixel font; five skins."
+   ],
+   [
+    "sound",
+    "Cyberworm's royalty-free Amens."
+   ]
+  ]
+ }
+];
