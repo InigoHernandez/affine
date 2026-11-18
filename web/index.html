@@ -3,7 +3,7 @@
 <!-- AFFINE's site: the firmware itself in the browser (emu/app.wasm, fm1-base's emulator), on MONO2K's grid (one
      12-column grid, the dotted rules; numbered sections) in AFFINE's POLYGON look. style.css, site.js (the skins of the header's switch, dither,
      screens, motion), scene.js (the hero: the floor, the gem, the wordmark), panel.js and play.js (the FM-1),
-     chip.js (the PSX bus, heard), perform.js (the black keys). web/build.sh gathers emu/, screens/ and sounds/. -->
+     chip.js (the PSX bus, heard), perform.js (the black keys, both rows), controls.js (the controls map). web/build.sh gathers emu/, screens/ and sounds/. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -14,7 +14,7 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <!-- AFFINE's hover (style.css dg-tear): rows slipping as a disc skips -->
@@ -33,6 +33,7 @@
   <a href="#play">Play</a>
   <a href="#chip">The chip</a>
   <a href="#perform">Perform</a>
+  <a href="#map">Controls</a>
   <a href="#made">Making</a>
   <span class="sp"></span>
   <a href="install/" class="tag">Install 0.3</a>
@@ -153,7 +154,7 @@
   <p class="sec__n" aria-hidden="true">03</p>
   <div class="sec__body">
     <h2 class="display stripes">Perform</h2>
-    <p class="lede">Eleven black keys. Hold one.</p>
+    <p class="lede">Eleven black keys, two rows. Hold one.</p>
   </div>
   <div class="perf">
     <div class="perf__screen">
@@ -162,7 +163,13 @@
     <div class="perf__plate card">
       <div class="card__head"><h3 class="card__title" id="perf-name">HOME</h3><span class="badge badge--cool" id="perf-key">Hold a key</span></div>
       <p class="perf__line" id="perf-line">The break's sixteen slices as a floor; the one playing lit.</p>
-      <div class="bks wipe" id="bks" role="group" aria-label="The black keys"></div>
+      <div class="perf__bar">
+        <div class="seg" id="rows" role="radiogroup" aria-label="The black keys' row" style="--n:2">
+          <button type="button" role="radio" aria-checked="true" data-row="0"><b>A</b>AFFINE</button><button type="button" role="radio" aria-checked="false" tabindex="-1" data-row="1"><b>B</b>PUNCH</button>
+        </div>
+        <p class="perf__mix" id="perf-mix"></p>
+      </div>
+      <div class="bks wipe" id="bks" role="group" aria-label="The black keys" data-row="0"></div>
       <ul class="knobs4" aria-label="HOME's four knobs">
         <li><b>K1 Filter</b><span>Low-pass left, high-pass right.</span><p class="gauge"><i></i></p></li>
         <li><b>K2 Crush</b><span>Bits down to one.</span><p class="gauge"><i></i></p></li>
@@ -173,8 +180,34 @@
   </div>
 </section>
 
-<section class="sec inv" id="made">
+<section class="sec inv" id="map">
   <p class="sec__n" aria-hidden="true">04</p>
+  <div class="sec__body">
+    <h2 class="display stripes">Controls</h2>
+    <p class="lede">The same on every page. Press a control, then press it again.</p>
+  </div>
+  <div class="map">
+    <div class="map__panel"><div class="map__dev"><svg id="map-svg" viewBox="0 0 1000 640" role="group" aria-label="The FM-1's controls"></svg><canvas class="map__lcd" id="map-lcd" width="240" height="240" aria-hidden="true"></canvas></div></div>
+    <div class="map__screen">
+      <figure class="scr scan"><div class="scr__box"><canvas id="map-scr" width="240" height="240" data-src="screens/m-home-perform.png" role="img" aria-label="The FM-1's screen for the control"></canvas></div><figcaption id="map-cap">HOME › PERFORM</figcaption></figure>
+    </div>
+    <div class="map__info card">
+      <div class="card__head"><h3 class="card__title" id="map-name">HOME</h3><span class="badge badge--cool" id="map-tag">Page</span></div>
+      <p class="map__line" id="map-line"></p>
+      <div class="seg map__parts" id="map-parts" role="group" aria-label="Its parts"></div>
+      <p class="map__items" id="map-items"></p>
+      <div class="card__foot">
+        <span class="label map__hint" id="map-hint"></span>
+        <a class="btn btn--outline btn--sm" id="map-go" href="#perform" hidden>Perform</a>
+        <span class="map__step"><button class="btn btn--outline btn--sm" id="map-prev" type="button" aria-label="The control before"><svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 1h1v1H5zM4 2h1v1H4zM3 3h1v2H3zM4 5h1v1H4zM5 6h1v1H5z"/></svg></button><span class="label" id="map-n">01 / 20</span><button class="btn btn--outline btn--sm" id="map-next" type="button" aria-label="The next control"><svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 1h1v1H2zM3 2h1v1H3zM4 3h1v2H4zM3 5h1v1H3zM2 6h1v1H2z"/></svg></button></span>
+      </div>
+      <p class="vh" id="map-say" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="made">
+  <p class="sec__n" aria-hidden="true">05</p>
   <div class="sec__body">
     <h2 class="display stripes">Making of</h2>
     <p class="lede">A break chopper's fork, a sound chip rebuilt from its public documents.</p>
@@ -187,7 +220,7 @@
   </ol>
   <ul class="nums">
     <li class="tile hot rv-up"><b data-count="16">16</b><span>slices a break</span></li>
-    <li class="tile rv-up" style="--i:1"><b data-count="11">11</b><span>effect keys</span></li>
+    <li class="tile rv-up" style="--i:1"><b data-count="22">22</b><span>black-key effects</span></li>
     <li class="tile rv-up" style="--i:2"><b data-count="5">5</b><span>chip stages</span></li>
     <li class="tile rv-up" style="--i:3"><b data-count="221">221</b><span>checks a build</span></li>
     <li class="tile rv-up" style="--i:4"><b data-count="64">64</b><span>patterns</span></li>
@@ -199,8 +232,8 @@
   </ul>
 </section>
 
-<section class="sec" id="status">
-  <p class="sec__n" aria-hidden="true">05</p>
+<section class="sec inv" id="status">
+  <p class="sec__n" aria-hidden="true">06</p>
   <div class="sec__body">
     <h2 class="display stripes">Status</h2>
     <p class="lede">0.3: one way to play every page, every effect under FX. A beta not yet run on an FM-1.</p>
@@ -225,8 +258,9 @@
 <script src="scene.js?v=1"></script>
 <script src="brand.js?v=1"></script>
 <script src="panel.js?v=1"></script>
-<script src="play.js?v=4"></script>
+<script src="play.js?v=5"></script>
 <script src="chip.js?v=3"></script>
-<script src="perform.js?v=2"></script>
+<script src="perform.js?v=3"></script>
+<script src="controls.js?v=1"></script>
 </body>
 </html>

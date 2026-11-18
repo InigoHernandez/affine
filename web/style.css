@@ -353,6 +353,63 @@ kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; 
 .knobs4 span { font: var(--small); color: var(--gray); }
 .gauge { height: 6px; background: var(--d-dots) 0 0 / 4px 4px; image-rendering: pixelated; position: relative; }
 .gauge i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--cool); transition: width 400ms steps(8); }
+/* .seg: a segmented switch (the black keys' rows, a page's parts): one hot block slides to the one on (transitions.dev's
+ * sliding tabs; --n the segments, --on the one lit, set by the script) */
+.seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: 1px solid var(--line); background: var(--bg); }
+.seg::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / var(--n, 2)); background: var(--hot); pointer-events: none;
+  transform: translateX(calc(var(--on, 0) * 100%)); transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.seg button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: var(--s1); min-width: 0; height: var(--h-sm); padding: 0 var(--s15);
+  font: var(--label); text-transform: uppercase; white-space: nowrap; color: var(--gray); background: none; border: 0; cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-smooth-out); }
+.seg button:hover { color: var(--ink); }
+.seg button b { font-weight: 400; opacity: 0.6; }
+.seg [aria-checked="true"], .seg [aria-pressed="true"] { color: var(--bg); }
+.seg [aria-checked="true"]:hover, .seg [aria-pressed="true"]:hover { color: var(--bg); }
+.seg button:focus-visible { outline: var(--ring-w) solid var(--hot); outline-offset: var(--ring-o); }
+/* 03: the row switch, and beside it what a PUNCH key holds (its parts, AFFINE's own keys cool) */
+.perf__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.perf__bar .seg { flex: 0 0 auto; }
+.perf__mix { display: flex; align-items: center; gap: var(--s05); min-height: var(--h-sm); }
+.perf__mix .badge { animation: mix-in var(--duration-quick) steps(3) both; animation-delay: calc(var(--i, 0) * var(--duration-stagger)); }
+.perf__plus { font: var(--label); color: var(--gray); }
+.perf__how { color: var(--gray); }
+@keyframes mix-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+/* a row's names arrive key by key, stepped (transitions.dev's text swap, staggered) */
+.bk.swap span { animation: bk-swap var(--duration-fast) steps(4) both; animation-delay: calc(var(--i, 0) * var(--duration-stagger)); }
+@keyframes bk-swap { from { clip-path: inset(0 0 100% 0); transform: translateY(calc(var(--distance-micro) * -1)); } to { clip-path: inset(0); transform: none; } }
+.bks[data-row="1"] .bk:hover { background: color-mix(in srgb, var(--hot) 40%, var(--dim)); }
+.bks[data-row="1"] .bk[aria-pressed="true"] { background: var(--hot); }
+
+/* 04 controls: the FM-1 drawn (panel.js), the control pressed lit hot, what works with it dim; its screen beside (sticky
+ * while the panel and the card scroll past), a small copy in the panel's own bezel; the card under the panel, so the
+ * panel never moves as the card changes */
+.map { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); row-gap: var(--s3); align-items: start; }
+.map__screen { grid-column: 1 / span 4; grid-row: 1 / span 2; position: sticky; top: calc(40px + var(--s2)); }
+.map__panel { grid-column: 5 / span 8; grid-row: 1; min-width: 0; }
+.map__dev { position: relative; aspect-ratio: 1000 / 640; }
+.map__info { grid-column: 5 / span 8; grid-row: 2; }
+.map__panel svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.map__lcd { position: absolute; left: 31.8%; top: 9.6875%; width: 20%; height: 31.25%; pointer-events: none; }
+.map__panel .ctl { cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; transform-box: fill-box; transition: transform 60ms steps(2); }
+.map__panel .ctl.press { transform: translateY(4px); }
+.map__panel .ctl:hover :is(.pn-btn, .pn-knob, .pn-key) { stroke: var(--ink); stroke-width: 3; }
+.map__panel .ctl:focus-visible :is(.pn-btn, .pn-knob, .pn-key) { stroke: var(--hot); stroke-width: 5; }
+.map__panel .lit .pn-knob { fill: var(--hot); stroke: var(--hot); }
+.map__panel .lit .pn-ind { stroke: var(--bg); }
+.map__panel .lit .pn-ring { opacity: 1; transition: none; }
+.map__panel .lit .pn-lbl:not(.btn) { fill: var(--ink); }
+.map__panel .dim .pn-knob { fill: color-mix(in srgb, var(--hot) 35%, var(--line)); }
+.map__panel :is(.pn-btn, .pn-knob, .pn-key) { transition: fill var(--duration-quick) steps(3); }
+.map__line { font: var(--body); min-height: 48px; }
+.map__parts button { padding: 0 var(--s1); }
+.map__items { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s05) var(--s05); }
+.map__items .badge { animation: mix-in var(--duration-quick) steps(3) both; animation-delay: calc(var(--i, 0) * var(--duration-stagger)); }
+.map__k { color: var(--hot); margin-right: var(--s05); }
+.map__hold { flex: 1 0 100%; display: flex; align-items: baseline; gap: var(--s05); font: var(--small); color: var(--gray); padding-top: var(--s1); }
+.map__hint { color: var(--gray); flex: 1 1 auto; }
+.map__step { display: inline-flex; align-items: center; gap: var(--s1); }
+.map__step .btn { width: var(--h-sm); padding: 0; }
+.map__step .label { min-width: 7ch; text-align: center; color: var(--gray); }
 
 /* 04 how it was made: four steps, the numbers, the facts */
 .strip { grid-column: 1 / -1; list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gut); }
@@ -417,6 +474,9 @@ kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; 
   :root { --card-pad: var(--s2); }
   .chip__screen, .perf__screen { grid-column: 1 / span 5; }
   .chip__plate, .perf__plate { grid-column: 6 / span 7; }
+  .map__panel { grid-column: 1 / -1; grid-row: 1; }
+  .map__screen { grid-column: 1 / span 5; grid-row: 2; position: static; }
+  .map__info { grid-column: 6 / span 7; grid-row: 2; }
   .todo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--s2); }
   .strip li:nth-child(2n) .tip { left: auto; right: 0; }
@@ -426,7 +486,14 @@ kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; 
 @media (max-width: 640px) {
   :root { --gut: var(--s2); }
   .chip__screen, .perf__screen, .chip__plate, .perf__plate { grid-column: 1 / -1; }
-  .chip__screen .scr, .perf__screen .scr { max-width: 240px; }
+  .chip__screen .scr, .perf__screen .scr, .map__screen .scr { max-width: 240px; }
+  .map__panel, .map__screen, .map__info { grid-column: 1 / -1; grid-row: auto; }
+  .map__panel { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }   /* (as the FM-1 above: wide enough to press, swiped across) */
+  .map__dev { min-width: 520px; }
+  .map__parts { display: flex; flex-wrap: wrap; gap: var(--s05); border: 0; background: none; }   /* (wrapped: no row to slide along) */
+  .map__parts::before { display: none; }
+  .map__parts button { flex: 1 1 auto; border: 1px solid var(--line); background: var(--bg); }
+  .map__parts [aria-pressed="true"] { background: var(--hot); border-color: var(--hot); }
   .chain { display: flex; flex-wrap: wrap; gap: var(--s05); background: none; }
   .chain::before { display: none; }   /* (wrapped: no row to slide along) */
   .chain li { flex: 1 1 auto; }

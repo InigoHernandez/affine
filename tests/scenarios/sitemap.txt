@@ -1,0 +1,144 @@
+# AFFINE (18 Nov 2026): the site's controls map (web/controls.js): every page button's parts in turn, from HOME, the
+# break playing, each part's screen shot (web/build.sh copies them as screens/m-*.png); then the encoders on FX's CHAIN
+# (the same on every page), OCT on PSX, HOME's K1, REC, a white key, SAVE, SEL's card.
+#   app/build/host/affine_host tests/scenarios/sitemap.txt app/build/scenarios
+wait 4200
+expect page 0
+tap PLAY
+wait 1200
+shot sm_home_perform.png
+tap HOME
+wait 500
+shot sm_home_settings.png
+tap FX
+wait 500
+shot sm_fx_play.png
+tap FX
+wait 500
+shot sm_fx_chain.png
+tap FX
+wait 500
+shot sm_fx_slot.png
+tap FX
+wait 500
+shot sm_fx_psx.png
+tap FX
+wait 500
+shot sm_fx_sends.png
+tap EDIT
+wait 500
+shot sm_edit_break.png
+tap EDIT
+wait 500
+shot sm_edit_boom.png
+tap EDIT
+wait 500
+shot sm_edit_snare.png
+tap EDIT
+wait 500
+shot sm_edit_hat.png
+tap EDIT
+wait 500
+shot sm_edit_clap.png
+tap SEQ
+wait 500
+shot sm_seq_steps.png
+tap SEQ
+wait 500
+shot sm_seq_drums.png
+tap SEQ
+wait 500
+shot sm_seq_settings.png
+tap ARP
+wait 500
+shot sm_arp_generator.png
+tap ENV
+wait 500
+shot sm_env_tracks.png
+tap ENV
+wait 500
+shot sm_env_play.png
+tap ENV
+wait 500
+shot sm_env_drop.png
+tap ENV
+wait 500
+shot sm_env_build.png
+tap LFO
+wait 500
+shot sm_lfo_levels.png
+tap LFO
+wait 500
+shot sm_lfo_master.png
+tap LFO
+wait 500
+shot sm_lfo_dyn.png
+tap GLO
+wait 500
+shot sm_glo_midi.png
+tap GLO
+wait 500
+shot sm_glo_setup.png
+tap GLO
+wait 500
+shot sm_glo_screen.png
+tap GLO
+wait 500
+shot sm_glo_reset.png
+# (the encoders, the same on every page: on FX's CHAIN)
+tap HOME
+wait 400
+tap FX
+wait 300
+tap FX
+wait 400
+turn SELECT 5 40
+wait 150
+shot sm_enc_tempo.png
+turn SELECT -5 40
+wait 1500
+turn ALGO 1 80
+wait 500
+shot sm_enc_break.png
+turn ALGO -1 80
+wait 1500
+turn PRESET 1 80
+wait 300
+expect pat_next 1
+shot sm_enc_pattern.png
+turn PRESET -1 80
+wait 1500
+# (OCT: a part's items, on FX's PSX)
+tap FX
+wait 300
+tap FX
+wait 400
+tap OCT+
+wait 300
+shot sm_oct.png
+# (HOME: K1, REC, a white key, SAVE, SEL)
+tap HOME
+wait 400
+expect page 0
+turn K1 -12 30
+wait 150
+shot sm_knob.png
+turn K1 12 30
+wait 1500
+tap REC
+wait 300
+shot sm_rec.png
+tap REC
+wait 1500
+key w4 down
+wait 300
+shot sm_white.png
+key w4 up
+wait 1500
+tap SAVE
+wait 200
+shot sm_save.png
+wait 1500
+tap SEL
+wait 500
+shot sm_sel.png

@@ -1,0 +1,81 @@
+# AFFINE (18 Nov 2026): the site's PUNCH row (web/perform.js): each of the eleven combos held on HOME, the break
+# playing, and its screen shot (web/build.sh copies them as screens/pk-*.png). The row switched as a player does:
+# FX held, OCT+ (and its header, ROW B PUNCH, shot); then back to AFFINE (ROW A).
+#   app/build/host/affine_host tests/scenarios/sitepunch.txt app/build/scenarios
+wait 4200
+expect page 0
+press FX
+wait 100
+tap OCT+
+wait 100
+release FX
+wait 300
+expect row 3
+expect page 0
+tap PLAY
+wait 300
+shot sp_rowb.png
+wait 1700
+key b0 down
+wait 1400
+shot sp_stutter.png
+key b0 up
+wait 900
+key b1 down
+wait 1400
+shot sp_buzz.png
+key b1 up
+wait 900
+key b2 down
+wait 1400
+shot sp_revverb.png
+key b2 up
+wait 900
+key b3 down
+wait 1400
+shot sp_slowmo.png
+key b3 up
+wait 900
+key b4 down
+wait 1400
+shot sp_tapestop.png
+key b4 up
+wait 900
+key b5 down
+wait 1400
+shot sp_glitch.png
+key b5 up
+wait 900
+key b6 down
+wait 1400
+shot sp_wash.png
+key b6 up
+wait 900
+key b7 down
+wait 1400
+shot sp_chop.png
+key b7 up
+wait 900
+key b8 down
+wait 1400
+shot sp_dubecho.png
+key b8 up
+wait 900
+key b9 down
+wait 1400
+shot sp_shatter.png
+key b9 up
+wait 900
+key b10 down
+wait 1400
+shot sp_dropout.png
+key b10 up
+wait 900
+press FX
+wait 100
+tap OCT-
+wait 100
+release FX
+wait 300
+expect row 0
+shot sp_rowa.png

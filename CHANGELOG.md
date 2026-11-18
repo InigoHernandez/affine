@@ -4,6 +4,11 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-18
 
+- **Site:** Perform has both rows of black keys: a switch for AFFINE and PUNCH, each PUNCH key with its FM-1 screen
+  and what it holds (WASH: FRZ + VRB + FLT). With the FM-1 on, the switch sets its row and its FX + OCT sets the
+  switch.
+- **Site:** a new section, Controls: the FM-1 drawn with every control pressable, its job in a line and its real
+  screen; a page button pressed again steps its parts as on the FM-1, with the items OCT reaches.
 - **Docs:** the FM-1 test for 0.3 (`docs/hardware-test-0.3.md`): the meter, the controls, both black-key rows, the
   four presets' CPU, SIZE, INIT, saving, and three choices to keep or change.
 

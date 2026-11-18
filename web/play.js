@@ -78,7 +78,13 @@
   function syncButtons() {
     let m = latched;
     for (const b of btnHeldBy.values()) m |= 1 << b;
-    if (m !== btnMask) { btnMask = m; send({ type: "buttons", mask: m }); }
+    if (m !== btnMask) {
+      const was = btnMask, oct = m & ~was & (1 << BTN["OCT-"] | 1 << BTN["OCT+"]);
+      btnMask = m;
+      send({ type: "buttons", mask: m });
+      // FX held and an OCT pressed: the firmware's black keys change row (AFFINE / PUNCH); perform.js follows
+      if (oct && m & 1 << BTN.FX) dispatchEvent(new CustomEvent("affine:row", { detail: oct & 1 << BTN["OCT+"] ? 1 : 0 }));
+    }
     for (const b of Object.values(buttons)) {
       b.g.classList.toggle("held", !!(m & (1 << b.bit)));
       b.g.classList.toggle("latched", !!(latched & (1 << b.bit)));
@@ -376,7 +382,7 @@
   $("reset-no").addEventListener("click", () => { $("reset").setAttribute("aria-expanded", "false"); setDrawer($("reset-ask"), false); });
   $("reset-yes").addEventListener("click", () => { try { localStorage.removeItem(STORE_KEY); } catch {} location.reload(); });
 
-  // the page's other parts: a black key held from outside the panel (perform.js), the panel's state
+  // the page's other parts: a black key held from outside the panel (perform.js), its row, the panel's state
   let ducked = false;
   const level = () => ($("snd").getAttribute("aria-pressed") === "true" ? 0 : ducked ? 0.12 : 1);
   window.affineEmu = {
@@ -386,6 +392,15 @@
       if (!node) return false;
       const id = "x" + n;
       if (down) holdDown(id, "key", BLACK_K[n]); else letGo(id);
+      return true;
+    },
+    // the black keys' row, as a player sets it: FX held, OCT- (AFFINE) or OCT+ (PUNCH), let go
+    row(r) {
+      if (!node) return false;
+      holdDown("xrf", "btn", BTN.FX);
+      setTimeout(() => holdDown("xro", "btn", BTN[r ? "OCT+" : "OCT-"]), 60);
+      setTimeout(() => letGo("xro"), 140);
+      setTimeout(() => letGo("xrf"), 220);
       return true;
     },
   };

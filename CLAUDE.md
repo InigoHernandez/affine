@@ -91,11 +91,15 @@ PYTHON=../mono2k/.venv/bin/python PYTHONPATH=<shim dir> ./build.sh --host   # ap
 
 MONO2K's structure (one 12-column grid with dotted rules, numbered sections, the playbar and drawers) in POLYGON.
 `sh web/build.sh` gathers what it takes from the build: `emu/` (`./build.sh --web`: the firmware in WebAssembly;
-`--copy` skips the build), `screens/` (the simulator's shots, `sh tests/scenarios.sh` first, as palette PNGs) and
+`--copy` skips the build), `screens/` (the simulator's shots, `sh tests/scenarios.sh` first, as palette PNGs; `sitepunch.txt` and `sitemap.txt`
+shoot the PUNCH keys and every page's parts for the site) and
 `sounds/` (psx_demo.c's renders, AAC). Serve it with `.claude/launch.json`'s affine-web (port 8781). `site.js` the
 skins (they recolour the page, the panel and the FM-1's screenshots), the dither patterns and the motion; `scene.js`
 the hero (aff.c's title screen in JS); `panel.js` and `play.js` the FM-1 (from fm1-base's emulator page, MPL-2.0);
-`chip.js` the PSX bus heard; `perform.js` the black keys (held on the emulator too). Bump `?v=` in index.html with
+`chip.js` the PSX bus heard; `perform.js` the black keys in both rows, AFFINE and PUNCH (held on the emulator too;
+its row kept in step both ways: the switch presses FX + OCT on the emulator through `affineEmu.row`, and play.js
+sends `affine:row` when the emulator's own FX + OCT is pressed); `controls.js` 04 Controls, the map: the FM-1 drawn
+with panel.js, every control pressable, a page button's parts stepped as on the FM-1, the real screen for each. Bump `?v=` in index.html with
 every changed file. Little text: a title and one line a section.
 Components (since 2026-11-17, after shadcn/ui, transitions.dev and Libraries.dev; style.css's head lists them): one
 `.btn` (`--primary` / `--outline` / `--solid`, `--sm` / `--lg`), `.card` with `.card__head` / `.card__foot`, `.badge`,
