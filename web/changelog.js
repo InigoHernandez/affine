@@ -7,6 +7,10 @@ window.AFF_CHANGES = [
   "title": "0.3 tested on an FM-1, a manual",
   "items": [
    [
+    "fixes",
+    "The manual scrolls steadily: a page opens at its top at once (it glided up through the new page), Back returns to the page before, and each page draws its own screens as it opens instead of all of them at load."
+   ],
+   [
     "web",
     "A manual (<https://inigohernandez.github.io/affine/manual.html>): install, play the break, perform, the effects, the chip, patterns, drums, songs, the mix, saving, every control, GLO, credits, each with the FM-1's screens; and this change log, its kinds as filters. The page links to it from its bar and Status."
    ],

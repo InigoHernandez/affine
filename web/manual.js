@@ -24,12 +24,14 @@
   const isvg = $("#intro-svg");
   if (isvg && typeof affPanel === "function") affPanel(isvg);
 
+  // a page's screens drawn as it opens (data-shot until then: site.js redraws every data-src at a skin, so a hidden
+  // page's would cost a load and a recolour each)
   function screens(a) {
     if (!A) return;
-    $$("canvas[data-src]", a).forEach((cv) => {
+    $$("canvas[data-shot]", a).forEach((cv) => {
       if (cv.dataset.shown) return;
       cv.dataset.shown = "1";
-      A.draw(cv, undefined, true);
+      A.draw(cv, cv.dataset.shot, true);
     });
   }
   const link = (a, label) => {
@@ -55,10 +57,22 @@
     document.title = i ? `${$("h1", a).textContent} · ${TITLE}` : TITLE;
     screens(a);
     if (matchMedia("(max-width: 860px)").matches) side.open = false;
-    if (scroll) scrollTo({ top: 0, behavior: "auto" });
+    if (scroll && scrollY > 0) scrollTo({ top: 0, behavior: "instant" });   // (at once, as the page swapped)
   }
+  // a link to a page here: the page swapped and the top shown at once, without the browser's own jump to a fragment
+  // first (it aimed at the page still hidden); back and forward walk the pages
+  const page = (id) => arts.some((a) => a.id === id);
+  document.addEventListener("click", (e) => {
+    const x = e.target.closest("a[href]");
+    if (!x || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const u = new URL(x.href, location.href), id = decodeURIComponent(u.hash.slice(1));
+    if (u.origin !== location.origin || u.pathname !== location.pathname || !page(id)) return;
+    e.preventDefault();
+    if (id !== location.hash.slice(1)) history.pushState(null, "", `#${id}`);
+    show(id, true);
+  });
+  addEventListener("popstate", () => show(location.hash.slice(1), false));
   addEventListener("hashchange", () => show(location.hash.slice(1), true));
-  // the site's FM-1 screens follow the skin; the panel's colours are CSS
   show(location.hash.slice(1), false);
   if (!location.hash && matchMedia("(max-width: 860px)").matches) side.open = false;
 

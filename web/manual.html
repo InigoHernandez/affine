@@ -1,10 +1,11 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- AFFINE's manual, after MONO2K's: the contents on the left, one page at a time on the right (manual.js shows the one
-     the address names, #the-chip and so on; without scripts every page shows, one after the other). Its screens are
+     the address names, #the-chip and so on; without scripts every page shows, one after the other). A screen's
+     canvas names its picture in data-shot: manual.js draws it when its page opens, so a hidden page costs nothing. Its screens are
      the simulator's (web/screens), its knob names the firmware's own (app/ui/main.c KN_*); the change log is
      CHANGELOG.md's (tools/changelog_js.py writes changelog.js). -->
-<html lang="en">
+<html lang="en" class="manual">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +15,7 @@
 <script>try { const s = +localStorage.getItem("affine.skin"); if (s > 0 && s < 5) document.documentElement.dataset.skin = s; } catch (e) {}</script>
 <link rel="icon" href="gem.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/mono2k-font.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body class="noscript-all">
 <div class="rules" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -75,7 +76,7 @@
 <article id="introduction" data-group="Start here">
   <h1 class="display">Start here</h1>
   <p class="sub">AFFINE turns the M-VAVE FM-1 into a jungle break chopper: Amens on the keys, an effect under every key, and a PS1-era sound chip after it all.</p>
-  <figure class="panelfig"><div class="map__dev"><svg id="intro-svg" viewBox="0 0 1000 640" role="img" aria-label="The FM-1's panel"></svg><canvas class="map__lcd" width="240" height="240" data-src="screens/home.png" aria-hidden="true"></canvas></div></figure>
+  <figure class="panelfig"><div class="map__dev"><svg id="intro-svg" viewBox="0 0 1000 640" role="img" aria-label="The FM-1's panel"></svg><canvas class="map__lcd" width="240" height="240" data-shot="screens/home.png" aria-hidden="true"></canvas></div></figure>
   <h2 class="title">Play it, page by page</h2>
   <div class="cards">
     <a class="card" href="#the-break"><i>01</i><b>Play the break</b><span>Slices, the break, the tempo, the pitch</span></a>
@@ -152,8 +153,8 @@
     <li><b>K1–K4 are the item's.</b> Their names are at the screen's foot.</li>
   </ol>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-oct.png" role="img" aria-label="FX › PSX with VERB as its item"></canvas><figcaption>FX › PSX, OCT+: VERB</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-tempo.png" role="img" aria-label="The tempo changed from FX › CHAIN"></canvas><figcaption>SELECT on FX › CHAIN</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-oct.png" role="img" aria-label="FX › PSX with VERB as its item"></canvas><figcaption>FX › PSX, OCT+: VERB</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-tempo.png" role="img" aria-label="The tempo changed from FX › CHAIN"></canvas><figcaption>SELECT on FX › CHAIN</figcaption></figure>
   </div>
   <table class="tbl">
     <thead><tr><th>Button</th><th>Parts, pressed again</th></tr></thead>
@@ -176,9 +177,9 @@
   <h1 class="display">Play the break</h1>
   <p class="sub">Ten of Cyberworm's royalty-free Amens, sixteen slices each on the white keys.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-home-perform.png" role="img" aria-label="HOME, playing"></canvas><figcaption>HOME, playing</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-white.png" role="img" aria-label="HOME with a slice held"></canvas><figcaption>A slice held</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-break.png" role="img" aria-label="The next break, named in the header"></canvas><figcaption>ALGORITHM turned</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-home-perform.png" role="img" aria-label="HOME, playing"></canvas><figcaption>HOME, playing</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-white.png" role="img" aria-label="HOME with a slice held"></canvas><figcaption>A slice held</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-break.png" role="img" aria-label="The next break, named in the header"></canvas><figcaption>ALGORITHM turned</figcaption></figure>
   </div>
   <table class="tbl">
     <tbody>
@@ -194,8 +195,8 @@
   <h2 class="title">EDIT › BREAK</h2>
   <p>K1 PITCH (KEEP LEN: each slice keeps its length; SPEED: as a tape), K2 GRAIN, K3 SNAP, K4 LEVEL.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-home-settings.png" role="img" aria-label="HOME › SETTINGS"></canvas><figcaption>HOME › SETTINGS</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-break.png" role="img" aria-label="EDIT › BREAK"></canvas><figcaption>EDIT › BREAK</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-home-settings.png" role="img" aria-label="HOME › SETTINGS"></canvas><figcaption>HOME › SETTINGS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-edit-break.png" role="img" aria-label="EDIT › BREAK"></canvas><figcaption>EDIT › BREAK</figcaption></figure>
   </div>
 </article>
 
@@ -214,9 +215,9 @@
   <h2 class="title">The black keys</h2>
   <p>An effect while you hold one. Held, K1–K4 set it; one with LATCH stays on from one press to the next. <kbd>FX</kbd> + <kbd>OCT−</kbd> row AFFINE, <kbd>FX</kbd> + <kbd>OCT+</kbd> row PUNCH, from any page. REC records them into the pattern.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/k-freeze.png" role="img" aria-label="FREEZE held: its knobs at the foot"></canvas><figcaption>FREEZE held</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/row-b.png" role="img" aria-label="Row B, PUNCH"></canvas><figcaption>FX + OCT+: PUNCH</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/pk-wash.png" role="img" aria-label="WASH held"></canvas><figcaption>WASH held</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/k-freeze.png" role="img" aria-label="FREEZE held: its knobs at the foot"></canvas><figcaption>FREEZE held</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/row-b.png" role="img" aria-label="Row B, PUNCH"></canvas><figcaption>FX + OCT+: PUNCH</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/pk-wash.png" role="img" aria-label="WASH held"></canvas><figcaption>WASH held</figcaption></figure>
   </div>
   <table class="tbl keys">
     <thead><tr><th>Key</th><th>AFFINE</th><th>PUNCH</th></tr></thead>
@@ -243,9 +244,9 @@
   <h2 class="title">FX › PLAY</h2>
   <p>The white keys are sixteen effects. K1 AMOUNT, K2 RATE, K3 SWEEP, K4 LATCH (on: a press turns one on, the next off). OCT picks the black keys' row.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-play.png" role="img" aria-label="FX › PLAY: the sixteen effects"></canvas><figcaption>FX › PLAY</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-chain.png" role="img" aria-label="FX › CHAIN: four slots"></canvas><figcaption>FX › CHAIN</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-slot.png" role="img" aria-label="FX › SLOT: one effect's knobs"></canvas><figcaption>FX › SLOT</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-fx-play.png" role="img" aria-label="FX › PLAY: the sixteen effects"></canvas><figcaption>FX › PLAY</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-fx-chain.png" role="img" aria-label="FX › CHAIN: four slots"></canvas><figcaption>FX › CHAIN</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-fx-slot.png" role="img" aria-label="FX › SLOT: one effect's knobs"></canvas><figcaption>FX › SLOT</figcaption></figure>
   </div>
   <p class="tags"><span class="badge">1 DIVE</span><span class="badge">2 RISE</span><span class="badge">3 RADIO</span><span class="badge">4 WAH</span><span class="badge">5 CRUSH</span><span class="badge">6 LO-FI</span><span class="badge">7 DIST</span><span class="badge">8 RING</span><span class="badge">9 CHOP</span><span class="badge">10 GATE</span><span class="badge">11 DUCK</span><span class="badge">12 PAN</span><span class="badge">13 BOOM</span><span class="badge">14 WOBBLE</span><span class="badge">15 JET</span><span class="badge">16 REESE</span></p>
   <table class="tbl">
@@ -264,10 +265,10 @@
   <h1 class="display">The chip</h1>
   <p class="sub">After the chain, the sound of a 1990s console's chip: CODEC, VERB, CRUSH, REDUX, SKIP, then OUT. FX four times: PSX.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-fx-psx.png" role="img" aria-label="PSX's four presets"></canvas><figcaption>PRESET</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-verb.png" role="img" aria-label="PSX's VERB"></canvas><figcaption>VERB</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-codec.png" role="img" aria-label="PSX's CODEC"></canvas><figcaption>CODEC</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/psx-skip.png" role="img" aria-label="PSX's SKIP"></canvas><figcaption>SKIP</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-fx-psx.png" role="img" aria-label="PSX's four presets"></canvas><figcaption>PRESET</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/psx-verb.png" role="img" aria-label="PSX's VERB"></canvas><figcaption>VERB</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/psx-codec.png" role="img" aria-label="PSX's CODEC"></canvas><figcaption>CODEC</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/psx-skip.png" role="img" aria-label="PSX's SKIP"></canvas><figcaption>SKIP</figcaption></figure>
   </div>
   <table class="tbl">
     <thead><tr><th>Item (OCT)</th><th>K1–K4</th></tr></thead>
@@ -300,9 +301,9 @@
     </tbody>
   </table>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-rec.png" role="img" aria-label="REC on"></canvas><figcaption>REC on</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-seq-steps.png" role="img" aria-label="SEQ › STEPS"></canvas><figcaption>SEQ › STEPS</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-pattern.png" role="img" aria-label="The next pattern, named in the header"></canvas><figcaption>PRESETS turned</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-rec.png" role="img" aria-label="REC on"></canvas><figcaption>REC on</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-seq-steps.png" role="img" aria-label="SEQ › STEPS"></canvas><figcaption>SEQ › STEPS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-pattern.png" role="img" aria-label="The next pattern, named in the header"></canvas><figcaption>PRESETS turned</figcaption></figure>
   </div>
 </article>
 
@@ -320,9 +321,9 @@
   <h2 class="title">ARP › GENERATOR</h2>
   <p>The drums written for you: K1 COMPLEXITY, K2 ANCHOR, K3 ROLL, K4 FILL.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-boom.png" role="img" aria-label="EDIT › BOOM"></canvas><figcaption>EDIT › BOOM</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-edit-snare.png" role="img" aria-label="EDIT › SNARE"></canvas><figcaption>EDIT › SNARE</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-arp-generator.png" role="img" aria-label="ARP › GENERATOR"></canvas><figcaption>ARP › GENERATOR</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-edit-boom.png" role="img" aria-label="EDIT › BOOM"></canvas><figcaption>EDIT › BOOM</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-edit-snare.png" role="img" aria-label="EDIT › SNARE"></canvas><figcaption>EDIT › SNARE</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-arp-generator.png" role="img" aria-label="ARP › GENERATOR"></canvas><figcaption>ARP › GENERATOR</figcaption></figure>
   </div>
 </article>
 
@@ -340,9 +341,9 @@
   </table>
   <p>SEL + PLAY on TRACKS: the item it starts from.</p>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-tracks.png" role="img" aria-label="ENV › TRACKS"></canvas><figcaption>ENV › TRACKS</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-drop.png" role="img" aria-label="ENV › DROP"></canvas><figcaption>ENV › DROP</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-env-build.png" role="img" aria-label="ENV › BUILD"></canvas><figcaption>ENV › BUILD</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-env-tracks.png" role="img" aria-label="ENV › TRACKS"></canvas><figcaption>ENV › TRACKS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-env-drop.png" role="img" aria-label="ENV › DROP"></canvas><figcaption>ENV › DROP</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-env-build.png" role="img" aria-label="ENV › BUILD"></canvas><figcaption>ENV › BUILD</figcaption></figure>
   </div>
 </article>
 
@@ -358,9 +359,9 @@
     </tbody>
   </table>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-levels.png" role="img" aria-label="LFO › LEVELS"></canvas><figcaption>LFO › LEVELS</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-master.png" role="img" aria-label="LFO › MASTER"></canvas><figcaption>LFO › MASTER</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-lfo-dyn.png" role="img" aria-label="LFO › DYN"></canvas><figcaption>LFO › DYN</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-lfo-levels.png" role="img" aria-label="LFO › LEVELS"></canvas><figcaption>LFO › LEVELS</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-lfo-master.png" role="img" aria-label="LFO › MASTER"></canvas><figcaption>LFO › MASTER</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-lfo-dyn.png" role="img" aria-label="LFO › DYN"></canvas><figcaption>LFO › DYN</figcaption></figure>
   </div>
 </article>
 
@@ -377,9 +378,9 @@
     </tbody>
   </table>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-save.png" role="img" aria-label="SAVE done"></canvas><figcaption>SAVE</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-sel.png" role="img" aria-label="SEL's card: its combinations"></canvas><figcaption>SEL tapped</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-reset.png" role="img" aria-label="GLO › RESET"></canvas><figcaption>GLO › RESET</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-save.png" role="img" aria-label="SAVE done"></canvas><figcaption>SAVE</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-sel.png" role="img" aria-label="SEL's card: its combinations"></canvas><figcaption>SEL tapped</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-glo-reset.png" role="img" aria-label="GLO › RESET"></canvas><figcaption>GLO › RESET</figcaption></figure>
   </div>
 </article>
 
@@ -427,9 +428,9 @@
     </tbody>
   </table>
   <div class="shots">
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-midi.png" role="img" aria-label="GLO › MIDI"></canvas><figcaption>GLO › MIDI</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-setup.png" role="img" aria-label="GLO › SETUP"></canvas><figcaption>GLO › SETUP</figcaption></figure>
-    <figure class="scr"><canvas width="240" height="240" data-src="screens/m-glo-screen.png" role="img" aria-label="GLO › SCREEN"></canvas><figcaption>GLO › SCREEN</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-glo-midi.png" role="img" aria-label="GLO › MIDI"></canvas><figcaption>GLO › MIDI</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-glo-setup.png" role="img" aria-label="GLO › SETUP"></canvas><figcaption>GLO › SETUP</figcaption></figure>
+    <figure class="scr"><canvas width="240" height="240" data-shot="screens/m-glo-screen.png" role="img" aria-label="GLO › SCREEN"></canvas><figcaption>GLO › SCREEN</figcaption></figure>
   </div>
 </article>
 
@@ -460,7 +461,7 @@
 <script src="site.js?v=3"></script>
 <script src="brand.js?v=1"></script>
 <script src="panel.js?v=1"></script>
-<script src="changelog.js?v=1"></script>
-<script src="manual.js?v=1"></script>
+<script src="changelog.js?v=2"></script>
+<script src="manual.js?v=2"></script>
 </body>
 </html>

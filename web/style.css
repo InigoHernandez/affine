@@ -515,6 +515,7 @@ kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; 
  * MONO2K's docs: the contents on the grid's first three columns, sticky; one page on columns 5-12 (the sections'
  * body), its breadcrumb, a display title and one line, then tables, the FM-1's screens and cards. A phone: the
  * contents fold above the page. manual.js shows one page at a time; without it they all show. */
+html.manual { scroll-behavior: auto; }   /* (a page swaps at once: a smooth scroll after it glides through the new page) */
 .subnav a[aria-current="page"] { color: var(--ink); }
 .subnav a[aria-current="page"]::before { transform: none; background: var(--hot); }
 .docs { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut);
