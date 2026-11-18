@@ -10,7 +10,7 @@ sound chip: its reverbs, its sample grit, its CD audio.
 **Install:** <https://inigohernandez.github.io/affine/install/> (Chrome or Edge, over USB), or the `.fwsc` from the
 [latest release](https://github.com/InigoHernandez/affine/releases/latest).
 
-**Status:** 0.1, the first release, a beta: it has not run on an FM-1 yet. The plan: [docs/plan.md](docs/plan.md).
+**Status:** 0.3, a beta, tested on an FM-1 (2026-11-18). The plan: [docs/plan.md](docs/plan.md).
 What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does

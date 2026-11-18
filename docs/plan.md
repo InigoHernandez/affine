@@ -262,7 +262,7 @@ first AFFINE build, read while playing.
    screen (felucca-bsp's today).
 7. **Motion record and scenes.** The black keys recorded with REC and the PUNCH row (2026-11-16, branch `punch`);
    still: the four gestures recorded, scenes A/B.
-8. **Device:** the owner's FM-1 test, the CPU meter read; then the manual, the hub kit.
+8. **Device:** the owner's FM-1 test (0.3: done 2026-11-18, every step good, `docs/hardware-test-0.3.md`), the CPU meter read; then the manual, the hub kit.
 9. **The site** (done 2026-11-16, live on GitHub Pages): MONO2K's structure in POLYGON, the firmware in the page,
    the installer. Still: the import page restyled (LOAF's `app/site/import.html`), a manual.
 10. **Release 0.1** (done 2026-11-16, at the owner's "publish", untested on hardware): v0.1 and the installer. The Hub

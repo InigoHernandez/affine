@@ -4,6 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-18
 
+- **Release 0.3:** tested on an FM-1, every step good ([the test](docs/hardware-test-0.3.md)); the site and the
+  installer no longer say it has not run on one. The three choices (ENV › DROP, SEL + REC, a drum's MEMORY) stay.
 - **Site:** Perform has both rows of black keys: a switch for AFFINE and PUNCH, each PUNCH key with its FM-1 screen
   and what it holds (WASH: FRZ + VRB + FLT). With the FM-1 on, the switch sets its row and its FX + OCT sets the
   switch.

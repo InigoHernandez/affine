@@ -114,12 +114,13 @@ Releases: `./build.sh --release X.Y` (identity `FM-1_2815` + XXYYZZ), then `RELE
 file in `web/firmware/` and the installer in `web/install/` (fm1-base's, themed by `tools/install_theme.py`;
 `UNTESTED=1` says on it that the package has not run on an FM-1); tag `vX.Y` on the commit, a GitHub release with the
 `.fwsc` whose digest matches the site's. The Hub (`../FIRMWARE-HUB-HANDBOOK.md`): `fmhub.json` and `docs/hub/` are
-ready, the mail waits for the tests on a real FM-1; its resume of an interrupted update wants `FM-1_9NN`, which
+ready, the mail waits for the owner's word (0.3 passed on an FM-1); its resume of an interrupted update wants `FM-1_9NN`, which
 AFFINE's identity is not (the owner's call). 0.1: 2026-11-16 at the owner's word ("publish"), before any FM-1 had
 run it (sha 98eb4c10). 0.2: 2026-11-16 on the site's installer only (the owner: "upload for instaling fast"),
 untested on an FM-1 (sha aa1b17ac); then tag v0.2 (188bac2) and its GitHub release at the owner's word ("Yes, now"). 0.3: 2026-11-16 on the installer (the owner: "update go"), the
 controls redesign, untested on an FM-1 (sha 5337d76b); then tag v0.3 (d9f74e9) and its GitHub release on
-2026-11-17 at the owner's word ("yes").
+2026-11-17 at the owner's word ("yes"). 0.3 TESTED on the owner's FM-1 2026-11-18 ("all test good"): the installer's
+beta note dropped (build without `UNTESTED=1` from now on), the Hub mail no longer waits on a test.
 
 ## Layout
 

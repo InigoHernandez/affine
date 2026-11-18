@@ -5,6 +5,8 @@ FM-1_2815000300. Install it from the [installer](https://inigohernandez.github.i
 USB). 0.1's patterns load as they were. Another firmware's saves are left alone. To go back, use the same page's
 "Back to the stock firmware".
 
+**Result (2026-11-18, the owner's FM-1): every step good.** The three choices in section 9 stay as they are.
+
 About 30 minutes. Keep a break playing (PLAY) unless a step says otherwise.
 
 ## 0. The meter, first
