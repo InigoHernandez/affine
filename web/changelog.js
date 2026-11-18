@@ -7,6 +7,10 @@ window.AFF_CHANGES = [
   "title": "0.3 tested on an FM-1, a manual",
   "items": [
    [
+    "docs",
+    "0.3 passed the Firmware Hub's tests on an FM-1 (from V15, from Demake, out to MONO2K from the Hub, an install cut short), and went to the Hub for listing."
+   ],
+   [
     "fixes",
     "The manual scrolls steadily: a page opens at its top at once (it glided up through the new page), Back returns to the page before, and each page draws its own screens as it opens instead of all of them at load."
    ],

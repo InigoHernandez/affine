@@ -4,6 +4,8 @@ What changed for whoever plays AFFINE, newest first.
 
 ## 2026-11-18: 0.3 tested on an FM-1, a manual
 
+- **Hub:** 0.3 passed the Firmware Hub's tests on an FM-1 (from V15, from Demake, out to MONO2K from the Hub, an
+  install cut short), and went to the Hub for listing.
 - **Fix:** the manual scrolls steadily: a page opens at its top at once (it glided up through the new page), Back
   returns to the page before, and each page draws its own screens as it opens instead of all of them at load.
 - **Site:** a manual (<https://inigohernandez.github.io/affine/manual.html>): install, play the break, perform, the

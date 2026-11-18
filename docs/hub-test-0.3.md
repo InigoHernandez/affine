@@ -4,6 +4,8 @@ The Hub lists a firmware only after these, run on a real FM-1 with the release's
 `5337d76b…845c913e`, identity FM-1_2815000300. The play test is done (`docs/hardware-test-0.3.md`); these are about
 getting on and off the FM-1.
 
+**Result (2026-11-18, the owner's FM-1): every step passed.** In from Demake, out to MONO2K from the Hub.
+
 About 20 minutes. Chrome or Edge, a data USB cable, plugged straight into the computer. Two pages:
 AFFINE's [installer](https://inigohernandez.github.io/affine/install/) and [the Hub](https://thefirmwarehub.com).
 Close any other page that uses MIDI. Step 1 may lose what AFFINE saved: back it up first (the installer's
