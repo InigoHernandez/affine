@@ -1,7 +1,9 @@
 {
-  "what": "A PS1-era jungle break chopper: royalty-free Amens in sixteen slices on the keys, eleven performance keys (rolls, reverse, half speed, vinyl break, freeze, skip, verb throw, crush, filter), and an era sound chip's reverbs, codec grit, bit crush and redux.",
+  "what": "A PS1-era jungle break chopper: royalty-free Amens in sixteen slices on the keys, twenty-two effects held on the black keys in two rows (rolls, reverse, vinyl break, freeze, stutter, tape stop, wash), and an era sound chip's reverbs, codec grit, bit crush and redux.",
   "kinds": ["drums"],
   "play": "https://inigohernandez.github.io/affine/",
   "author": "Sequencist",
-  "image": "docs/hub/screen-4x.png"
+  "image": "docs/hub/screen-4x.png",
+  "color": "#ff5c28",
+  "sounds": "licensed: Cyberworm's Amen break loops (Dmitriy Vasilyev, rhythm-lab.com), royalty free"
 }
