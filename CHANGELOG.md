@@ -2,6 +2,11 @@
 
 What changed for whoever plays AFFINE, newest first.
 
+## 2026-11-18
+
+- **Docs:** the FM-1 test for 0.3 (`docs/hardware-test-0.3.md`): the meter, the controls, both black-key rows, the
+  four presets' CPU, SIZE, INIT, saving, and three choices to keep or change.
+
 ## 2026-11-17
 
 - **Site:** one system for the page and the installer, after shadcn/ui, transitions.dev and Libraries.dev (the owner's
